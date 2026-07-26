@@ -13,7 +13,7 @@ import fastf1
 
 def get_fastf1_version() -> str:
     """Return the installed FastF1 library version."""
-    return fastf1.__version__
+    return str(fastf1.__version__)
 
 
 def enable_cache(cache_dir: Path) -> None:

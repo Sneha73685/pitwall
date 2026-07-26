@@ -24,8 +24,8 @@ function App() {
     <main>
       <h1>PitWall</h1>
       <p>
-        An unofficial, fan-made Formula 1 race engineering platform. Not affiliated with
-        Formula 1, FOM, or any team.
+        An unofficial, fan-made Formula 1 race engineering platform. Not affiliated with Formula 1,
+        FOM, or any team.
       </p>
       <p data-testid="backend-status">Backend status: {backendStatus}</p>
       <p data-testid="selected-session">Selected session: {sessionId ?? "none"}</p>

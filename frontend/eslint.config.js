@@ -13,7 +13,7 @@ export default [
       parser: tsParser,
       ecmaVersion: 2022,
       sourceType: "module",
-      globals: { window: "readonly", document: "readonly" },
+      globals: { window: "readonly", document: "readonly", fetch: "readonly" },
     },
     plugins: {
       "@typescript-eslint": tseslint,

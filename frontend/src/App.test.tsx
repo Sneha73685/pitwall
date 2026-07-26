@@ -21,9 +21,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await waitFor(() =>
-      expect(screen.getByTestId("backend-status")).toHaveTextContent("online"),
-    );
+    await waitFor(() => expect(screen.getByTestId("backend-status")).toHaveTextContent("online"));
   });
 
   it("reports the backend as offline when the health check fails", async () => {
@@ -31,8 +29,6 @@ describe("App", () => {
 
     render(<App />);
 
-    await waitFor(() =>
-      expect(screen.getByTestId("backend-status")).toHaveTextContent("offline"),
-    );
+    await waitFor(() => expect(screen.getByTestId("backend-status")).toHaveTextContent("offline"));
   });
 });
