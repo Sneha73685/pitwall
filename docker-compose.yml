@@ -1,0 +1,39 @@
+# Local development only. No database service (V1 uses Parquet, ADR-0004
+# -- Postgres arrives in V3 when it's actually needed). The pipeline is
+# a batch job, not a long-running service (ADR-0001): use
+# `docker compose run --rm pipeline` rather than including it in `up`.
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    environment:
+      - PITWALL_DATA_DIR=/data
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  pipeline:
+    build:
+      context: ./pipeline
+    profiles:
+      - tools
+    volumes:
+      - ./pipeline:/app
+      - ./data:/data
+    environment:
+      - PITWALL_DATA_DIR=/data
