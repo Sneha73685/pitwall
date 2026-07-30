@@ -65,6 +65,12 @@ export interface TelemetrySample {
   z: number;
 }
 
+export interface TrackPoint {
+  distance_m: number;
+  x: number;
+  y: number;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`);
 
@@ -103,4 +109,8 @@ export async function getTelemetry(
 ): Promise<TelemetrySample[]> {
   const query = `?driver_id=${encodeURIComponent(driverId)}&lap_number=${lapNumber}`;
   return getJson<TelemetrySample[]>(`/sessions/${encodeURIComponent(sessionId)}/telemetry${query}`);
+}
+
+export async function getTrackPoints(sessionId: string): Promise<TrackPoint[]> {
+  return getJson<TrackPoint[]>(`/sessions/${encodeURIComponent(sessionId)}/track`);
 }
