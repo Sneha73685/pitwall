@@ -80,3 +80,17 @@ def test_get_telemetry_unknown_lap_returns_empty_list(session_cache_dir: Path) -
     repo = ParquetRepository(session_cache_dir)
 
     assert repo.get_telemetry("2023_monza_race", "VER", 99) == []
+
+
+def test_list_track_points_returns_points_sorted_by_distance(session_cache_dir: Path) -> None:
+    repo = ParquetRepository(session_cache_dir)
+
+    points = repo.list_track_points("2023_monza_race")
+
+    assert [p.distance_m for p in points] == [50.0, 100.0]
+
+
+def test_list_track_points_unknown_session_returns_empty_list(tmp_path: Path) -> None:
+    repo = ParquetRepository(tmp_path)
+
+    assert repo.list_track_points("2023_monza_race") == []

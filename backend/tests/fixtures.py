@@ -124,4 +124,11 @@ def write_session_cache(base_dir: Path) -> Path:
         ]
     ).to_parquet(session_dir / "telemetry.parquet", index=False)
 
+    pd.DataFrame(
+        [
+            {"session_id": SESSION_ID, "distance_m": 100.0, "x": 10.0, "y": 20.0},
+            {"session_id": SESSION_ID, "distance_m": 50.0, "x": 5.0, "y": 10.0},
+        ]
+    ).to_parquet(session_dir / "track.parquet", index=False)
+
     return session_dir
