@@ -1,13 +1,13 @@
 """PitWall backend entrypoint.
 
-Wires the FastAPI app: CORS, health check, and the M2 read endpoints for
-sessions/drivers/laps/telemetry (see docs/api-model.md).
+Wires the FastAPI app: CORS, health check, and the read endpoints for
+sessions/drivers/laps/telemetry/track (see docs/api-model.md).
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, sessions, telemetry
+from app.api import health, sessions, telemetry, track
 
 app = FastAPI(
     title="PitWall API",
@@ -30,3 +30,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(sessions.router)
 app.include_router(telemetry.router)
+app.include_router(track.router)

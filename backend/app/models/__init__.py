@@ -5,6 +5,6 @@ docs/adr/0009-internal-api-schema-boundary.md. See docs/api-model.md for
 the schema design note.
 """
 
-from app.models.telemetry import Driver, Lap, Session, SessionType, TelemetrySample
+from app.models.telemetry import Driver, Lap, Session, SessionType, TelemetrySample, TrackPoint
 
-__all__ = ["Session", "SessionType", "Driver", "Lap", "TelemetrySample"]
+__all__ = ["Session", "SessionType", "Driver", "Lap", "TelemetrySample", "TrackPoint"]

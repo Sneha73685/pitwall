@@ -79,3 +79,11 @@ class TelemetrySample(ApiModel):
     x: float
     y: float
     z: float
+
+
+class TrackPoint(ApiModel):
+    """A point of track geometry, derived from a reference lap's telemetry."""
+
+    distance_m: float
+    x: float
+    y: float

@@ -8,7 +8,7 @@ reference Parquet, pandas, or a file path.
 
 from abc import ABC, abstractmethod
 
-from app.models import Driver, Lap, Session, TelemetrySample
+from app.models import Driver, Lap, Session, TelemetrySample, TrackPoint
 
 
 class TelemetryRepository(ABC):
@@ -39,4 +39,9 @@ class TelemetryRepository(ABC):
         self, session_id: str, driver_id: str, lap_number: int
     ) -> list[TelemetrySample]:
         """Return one driver's one lap's telemetry samples, ordered by distance."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_track_points(self, session_id: str) -> list[TrackPoint]:
+        """Return one session's track geometry, ordered by distance."""
         raise NotImplementedError

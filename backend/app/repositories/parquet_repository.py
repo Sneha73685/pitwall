@@ -13,7 +13,7 @@ from typing import Any
 
 import pandas as pd
 
-from app.models import Driver, Lap, Session, SessionType, TelemetrySample
+from app.models import Driver, Lap, Session, SessionType, TelemetrySample, TrackPoint
 from app.repositories.base import TelemetryRepository
 
 
@@ -76,6 +76,14 @@ def _telemetry_sample_from_row(row: Mapping[Hashable, Any]) -> TelemetrySample:
     )
 
 
+def _track_point_from_row(row: Mapping[Hashable, Any]) -> TrackPoint:
+    return TrackPoint(
+        distance_m=float(row["distance_m"]),
+        x=float(row["x"]),
+        y=float(row["y"]),
+    )
+
+
 class ParquetRepository(TelemetryRepository):
     """Reads ingested sessions from `{base_dir}/{season}/{event_slug}/{session_type}/`."""
 
@@ -131,3 +139,12 @@ class ParquetRepository(TelemetryRepository):
         df = df[(df["driver_id"] == driver_id) & (df["lap_number"] == lap_number)]
         df = df.sort_values("distance_m")
         return [_telemetry_sample_from_row(row) for row in df.to_dict("records")]
+
+    def list_track_points(self, session_id: str) -> list[TrackPoint]:
+        found = self._find_session(session_id)
+        if found is None:
+            return []
+        session_dir, _ = found
+        df = pd.read_parquet(session_dir / "track.parquet")
+        df = df.sort_values("distance_m")
+        return [_track_point_from_row(row) for row in df.to_dict("records")]
