@@ -8,14 +8,29 @@ exposes. Nothing here is shared code with the pipeline; the backend workspace ha
 
 ## Scope note
 
-Only what M2 needs (PRD §3): "FastAPI service reading the cache; endpoints for sessions, drivers,
-laps, telemetry; OpenAPI docs; basic tests." Track-point/track-map data (`track.parquet`) is
-deliberately **not** exposed yet — the M2 milestone entry lists exactly four resource nouns
-(sessions, drivers, laps, telemetry), and track geometry has no consumer until M4 (track map). Its
-endpoint is added then, not now, to avoid building an API surface with no caller.
+M2 covered exactly what PRD §3 asked for: "FastAPI service reading the cache; endpoints for
+sessions, drivers, laps, telemetry; OpenAPI docs; basic tests." Track-point data was deliberately
+deferred at the time (no consumer until M4's track map); M4 (below) adds it now that one exists.
 
-Two-lap comparison, sector-time comparison, and delta-graph computation (M6) are also out of scope
-here — M2 only reads and serves what M1 already wrote to Parquet, it doesn't compute anything new.
+Two-lap comparison, sector-time comparison, and delta-graph computation (M6) are still out of scope
+here — this API only reads and serves what M1 already wrote to Parquet, it doesn't compute anything
+new.
+
+## M4 addition: track points
+
+`GET /sessions/{session_id}/track` returns `list[TrackPoint]` (`distance_m`, `x`, `y` — `session_id`
+dropped per the usual URL-implied-field convention below), read from the session's `track.parquet`
+via a new `list_track_points(session_id)` method on `TelemetryRepository`. Same 404 convention as
+`/drivers`/`/laps`: 404 if the session doesn't exist, empty list (200) if the session exists but has
+no track points (the pipeline's `_derive_track_points` returns `[]` when no fastest lap was found —
+see `docs/data-model.md`). Points are returned sorted by `distance_m`, matching `/telemetry`'s
+existing convention, so the frontend can build an SVG path directly without re-sorting.
+
+This is genuinely a separate resource from `/telemetry` (track geometry is session-level, derived
+once from a reference lap, not per-driver/per-lap), so it gets its own route module
+(`app/api/track.py`) rather than living in `sessions.py` or `telemetry.py`, mirroring how
+`telemetry.py` was already split out from `sessions.py` in M2 despite sharing the `/sessions`
+prefix.
 
 ## Why the backend re-reads Parquet directly (not via the pipeline package)
 
@@ -83,12 +98,13 @@ same fields for the subset M2 exposes:
   `sector_3_seconds`, `is_personal_best`, `is_accurate`.
 - **`TelemetrySample`** — `distance_m`, `time_seconds`, `speed_kph`, `throttle_pct`, `brake_active`,
   `rpm`, `gear`, `drs_active`, `x`, `y`, `z`.
+- **`TrackPoint`** (M4) — `distance_m`, `x`, `y`.
 
-`session_id`/`driver_id`/`lap_number` are dropped from the nested `Lap`/`TelemetrySample` payloads
-where they're already implied by the URL path, to avoid repeating the same value on every list item
-for no reason — a plain response-shaping choice, not an architectural one.
+`session_id`/`driver_id`/`lap_number` are dropped from the nested `Lap`/`TelemetrySample`/
+`TrackPoint` payloads where they're already implied by the URL path, to avoid repeating the same
+value on every list item for no reason — a plain response-shaping choice, not an architectural one.
 
-## Endpoints (`app/api/sessions.py`, `app/api/telemetry.py`)
+## Endpoints (`app/api/sessions.py`, `app/api/telemetry.py`, `app/api/track.py`)
 
 | Method | Path | Returns | Not found behavior |
 |---|---|---|---|
@@ -97,6 +113,7 @@ for no reason — a plain response-shaping choice, not an architectural one.
 | GET | `/sessions/{session_id}/drivers` | `list[Driver]` | 404 if session doesn't exist |
 | GET | `/sessions/{session_id}/laps?driver_id=` | `list[Lap]` | 404 if session doesn't exist; empty list if `driver_id` filter matches nothing |
 | GET | `/sessions/{session_id}/telemetry?driver_id=&lap_number=` | `list[TelemetrySample]` | 404 if session/driver/lap combination has no samples |
+| GET | `/sessions/{session_id}/track` (M4) | `list[TrackPoint]` | 404 if session doesn't exist; empty list if no track points were derived |
 
 `driver_id` and `lap_number` are both required query parameters on `/telemetry` — fetching a whole
 session's telemetry in one response isn't a V1 read pattern (PRD's success criteria and
