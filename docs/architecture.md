@@ -53,6 +53,8 @@ This rule exists specifically so that changing a data provider or a storage engi
 
 Both interfaces are intentionally minimal today — they grow when a second real implementation forces them to, not in anticipation of one.
 
+The concrete normalized schema `TelemetryProvider` implementations produce — `Session`, `Driver`, `Lap`, `TelemetrySample`, `TrackPoint` — is defined in `docs/data-model.md`, along with the Parquet cache layout `TelemetryRepository` will read in M2.
+
 ## 4. Technology Stack
 
 Full rationale and rejected alternatives for each row live in the linked ADR — this table is the current-state summary, not a repeat of the argument.
@@ -72,22 +74,31 @@ Full rationale and rejected alternatives for each row live in the linked ADR —
 
 ## 5. Repository Structure
 
+This reflects the structure as of M1; some directories (`frontend/src/features/`, a second
+`TelemetryRepository` implementation, etc.) are still empty or don't exist yet and will be filled
+in by the milestones that need them (see `docs/prd.md` §3).
+
 ```
 pitwall/
-├── README.md                  # vision, screenshots, disclaimer, quickstart
+├── README.md                  # vision, status, quickstart, disclaimer
 ├── LICENSE
-├── CONTRIBUTING.md
+├── CLAUDE.md                  # coding standards, conventions, process
 ├── docs/
 │   ├── prd.md
 │   ├── architecture.md        # this document
+│   ├── data-model.md          # pipeline domain model design note (M1)
 │   ├── success-metrics.md
-│   └── adr/                   # Architecture Decision Records, one file per decision
+│   ├── adr/                   # Architecture Decision Records, one file per decision
+│   └── releases/               # per-milestone release notes
 ├── pipeline/                  # data ingestion (Python + FastF1)
 │   ├── pyproject.toml
 │   ├── pitwall_pipeline/
-│   │   ├── providers/          # TelemetryProvider interface + FastF1Provider
+│   │   ├── providers/           # TelemetryProvider interface + FastF1Provider
 │   │   ├── normalize.py
-│   │   └── cache_writer.py
+│   │   ├── track.py             # TrackPoint derivation
+│   │   ├── cache_writer.py
+│   │   ├── ingest.py            # CLI entrypoint
+│   │   └── utils/
 │   └── tests/
 ├── backend/                   # FastAPI service
 │   ├── pyproject.toml
@@ -101,18 +112,15 @@ pitwall/
 ├── frontend/                  # React + TypeScript app
 │   ├── package.json
 │   ├── src/
-│   │   ├── components/
-│   │   ├── features/            # session-select, track-map, telemetry-charts, delta-graph
 │   │   ├── api/                  # typed API client
-│   │   └── state/                # Zustand stores (selectionStore, later cursorStore)
+│   │   ├── state/                # Zustand stores (selectionStore, later cursorStore)
+│   │   └── features/             # session-select, track-map, telemetry-charts, delta-graph (from M3)
 │   └── tests/
 ├── data/                       # gitignored — local processed cache
 ├── docker-compose.yml
 └── .github/
     └── workflows/
-        ├── backend-ci.yml
-        ├── frontend-ci.yml
-        └── pipeline-ci.yml
+        └── ci.yml               # single workflow, path-filtered per workspace (backend/pipeline/frontend)
 ```
 
 ## 6. Open implementation detail (flagged, not yet decided)
