@@ -7,10 +7,11 @@ Session/Laps/Telemetry objects are converted into these models in
 normalize.py and never passed through directly.
 """
 
-import re
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
+
+from pitwall_pipeline.utils.ids import slugify
 
 
 class SessionType(str, Enum):
@@ -33,8 +34,7 @@ class DomainModel(BaseModel):
 
 def make_session_id(season: int, event_name: str, session_type: SessionType) -> str:
     """Build a stable, filesystem- and Parquet-partition-safe session identifier."""
-    slug = re.sub(r"[^a-z0-9]+", "_", event_name.strip().lower()).strip("_")
-    return f"{season}_{slug}_{session_type.value}"
+    return f"{season}_{slugify(event_name)}_{session_type.value}"
 
 
 class Session(DomainModel):
