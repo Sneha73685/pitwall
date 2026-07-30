@@ -48,6 +48,21 @@ Items are removed once fixed, not marked done — this list should always reflec
   instability as a known risk that a future pass should address with actual retry/backoff, not just
   skip-and-log.
 
+## Pipeline / backend integration
+
+- **`pipeline/pitwall_pipeline/ingest.py`'s default cache directories don't match the shared
+  repo-root `data/` convention.** Found while designing M2's data-directory resolution
+  (2026-07-30). `ingest.py`'s `DEFAULT_PROCESSED_DIR`/`DEFAULT_FASTF1_CACHE_DIR` resolve to
+  `pipeline/data/...` (relative to the pipeline workspace), while `pipeline/pitwall_pipeline/smoke.py`
+  (M0), `docker-compose.yml`'s volume mounts, and `.gitignore`'s `data/*` rule all assume the
+  repo-root `data/` directory. Concretely: running `docker compose run --rm pipeline` with the
+  ingest command and no explicit `--processed-dir`/`--fastf1-cache-dir` flags writes inside the
+  container's ephemeral filesystem, not the mounted volume, so the backend (which reads from
+  repo-root `data/processed/`, per `docs/api-model.md`) never sees the result. Fix: align
+  `ingest.py`'s defaults with `smoke.py`'s repo-root-relative convention, or make the
+  `docker-compose.yml` pipeline service pass those flags explicitly. Not fixed here since M1 is
+  already tagged (`v0.1.0`) and this is unrelated to M2's scope.
+
 ## Local tooling / DX
 
 - **`docker compose down` reports the frontend container exiting with a non-zero code.** The Vite

@@ -29,34 +29,46 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M1 — Ingestion Pipeline — complete.**
+**Current milestone: M2 — Backend API — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
 | M0 | Project scaffolding | ✅ Done |
 | M1 | Ingestion pipeline | ✅ Done |
-| M2 | Backend API | ⏭ Next |
-| M3 | Frontend shell | Planned |
+| M2 | Backend API | ✅ Done |
+| M3 | Frontend shell | ⏭ Next |
 | M4 | Track map | Planned |
 | M5 | Telemetry channel charts | Planned |
 | M6 | Lap/sector comparison + delta graph | Planned |
 | M7 | Polish & release (tag `v1.0.0`) | Planned |
 
 See `docs/prd.md` §3 for the full roadmap and `docs/releases/` for a summary of each completed
-milestone (currently: [`m1-summary.md`](docs/releases/m1-summary.md)).
+milestone (currently: [`m1-summary.md`](docs/releases/m1-summary.md),
+[`m2-summary.md`](docs/releases/m2-summary.md)).
 
 ## Current capabilities
 
-As of M1, PitWall can fetch one real F1 session from FastF1, normalize it into PitWall's own
-provider-independent schema, and cache it to Parquet — entirely as an offline pipeline:
+PitWall can fetch one real F1 session from FastF1, normalize it into PitWall's own
+provider-independent schema, and cache it to Parquet (M1):
 
 ```sh
 cd pipeline
 uv run python -m pitwall_pipeline.ingest --season 2023 --event Monza --session race
 ```
 
-There is **no running API or browser UI yet** — that begins at M2 (backend) and M3 (frontend). The
-backend currently only exposes a health check; the frontend is an empty app shell.
+The backend (M2) reads that cache and serves it over a typed REST API — start it and browse the
+interactive docs at `http://localhost:8000/docs`:
+
+```sh
+cd backend
+uv run uvicorn app.main:app --reload
+```
+
+Endpoints: `GET /sessions`, `/sessions/{id}`, `/sessions/{id}/drivers`, `/sessions/{id}/laps`,
+`/sessions/{id}/telemetry` — see [`docs/api-model.md`](docs/api-model.md) for the schema.
+
+There is **no browser UI yet** — that begins at M3. The frontend is currently an empty app shell
+that only pings the backend's health check.
 
 ## Roadmap
 
@@ -177,6 +189,7 @@ for every real architectural decision.
 | [`docs/prd.md`](docs/prd.md) | Vision, scope, milestone roadmap, risks |
 | [`docs/architecture.md`](docs/architecture.md) | System design, layering, tech stack, repo layout |
 | [`docs/data-model.md`](docs/data-model.md) | Pipeline's normalized domain model and cache layout (M1) |
+| [`docs/api-model.md`](docs/api-model.md) | Backend API schema, endpoints, and repository design (M2) |
 | [`docs/success-metrics.md`](docs/success-metrics.md) | What "done" means per version (V1–V5) |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records — why, not just what |
 | [`docs/releases/`](docs/releases/) | Per-milestone release notes |

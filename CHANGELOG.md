@@ -8,7 +8,23 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Work in progress toward M2 — Backend API.
+Work in progress toward M3 — Frontend shell.
+
+## M2 — Backend API — 2026-07-30
+
+See `docs/releases/m2-summary.md` for the full release summary.
+
+### Added
+
+- `TelemetryRepository` interface and `ParquetRepository`, its sole V1 implementation, reading the
+  M1 Parquet cache directly (no dependency on the pipeline package).
+- API response models (`Session`, `Driver`, `Lap`, `TelemetrySample`) at the anti-corruption
+  boundary (ADR-0009).
+- Five endpoints: `GET /sessions`, `/sessions/{id}`, `/sessions/{id}/drivers`,
+  `/sessions/{id}/laps`, `/sessions/{id}/telemetry`.
+- FastAPI's auto-generated OpenAPI docs (`/docs`, `/openapi.json`) covering all endpoints.
+- Fixture-based backend test suite (22 tests, no network, no real FastF1 data).
+- `docs/api-model.md` — backend API schema design note.
 
 ## M1 — Ingestion Pipeline — 2026-07-30
 
