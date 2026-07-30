@@ -1,14 +1,13 @@
 """PitWall backend entrypoint.
 
-M0 scope: app wiring + health check only. No telemetry routes, no
-repository implementations yet -- those arrive in M1/M2 per
-docs/prd.md's milestone roadmap.
+Wires the FastAPI app: CORS, health check, and the M2 read endpoints for
+sessions/drivers/laps/telemetry (see docs/api-model.md).
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health
+from app.api import health, sessions, telemetry
 
 app = FastAPI(
     title="PitWall API",
@@ -29,3 +28,5 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(sessions.router)
+app.include_router(telemetry.router)
