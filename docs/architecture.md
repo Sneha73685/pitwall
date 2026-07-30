@@ -66,6 +66,7 @@ Full rationale and rejected alternatives for each row live in the linked ADR —
 | Backend | FastAPI | ADR-0002 |
 | Frontend | React + TypeScript | ADR-0003 |
 | State management | Zustand, stores scoped by concern | ADR-0007 |
+| Routing | react-router-dom | ADR-0010 |
 | Telemetry charts | Apache ECharts | ADR-0008 |
 | Track map | D3 + SVG/canvas (custom, not a standard chart) | — |
 | Deployment | Docker Compose (local) + Vercel/Fly.io-class host (demo) | — |
