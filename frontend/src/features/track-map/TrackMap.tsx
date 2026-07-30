@@ -1,0 +1,75 @@
+import { scaleLinear } from "d3-scale";
+import { line as d3Line } from "d3-shape";
+import type { TrackPoint } from "../../api/client";
+
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface TrackMapProps {
+  /** Session-level track geometry (docs/data-model.md's TrackPoint), the static background shape. */
+  trackPoints: TrackPoint[];
+  /** The selected lap's own position samples, plotted as a highlighted line over the track shape. */
+  lapPoints: Point[];
+}
+
+const WIDTH = 600;
+const HEIGHT = 400;
+const PADDING = 20;
+
+/**
+ * Static track map (M4, ADR architecture.md §4): D3 only computes scales and
+ * the path string, React renders the actual SVG elements -- D3 never
+ * touches the DOM directly, avoiding the two libraries fighting over it.
+ * No hover/cursor interactivity yet; that's V2 (docs/success-metrics.md).
+ */
+export function TrackMap({ trackPoints, lapPoints }: TrackMapProps) {
+  if (trackPoints.length === 0) {
+    return <p>No track geometry available for this session.</p>;
+  }
+
+  const xs = trackPoints.map((point) => point.x);
+  const ys = trackPoints.map((point) => point.y);
+
+  const xScale = scaleLinear()
+    .domain([Math.min(...xs), Math.max(...xs)])
+    .range([PADDING, WIDTH - PADDING]);
+  // SVG's y-axis grows downward; flip the range so the track isn't upside down.
+  const yScale = scaleLinear()
+    .domain([Math.min(...ys), Math.max(...ys)])
+    .range([HEIGHT - PADDING, PADDING]);
+
+  const lineGenerator = d3Line<Point>()
+    .x((point) => xScale(point.x))
+    .y((point) => yScale(point.y));
+
+  const trackPath = lineGenerator(trackPoints);
+  const lapPath = lapPoints.length > 0 ? lineGenerator(lapPoints) : null;
+  const startPoint = lapPoints[0];
+
+  return (
+    <svg
+      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      role="img"
+      aria-label="Track map"
+      data-testid="track-map"
+    >
+      {trackPath && (
+        <path d={trackPath} fill="none" stroke="currentColor" strokeWidth={2} opacity={0.4} />
+      )}
+      {lapPath && (
+        <path d={lapPath} fill="none" stroke="red" strokeWidth={3} data-testid="lap-line" />
+      )}
+      {startPoint && (
+        <circle
+          cx={xScale(startPoint.x)}
+          cy={yScale(startPoint.y)}
+          r={5}
+          fill="red"
+          data-testid="lap-start-marker"
+        />
+      )}
+    </svg>
+  );
+}

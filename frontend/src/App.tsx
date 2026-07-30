@@ -4,14 +4,15 @@ import { getHealth } from "./api/client";
 import { DriverSelectPage } from "./features/session-select/DriverSelectPage";
 import { LapSelectPage } from "./features/session-select/LapSelectPage";
 import { SessionListPage } from "./features/session-select/SessionListPage";
+import { TrackMapPage } from "./features/track-map/TrackMapPage";
 import { useSelectionStore } from "./state/selectionStore";
 
 type BackendStatus = "checking" | "online" | "offline";
 
 /**
- * M3 shell: routing for the session -> driver -> lap selection flow
- * (ADR-0010). Track map/telemetry charts/comparison views arrive in
- * M4+ as further routes -- nothing here anticipates their shape.
+ * Routing for the session -> driver -> lap -> track map flow (ADR-0010).
+ * Telemetry channel charts/comparison views arrive in M5+ as further
+ * routes -- nothing here anticipates their shape.
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -40,6 +41,10 @@ function App() {
         <Route path="/" element={<SessionListPage />} />
         <Route path="/sessions/:sessionId" element={<DriverSelectPage />} />
         <Route path="/sessions/:sessionId/drivers/:driverId" element={<LapSelectPage />} />
+        <Route
+          path="/sessions/:sessionId/drivers/:driverId/laps/:lapNumber"
+          element={<TrackMapPage />}
+        />
       </Routes>
     </main>
   );
