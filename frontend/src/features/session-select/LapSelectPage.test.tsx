@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../api/client";
@@ -44,16 +44,17 @@ describe("LapSelectPage", () => {
     expect(useSelectionStore.getState().driverId).toBe("VER");
   });
 
-  it("selecting a lap records it in selectionStore", async () => {
+  it("links a lap to its track map route", async () => {
     vi.spyOn(client, "listLaps").mockResolvedValue([sampleLap]);
 
     renderAt("/sessions/2023_monza_race/drivers/VER");
-    await waitFor(() => expect(screen.getByText(/lap 1/i)).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole("button", { name: /lap 1/i }));
-
-    expect(useSelectionStore.getState().lapId).toBe("1");
-    expect(screen.getByTestId("selected-lap")).toHaveTextContent("Selected lap: 1");
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /lap 1/i })).toHaveAttribute(
+        "href",
+        "/sessions/2023_monza_race/drivers/VER/laps/1",
+      ),
+    );
   });
 
   it("shows an error message when the request fails", async () => {
