@@ -1,5 +1,8 @@
 # PitWall
 
+[![CI](https://github.com/Sneha73685/pitwall/actions/workflows/ci.yml/badge.svg)](https://github.com/Sneha73685/pitwall/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **An open-source Formula 1 race engineering platform** — a telemetry viewer that grows, version by
 version, into a system that can explain *why* a driver gained or lost time, and eventually answer
 natural-language questions about a session.
@@ -177,6 +180,7 @@ for every real architectural decision.
 | [`docs/success-metrics.md`](docs/success-metrics.md) | What "done" means per version (V1–V5) |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records — why, not just what |
 | [`docs/releases/`](docs/releases/) | Per-milestone release notes |
+| [`docs/backlog.md`](docs/backlog.md) | Known issues and technical debt not yet scheduled to a milestone |
 | [`CHANGELOG.md`](CHANGELOG.md) | Notable changes, grouped by milestone |
 | [`CLAUDE.md`](CLAUDE.md) | Coding standards, conventions, and process |
 
