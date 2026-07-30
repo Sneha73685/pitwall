@@ -10,8 +10,9 @@ Items are removed once fixed, not marked done — this list should always reflec
 
 ## Security / dependencies
 
-- **`frontend/`: 11 known `npm audit` vulnerabilities (6 high, 4 moderate, 1 critical).** Found
-  during the M1 release audit (2026-07-30). Breakdown:
+- **`frontend/`: 13 known `npm audit` vulnerabilities (6 high, 6 moderate, 1 critical).** Found
+  during the M1 release audit (2026-07-30); `react-router`/`react-router-dom` added during M3
+  (2026-07-30). Breakdown:
   - `vitest`/`@vitest/mocker` (**critical**) — arbitrary file read/execute when the Vitest UI server
     is listening. Dev/test tooling only, not shipped to users, but should be resolved before
     inviting outside contributors to run the test suite locally.
@@ -21,20 +22,23 @@ Items are removed once fixed, not marked done — this list should always reflec
   - `echarts` (**moderate**) — XSS advisory. This one is a genuine **runtime** dependency (already
     installed ahead of its M5 usage), unlike the rest which are dev-only — worth prioritizing over
     the others for that reason.
+  - `react-router`/`react-router-dom` (**moderate**) — open redirect via backslash in `<Link>`/
+    `useNavigate` (CVE-2025-68470 bypass), and an arbitrary constructor injection in SSR hydration's
+    `deserializeErrors()`. Also a genuine **runtime** dependency (added in M3). The SSR advisory
+    doesn't apply here (PitWall is a client-rendered Vite SPA, no React Router SSR usage); the
+    open-redirect surface is low today since every `<Link to=...>` target is built from our own API
+    data (`session_id`/`driver_id`), not user-supplied URLs, but worth fixing alongside `echarts`
+    rather than leaving indefinitely.
   - `esbuild`/`vite-node` (**moderate**) — dev server request-forwarding issue.
   - Fixing requires `npm audit fix --force`, which pulls breaking major-version bumps (ESLint 9→10,
-    Vite 5→8, ECharts 5→6). Treat as a deliberate dependency-upgrade task (verify lint config and
-    chart code still work after the bump), not a drive-by patch.
+    Vite 5→8, ECharts 5→6, React Router 6→7). Treat as a deliberate dependency-upgrade task (verify
+    lint config, chart code, and routes still work after the bump), not a drive-by patch.
 
 ## Testing quality
 
 - **`backend/tests/test_health.py` (or its fixtures) trigger a `StarletteDeprecationWarning`**: using
   `httpx` with `starlette.testclient.TestClient` is deprecated upstream in favor of `httpx2`. Not
   failing yet, but will eventually break on an httpx/starlette upgrade.
-- **`frontend/src/App.test.tsx`** produces a React `act()` warning ("An update to App inside a test
-  was not wrapped in act(...)") because the test doesn't await the async `getHealth()` effect before
-  asserting. Currently passes, but the assertion isn't provably deterministic — should wrap the
-  relevant assertions in `waitFor`/`act` so the test genuinely waits for the effect to resolve.
 
 ## Pipeline
 

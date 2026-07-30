@@ -29,22 +29,22 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M2 — Backend API — complete.**
+**Current milestone: M3 — Frontend shell — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
 | M0 | Project scaffolding | ✅ Done |
 | M1 | Ingestion pipeline | ✅ Done |
 | M2 | Backend API | ✅ Done |
-| M3 | Frontend shell | ⏭ Next |
-| M4 | Track map | Planned |
+| M3 | Frontend shell | ✅ Done |
+| M4 | Track map | ⏭ Next |
 | M5 | Telemetry channel charts | Planned |
 | M6 | Lap/sector comparison + delta graph | Planned |
 | M7 | Polish & release (tag `v1.0.0`) | Planned |
 
 See `docs/prd.md` §3 for the full roadmap and `docs/releases/` for a summary of each completed
 milestone (currently: [`m1-summary.md`](docs/releases/m1-summary.md),
-[`m2-summary.md`](docs/releases/m2-summary.md)).
+[`m2-summary.md`](docs/releases/m2-summary.md), [`m3-summary.md`](docs/releases/m3-summary.md)).
 
 ## Current capabilities
 
@@ -67,8 +67,16 @@ uv run uvicorn app.main:app --reload
 Endpoints: `GET /sessions`, `/sessions/{id}`, `/sessions/{id}/drivers`, `/sessions/{id}/laps`,
 `/sessions/{id}/telemetry` — see [`docs/api-model.md`](docs/api-model.md) for the schema.
 
-There is **no browser UI yet** — that begins at M3. The frontend is currently an empty app shell
-that only pings the backend's health check.
+The frontend (M3) can now select a session, then a driver, then a lap, each as its own URL:
+
+```sh
+cd frontend
+npm run dev
+```
+
+Open `http://localhost:5173` and navigate `/` → `/sessions/:sessionId` →
+`/sessions/:sessionId/drivers/:driverId`. There's **no track map or telemetry chart yet** — picking
+a lap just records the selection; rendering it starts at M4.
 
 ## Roadmap
 
@@ -107,6 +115,7 @@ or UI. Full system diagram, layering rules, and the anti-corruption boundary at 
 | Backend | FastAPI |
 | Frontend | React + TypeScript |
 | State management | Zustand |
+| Routing | react-router-dom |
 | Telemetry charts | Apache ECharts |
 | Track map | D3 + SVG/canvas |
 | Deployment | Docker Compose (local); Vercel/Fly.io-class host (demo) |
@@ -210,6 +219,7 @@ for every real architectural decision.
 | [0007](docs/adr/0007-zustand-over-context.md) | Zustand over React Context for frontend state |
 | [0008](docs/adr/0008-echarts-over-uplot.md) | Apache ECharts over uPlot for telemetry charts |
 | [0009](docs/adr/0009-internal-api-schema-boundary.md) | Internal API schema boundary (anti-corruption layer) |
+| [0010](docs/adr/0010-react-router-over-tanstack-router.md) | react-router-dom over TanStack Router for frontend routing |
 
 ## Screenshots
 

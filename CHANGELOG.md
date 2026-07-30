@@ -8,7 +8,27 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Work in progress toward M3 — Frontend shell.
+Work in progress toward M4 — Track map.
+
+## M3 — Frontend Shell — 2026-07-30
+
+See `docs/releases/m3-summary.md` for the full release summary.
+
+### Added
+
+- `react-router-dom` routing (ADR-0010): `/`, `/sessions/:sessionId`,
+  `/sessions/:sessionId/drivers/:driverId`.
+- Typed API client coverage for all five M2 endpoints (`listSessions`, `getSession`, `listDrivers`,
+  `listLaps`, `getTelemetry`), refactored around one shared `getJson<T>` helper.
+- `SessionListPage`, `DriverSelectPage`, `LapSelectPage` under `features/session-select/` — the
+  session → driver → lap selection flow, each recording its choice in `selectionStore`.
+- 8 new frontend tests covering loading/error/empty states and lap selection.
+- `docs/adr/0010-react-router-over-tanstack-router.md`.
+
+### Fixed
+
+- A pre-existing React `act()` warning in `App.test.tsx` (the health-check effect wasn't awaited
+  before asserting).
 
 ## M2 — Backend API — 2026-07-30
 
