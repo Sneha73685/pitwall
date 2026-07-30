@@ -8,7 +8,25 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Work in progress toward M4 — Track map.
+Work in progress toward M5 — Telemetry channel charts.
+
+## M4 — Track Map — 2026-07-30
+
+See `docs/releases/m4-summary.md` for the full release summary.
+
+### Added
+
+- `GET /sessions/{id}/track` endpoint, `TrackPoint` response model, and `list_track_points` on
+  `TelemetryRepository`/`ParquetRepository`.
+- `TrackMap` (D3 scales/line generator, React-rendered SVG): the session's static track outline with
+  the selected lap's line and start-point marker plotted over it.
+- `TrackMapPage` at `/sessions/:sessionId/drivers/:driverId/laps/:lapNumber`.
+- 4 new backend tests and 6 new frontend tests.
+
+### Changed
+
+- `LapSelectPage`'s lap items now link to the track map route instead of just setting selection
+  state with nothing to show for it.
 
 ## M3 — Frontend Shell — 2026-07-30
 

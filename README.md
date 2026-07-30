@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M3 — Frontend shell — complete.**
+**Current milestone: M4 — Track map — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -37,14 +37,15 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M1 | Ingestion pipeline | ✅ Done |
 | M2 | Backend API | ✅ Done |
 | M3 | Frontend shell | ✅ Done |
-| M4 | Track map | ⏭ Next |
-| M5 | Telemetry channel charts | Planned |
+| M4 | Track map | ✅ Done |
+| M5 | Telemetry channel charts | ⏭ Next |
 | M6 | Lap/sector comparison + delta graph | Planned |
 | M7 | Polish & release (tag `v1.0.0`) | Planned |
 
 See `docs/prd.md` §3 for the full roadmap and `docs/releases/` for a summary of each completed
 milestone (currently: [`m1-summary.md`](docs/releases/m1-summary.md),
-[`m2-summary.md`](docs/releases/m2-summary.md), [`m3-summary.md`](docs/releases/m3-summary.md)).
+[`m2-summary.md`](docs/releases/m2-summary.md), [`m3-summary.md`](docs/releases/m3-summary.md),
+[`m4-summary.md`](docs/releases/m4-summary.md)).
 
 ## Current capabilities
 
@@ -65,9 +66,11 @@ uv run uvicorn app.main:app --reload
 ```
 
 Endpoints: `GET /sessions`, `/sessions/{id}`, `/sessions/{id}/drivers`, `/sessions/{id}/laps`,
-`/sessions/{id}/telemetry` — see [`docs/api-model.md`](docs/api-model.md) for the schema.
+`/sessions/{id}/telemetry`, `/sessions/{id}/track` — see [`docs/api-model.md`](docs/api-model.md)
+for the schema.
 
-The frontend (M3) can now select a session, then a driver, then a lap, each as its own URL:
+The frontend can select a session, then a driver, then a lap, and now (M4) renders that lap's static
+track map — the session's track outline with the lap's line and start point plotted over it:
 
 ```sh
 cd frontend
@@ -75,8 +78,8 @@ npm run dev
 ```
 
 Open `http://localhost:5173` and navigate `/` → `/sessions/:sessionId` →
-`/sessions/:sessionId/drivers/:driverId`. There's **no track map or telemetry chart yet** — picking
-a lap just records the selection; rendering it starts at M4.
+`/sessions/:sessionId/drivers/:driverId` → pick a lap. There's **no telemetry channel chart yet**
+(speed/throttle/brake/RPM/gear/DRS traces) or hover-driven interactivity — those are M5 and V2.
 
 ## Roadmap
 
