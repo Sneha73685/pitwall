@@ -23,7 +23,8 @@ See `docs/releases/m5-summary.md` for the full release summary.
   chart instance.
 - `TrackMapPage` now renders `TelemetryCharts` alongside the M4 track map, reusing the same
   `getTelemetry` fetch — no new API call or backend change needed.
-- 11 new frontend tests (5 for `buildChartOption`, 6 for `TelemetryCharts`).
+- 12 new frontend tests (5 for `buildChartOption`, 6 for `TelemetryCharts`, 1 for `TrackMapPage`'s
+  telemetry hand-off to the new component).
 
 ### Fixed
 

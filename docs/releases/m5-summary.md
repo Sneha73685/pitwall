@@ -56,7 +56,7 @@ already returned every field (`speed_kph`, `throttle_pct`, `brake_active`, `rpm`
 
 ## Testing performed
 
-- Frontend: 11 new tests. `chartOptions.test.ts` (5 tests) covers channel ordering, distance
+- Frontend: 12 new tests. `chartOptions.test.ts` (5 tests) covers channel ordering, distance
   pairing, boolean→0/1 mapping for Brake/DRS, step vs. line interpolation per channel, and the
   empty-samples case. `TelemetryCharts.test.tsx` (6 tests) mocks `echarts/core`'s `init`/`use` to
   verify the component initializes one chart instance, applies options built from its `samples`

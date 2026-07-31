@@ -19,8 +19,8 @@ Items are removed once fixed, not marked done — this list should always reflec
   - `eslint`/`@eslint/config-array`/`@eslint/eslintrc`/`minimatch`/`brace-expansion` (**high**) —
     all transitive dev-tooling (lint chain), DoS-class issue in `brace-expansion`.
   - `vite` (**high**) — path traversal in optimized-deps `.map` handling; dev server only.
-  - `echarts` (**moderate**) — XSS advisory. This one is a genuine **runtime** dependency (already
-    installed ahead of its M5 usage), unlike the rest which are dev-only — worth prioritizing over
+  - `echarts` (**moderate**) — XSS advisory. This one is a genuine **runtime** dependency, actively
+    used since M5's telemetry charts, unlike the rest which are dev-only — worth prioritizing over
     the others for that reason.
   - `react-router`/`react-router-dom` (**moderate**) — open redirect via backslash in `<Link>`/
     `useNavigate` (CVE-2025-68470 bypass), and an arbitrary constructor injection in SSR hydration's
@@ -33,24 +33,50 @@ Items are removed once fixed, not marked done — this list should always reflec
   - Fixing requires `npm audit fix --force`, which pulls breaking major-version bumps (ESLint 9→10,
     Vite 5→8, ECharts 5→6, React Router 6→7). Treat as a deliberate dependency-upgrade task (verify
     lint config, chart code, and routes still work after the bump), not a drive-by patch.
+- **`.github/workflows/ci.yml` doesn't declare a top-level `permissions:` block.** Found during the
+  pre-M6 engineering audit (2026-08-01). The workflow only lints/type-checks/tests (no releases, no
+  PR comments, no pushes), so it doesn't need the default `GITHUB_TOKEN` write access most repos
+  grant implicitly. Low risk to add `permissions: contents: read`, but not applied directly during
+  the audit since it can only be verified by an actual push/PR run, not locally.
 
 ## Testing quality
 
 - **`backend/tests/test_health.py` (or its fixtures) trigger a `StarletteDeprecationWarning`**: using
   `httpx` with `starlette.testclient.TestClient` is deprecated upstream in favor of `httpx2`. Not
   failing yet, but will eventually break on an httpx/starlette upgrade.
+- **`DriverSelectPage.test.tsx` and `LapSelectPage.test.tsx` don't test their empty-list states**
+  ("No drivers found for this session." / "No laps found for this driver."). Found during the pre-M6
+  engineering audit (2026-08-01). `SessionListPage.test.tsx` and every backend repository/API test
+  already cover the equivalent empty-result case; these two pages are the odd ones out. Not written
+  during the audit itself (audits don't add feature tests), but a natural pickup for whoever next
+  touches either file.
 
-## Pipeline
+## Backend / performance
 
-- **`FastF1Provider._derive_track_points`** (`pipeline/pitwall_pipeline/providers/fastf1_provider.py`)
-  returns a bare `list` with a `# type: ignore[type-arg]` rather than `list[TrackPoint]`. Passes
-  mypy strict only via the ignore comment, not a complete annotation. Low priority — purely a typing
-  completeness gap, no behavioral impact.
-- **No retry/backoff on FastF1 telemetry fetch failures.** `FastF1Provider.load_session` currently
-  catches a per-lap `get_telemetry()` failure, logs a warning, and skips that lap — which satisfies
-  CLAUDE.md's "no bare except, log explicitly" rule, but PRD §4 flags upstream rate-limiting/
-  instability as a known risk that a future pass should address with actual retry/backoff, not just
-  skip-and-log.
+- **`ParquetRepository._find_session` re-globs and re-reads every session's `session.parquet` on
+  every call**, and every one of `list_drivers`/`list_laps`/`get_telemetry`/`list_track_points`
+  calls it independently — so a single `TrackMapPage` load (which fetches track points and telemetry
+  in parallel) does two full session-directory scans from scratch. Found during the pre-M6
+  engineering audit (2026-08-01); not a new issue, just not previously written down. Deliberate
+  per `docs/api-model.md`'s "match on session_id, don't parse it" design note (the slug scheme can't
+  be unambiguously reverse-parsed from the directory path), and fine at V1's "small, curated set of
+  sessions" data volume (PRD §4). Worth an in-memory session_id → directory index if/when the ingested
+  session count grows enough for this to matter — not before.
+
+## Docker / deployment
+
+- **Backend and pipeline Dockerfiles use `python:3.12-slim`, while `.python-version` (both
+  workspaces) and CI pin `3.10`.** Found during the pre-M6 engineering audit (2026-08-01). Both
+  satisfy `requires-python = ">=3.10"` and every gate passes on both, so this isn't a correctness
+  bug, just an untested-combination inconsistency — Docker is the one environment never exercised
+  against the same Python minor version as local dev/CI. Worth aligning to `python:3.10-slim` before
+  v1.0 so all three environments run the identical interpreter version.
+- **No non-root `USER` in any of the three Dockerfiles.** Found during the pre-M6 engineering audit
+  (2026-08-01). All three are explicitly labeled development images (source bind-mounted from the
+  host for hot-reload), and adding a non-root user to a bind-mount-based dev image risks host/
+  container UID mismatches breaking the mount — not a drop-in fix. Each Dockerfile's own header
+  comment already defers "production packaging" to M7; a non-root user for any eventual production
+  image belongs in that pass, not before.
 
 ## Documentation / process (non-code)
 
