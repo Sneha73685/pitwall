@@ -25,6 +25,11 @@ export default [
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-explicit-any": "error",
+      // TS's own type-checking already catches genuine undefined references
+      // (including DOM lib globals like HTMLDivElement); no-undef only
+      // duplicates that with a weaker, non-type-aware check. Standard
+      // typescript-eslint guidance: https://typescript-eslint.io/linting/troubleshooting/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
+      "no-undef": "off",
     },
   },
 ];

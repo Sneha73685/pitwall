@@ -7,12 +7,14 @@ import {
   type TrackPoint,
 } from "../../api/client";
 import { useSelectionStore } from "../../state/selectionStore";
+import { TelemetryCharts } from "../telemetry-charts/TelemetryCharts";
 import { TrackMap } from "./TrackMap";
 
 /**
- * /sessions/:sessionId/drivers/:driverId/laps/:lapNumber: the M4 track map --
- * the session's track shape with the selected lap's line and start point
- * plotted over it. Static only; hover-driven sync is V2.
+ * /sessions/:sessionId/drivers/:driverId/laps/:lapNumber: the selected lap's
+ * static track map (M4) plus its distance-aligned telemetry channel traces
+ * (M5) -- both driven by the same `getTelemetry` fetch (docs/releases/
+ * m4-summary.md's "next milestone" note). Static only; hover-driven sync is V2.
  */
 export function TrackMapPage() {
   const { sessionId, driverId, lapNumber } = useParams<{
@@ -50,6 +52,8 @@ export function TrackMapPage() {
     <section>
       <h2>Track map</h2>
       <TrackMap trackPoints={trackPoints} lapPoints={lapPoints} />
+      <h2>Telemetry</h2>
+      <TelemetryCharts samples={lapPoints} />
     </section>
   );
 }
