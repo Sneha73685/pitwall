@@ -8,7 +8,28 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Work in progress toward M5 — Telemetry channel charts.
+Work in progress toward M6 — Lap/sector comparison + delta graph.
+
+## M5 — Telemetry Channel Charts — 2026-07-31
+
+See `docs/releases/m5-summary.md` for the full release summary.
+
+### Added
+
+- `TelemetryCharts`, an ECharts component rendering speed/throttle/brake/RPM/gear/DRS as one
+  instance with a stacked grid per channel, sharing a distance-aligned x-axis (ADR-0008).
+- `buildChartOption`, a pure function (in `frontend/src/features/telemetry-charts/chartOptions.ts`)
+  mapping a lap's `TelemetrySample[]` to that ECharts option — unit-tested independently of any
+  chart instance.
+- `TrackMapPage` now renders `TelemetryCharts` alongside the M4 track map, reusing the same
+  `getTelemetry` fetch — no new API call or backend change needed.
+- 11 new frontend tests (5 for `buildChartOption`, 6 for `TelemetryCharts`).
+
+### Fixed
+
+- `eslint.config.js` didn't declare DOM lib globals (e.g. `HTMLDivElement`), so `no-undef` flagged
+  legitimate, TS-checked references as errors. Disabled `no-undef` for TS files per
+  typescript-eslint's own guidance, since `tsc` already catches genuine undefined references.
 
 ## M4 — Track Map — 2026-07-30
 

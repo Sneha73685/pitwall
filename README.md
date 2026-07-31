@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M4 — Track map — complete.**
+**Current milestone: M5 — Telemetry channel charts — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -38,14 +38,14 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M2 | Backend API | ✅ Done |
 | M3 | Frontend shell | ✅ Done |
 | M4 | Track map | ✅ Done |
-| M5 | Telemetry channel charts | ⏭ Next |
-| M6 | Lap/sector comparison + delta graph | Planned |
+| M5 | Telemetry channel charts | ✅ Done |
+| M6 | Lap/sector comparison + delta graph | ⏭ Next |
 | M7 | Polish & release (tag `v1.0.0`) | Planned |
 
 See `docs/prd.md` §3 for the full roadmap and `docs/releases/` for a summary of each completed
 milestone (currently: [`m1-summary.md`](docs/releases/m1-summary.md),
 [`m2-summary.md`](docs/releases/m2-summary.md), [`m3-summary.md`](docs/releases/m3-summary.md),
-[`m4-summary.md`](docs/releases/m4-summary.md)).
+[`m4-summary.md`](docs/releases/m4-summary.md), [`m5-summary.md`](docs/releases/m5-summary.md)).
 
 ## Current capabilities
 
@@ -69,8 +69,8 @@ Endpoints: `GET /sessions`, `/sessions/{id}`, `/sessions/{id}/drivers`, `/sessio
 `/sessions/{id}/telemetry`, `/sessions/{id}/track` — see [`docs/api-model.md`](docs/api-model.md)
 for the schema.
 
-The frontend can select a session, then a driver, then a lap, and now (M4) renders that lap's static
-track map — the session's track outline with the lap's line and start point plotted over it:
+The frontend can select a session, then a driver, then a lap, and renders that lap's static track
+map (M4) plus its speed/throttle/brake/RPM/gear/DRS traces, aligned by distance (M5):
 
 ```sh
 cd frontend
@@ -78,8 +78,8 @@ npm run dev
 ```
 
 Open `http://localhost:5173` and navigate `/` → `/sessions/:sessionId` →
-`/sessions/:sessionId/drivers/:driverId` → pick a lap. There's **no telemetry channel chart yet**
-(speed/throttle/brake/RPM/gear/DRS traces) or hover-driven interactivity — those are M5 and V2.
+`/sessions/:sessionId/drivers/:driverId` → pick a lap. Charts are static, distance-aligned traces —
+**no hover-driven cursor sync yet** (that's V2); lap/sector comparison and the delta graph are M6.
 
 ## Roadmap
 
@@ -226,9 +226,8 @@ for every real architectural decision.
 
 ## Screenshots
 
-_Coming once telemetry charts (M5) round out the view — the track map (M4) is live but a single
-static SVG isn't worth a screenshot section on its own yet. See `docs/releases/` for what's
-actually running at each milestone in the meantime._
+_Coming once lap/sector comparison (M6) gives the view something worth a side-by-side screenshot.
+See `docs/releases/` for what's actually running at each milestone in the meantime._
 
 ## Disclaimer
 
