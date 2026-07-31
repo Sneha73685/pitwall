@@ -51,13 +51,6 @@ the repo-root `data/` directory) defaults to `<repo_root>/data` for local non-Do
 the convention `pipeline/pitwall_pipeline/smoke.py` established in M0 and that `docker-compose.yml`
 and `.gitignore`'s `data/*` rule already assume.
 
-Note: `pipeline/pitwall_pipeline/ingest.py`'s own CLI defaults point at `pipeline/data/` instead of
-the repo-root `data/` directory — a pre-existing inconsistency from M1, tracked in
-`docs/backlog.md` rather than fixed here (M1 is already tagged; this is unrelated to M2's scope).
-Anyone running the pipeline manually needs to pass `--processed-dir`/`--fastf1-cache-dir` pointing
-at the repo-root `data/` directory (or the mounted `/data` in Docker) for the backend to see the
-result.
-
 ## `TelemetryRepository` (`app/repositories/base.py`, ADR-0006)
 
 ```python

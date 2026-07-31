@@ -16,9 +16,9 @@ from pitwall_pipeline.providers import FastF1Provider
 
 logger = logging.getLogger(__name__)
 
-_PIPELINE_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_FASTF1_CACHE_DIR = _PIPELINE_ROOT / "data" / "fastf1_cache"
-DEFAULT_PROCESSED_DIR = _PIPELINE_ROOT / "data" / "processed"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_FASTF1_CACHE_DIR = _REPO_ROOT / "data" / "fastf1_cache"
+DEFAULT_PROCESSED_DIR = _REPO_ROOT / "data" / "processed"
 
 
 def ingest_session(
