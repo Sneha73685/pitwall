@@ -11,8 +11,9 @@ type BackendStatus = "checking" | "online" | "offline";
 
 /**
  * Routing for the session -> driver -> lap -> track map flow (ADR-0010).
- * Telemetry channel charts/comparison views arrive in M5+ as further
- * routes -- nothing here anticipates their shape.
+ * The final route renders both the track map (M4) and telemetry channel
+ * charts (M5) via TrackMapPage; lap/sector comparison (M6) is the next
+ * route this file doesn't yet anticipate the shape of.
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");

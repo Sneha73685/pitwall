@@ -2,9 +2,9 @@
 
 Single source for the data directory the backend reads its Parquet cache
 from -- see docs/api-model.md's "Data directory resolution" section for why
-the default matches pipeline/pitwall_pipeline/smoke.py's repo-root
-convention rather than pipeline/pitwall_pipeline/ingest.py's (tracked as a
-known inconsistency in docs/backlog.md).
+the default matches the repo-root convention that pipeline/pitwall_pipeline/
+smoke.py, pipeline/pitwall_pipeline/ingest.py, and docker-compose.yml's
+volume mounts all share.
 """
 
 import os
