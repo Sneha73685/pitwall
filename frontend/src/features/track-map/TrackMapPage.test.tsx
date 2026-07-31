@@ -5,6 +5,14 @@ import * as client from "../../api/client";
 import { useSelectionStore } from "../../state/selectionStore";
 import { TrackMapPage } from "./TrackMapPage";
 
+// TelemetryCharts owns a real ECharts instance (covered by its own test
+// suite); TrackMapPage only needs to know it's wired up with the right data.
+vi.mock("../telemetry-charts/TelemetryCharts", () => ({
+  TelemetryCharts: ({ samples }: { samples: client.TelemetrySample[] }) => (
+    <div data-testid="telemetry-charts-stub">{samples.length} samples</div>
+  ),
+}));
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter
@@ -52,6 +60,17 @@ describe("TrackMapPage", () => {
 
     await waitFor(() => expect(screen.getByTestId("track-map")).toBeInTheDocument());
     expect(useSelectionStore.getState().lapId).toBe("1");
+  });
+
+  it("passes the fetched lap telemetry through to the telemetry charts", async () => {
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue([]);
+    vi.spyOn(client, "getTelemetry").mockResolvedValue([sampleTelemetry, sampleTelemetry]);
+
+    renderAt("/sessions/2023_monza_race/drivers/VER/laps/1");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("telemetry-charts-stub")).toHaveTextContent("2 samples"),
+    );
   });
 
   it("shows an error message when a request fails", async () => {
