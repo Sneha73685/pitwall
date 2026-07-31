@@ -11,7 +11,7 @@ from pathlib import Path
 import fastf1
 import pandas as pd
 
-from pitwall_pipeline.models import NormalizedSessionData, SessionType, TelemetrySample
+from pitwall_pipeline.models import NormalizedSessionData, SessionType, TelemetrySample, TrackPoint
 from pitwall_pipeline.normalize import (
     normalize_drivers,
     normalize_laps,
@@ -103,7 +103,9 @@ class FastF1Provider(TelemetryProvider):
         )
 
     @staticmethod
-    def _derive_track_points(ff1_session: fastf1.core.Session, *, session_id: str) -> list:  # type: ignore[type-arg]
+    def _derive_track_points(
+        ff1_session: fastf1.core.Session, *, session_id: str
+    ) -> list[TrackPoint]:
         fastest = ff1_session.laps.pick_fastest()
         if fastest is None:
             logger.warning("No fastest lap found for %s; track points will be empty", session_id)
