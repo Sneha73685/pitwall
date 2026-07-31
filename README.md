@@ -226,9 +226,9 @@ for every real architectural decision.
 
 ## Screenshots
 
-_Coming once there's a UI to screenshot — the track map (M4) and telemetry charts (M5) will be the
-first visuals worth showing. Check back after M4, or see `docs/releases/` for what's actually
-running at each milestone in the meantime._
+_Coming once telemetry charts (M5) round out the view — the track map (M4) is live but a single
+static SVG isn't worth a screenshot section on its own yet. See `docs/releases/` for what's
+actually running at each milestone in the meantime._
 
 ## Disclaimer
 
