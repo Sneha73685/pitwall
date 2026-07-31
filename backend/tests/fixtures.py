@@ -121,6 +121,43 @@ def write_session_cache(base_dir: Path) -> Path:
                 "y": 10.0,
                 "z": 0.0,
             },
+            # LEC/lap 1: same distance points as VER/lap 1, slightly slower
+            # at each -- consistent with LEC's own lap_time_seconds (96.456)
+            # being ~1.3s slower than VER's (95.123) above. Added for M6's
+            # /laps/compare integration test, which needs two drivers with
+            # real (not just metadata-only) telemetry to compare.
+            {
+                "session_id": SESSION_ID,
+                "driver_id": "LEC",
+                "lap_number": 1,
+                "distance_m": 100.0,
+                "time_seconds": 2.65,
+                "speed_kph": 245.0,
+                "throttle_pct": 100.0,
+                "brake_active": False,
+                "rpm": 10800.0,
+                "gear": 6,
+                "drs_active": False,
+                "x": 10.0,
+                "y": 20.0,
+                "z": 0.0,
+            },
+            {
+                "session_id": SESSION_ID,
+                "driver_id": "LEC",
+                "lap_number": 1,
+                "distance_m": 50.0,
+                "time_seconds": 1.1,
+                "speed_kph": 195.0,
+                "throttle_pct": 80.0,
+                "brake_active": False,
+                "rpm": 9800.0,
+                "gear": 5,
+                "drs_active": False,
+                "x": 5.0,
+                "y": 10.0,
+                "z": 0.0,
+            },
         ]
     ).to_parquet(session_dir / "telemetry.parquet", index=False)
 
