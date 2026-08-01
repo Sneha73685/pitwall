@@ -71,6 +71,47 @@ export interface TrackPoint {
   y: number;
 }
 
+export interface ChannelSeries {
+  a: number[];
+  b: number[];
+}
+
+export type SectorNumber = 1 | 2 | 3;
+
+export interface SectorDelta {
+  sector: SectorNumber;
+  delta_ms: number;
+  faster: "a" | "b";
+}
+
+export type WarningCode = "invalid_lap_a" | "invalid_lap_b";
+
+export interface ComparisonWarning {
+  code: WarningCode;
+  detail: string | null;
+}
+
+export interface LapComparisonResponse {
+  session_id: string;
+  lap_a: Lap;
+  lap_b: Lap;
+  compared_distance_m: number;
+  distance_m: number[];
+  /** Positive means lap A is faster (ahead) at that distance -- see backend's LapComparisonResponse.delta_ms. */
+  delta_ms: number[];
+  channels: Record<string, ChannelSeries>;
+  sectors: SectorDelta[];
+  warnings: ComparisonWarning[];
+}
+
+export interface CompareLapsParams {
+  driverA: string;
+  lapA: number;
+  driverB: string;
+  lapB: number;
+  resolution?: number;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`);
 
@@ -113,4 +154,17 @@ export async function getTelemetry(
 
 export async function getTrackPoints(sessionId: string): Promise<TrackPoint[]> {
   return getJson<TrackPoint[]>(`/sessions/${encodeURIComponent(sessionId)}/track`);
+}
+
+export async function compareLaps(
+  sessionId: string,
+  params: CompareLapsParams,
+): Promise<LapComparisonResponse> {
+  const query =
+    `?driver_a=${encodeURIComponent(params.driverA)}&lap_a=${params.lapA}` +
+    `&driver_b=${encodeURIComponent(params.driverB)}&lap_b=${params.lapB}` +
+    (params.resolution !== undefined ? `&resolution=${params.resolution}` : "");
+  return getJson<LapComparisonResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/laps/compare${query}`,
+  );
 }
