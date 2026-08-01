@@ -110,4 +110,23 @@ describe("TelemetryCharts", () => {
     expect(echarts.init).toHaveBeenCalledTimes(1);
     expect(fakeChart.setOption).toHaveBeenCalledTimes(2);
   });
+
+  it("passes a channels filter through to the built chart option (M6 Phase 7)", () => {
+    const samples = [sample({ distance_m: 0 })];
+    render(<TelemetryCharts samples={samples} channels={["speed_kph"]} />);
+
+    expect(fakeChart.setOption).toHaveBeenCalledWith(
+      buildChartOption(samples, undefined, ["speed_kph"]),
+      true,
+    );
+  });
+
+  it("re-applies options when only the channels filter changes", () => {
+    const samples = [sample({ distance_m: 0 })];
+    const { rerender } = render(<TelemetryCharts samples={samples} channels={["speed_kph"]} />);
+    rerender(<TelemetryCharts samples={samples} channels={["speed_kph", "gear"]} />);
+
+    expect(echarts.init).toHaveBeenCalledTimes(1);
+    expect(fakeChart.setOption).toHaveBeenCalledTimes(2);
+  });
 });

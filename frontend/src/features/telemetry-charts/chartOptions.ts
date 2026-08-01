@@ -9,6 +9,8 @@ interface ChannelConfig {
   step: boolean;
 }
 
+export type ChannelKey = ChannelConfig["key"];
+
 /** Order matches the PRD's channel list (docs/prd.md §2.1, §3 M5). */
 const CHANNELS: ChannelConfig[] = [
   { key: "speed_kph", label: "Speed", unit: "km/h", step: false },
@@ -45,17 +47,26 @@ const LAP_B_COLOR = "#ee6666";
  * Deliberately does not call echarts.connect()/axisPointer.link -- V1 is
  * static per-channel traces, not the synchronized cross-chart cursor that's
  * explicitly V2 scope (docs/success-metrics.md).
+ *
+ * `channels` (M6 Phase 7) restricts which channels get a grid/series at
+ * all -- the comparison view's per-channel toggle (ChannelOverlayPanel)
+ * needs to show only the channels a user has switched on. Omitted for the
+ * single-lap view, which keeps rendering every channel as before.
  */
 export function buildChartOption(
   samples: TelemetrySample[],
   secondarySamples?: TelemetrySample[],
+  channels?: ChannelKey[],
 ): EChartsCoreOption {
-  const gridCount = CHANNELS.length;
+  const activeChannels = channels
+    ? CHANNELS.filter((channel) => channels.includes(channel.key))
+    : CHANNELS;
+  const gridCount = activeChannels.length;
   const gridGapPct = 3;
-  const gridHeightPct = 100 / gridCount - gridGapPct;
+  const gridHeightPct = gridCount > 0 ? 100 / gridCount - gridGapPct : 0;
   const lastIndex = gridCount - 1;
 
-  const series = CHANNELS.flatMap((channel, index) => {
+  const series = activeChannels.flatMap((channel, index) => {
     const primary = {
       name: secondarySamples ? `${channel.label} (A)` : channel.label,
       type: "line" as const,
@@ -87,13 +98,13 @@ export function buildChartOption(
 
   return {
     animation: false,
-    grid: CHANNELS.map((_, index) => ({
+    grid: activeChannels.map((_, index) => ({
       left: 70,
       right: 20,
       top: `${(index * 100) / gridCount + 1}%`,
       height: `${gridHeightPct}%`,
     })),
-    xAxis: CHANNELS.map((_, index) => ({
+    xAxis: activeChannels.map((_, index) => ({
       type: "value",
       gridIndex: index,
       min: "dataMin",
@@ -104,7 +115,7 @@ export function buildChartOption(
       axisLabel: { show: index === lastIndex },
       axisTick: { show: index === lastIndex },
     })),
-    yAxis: CHANNELS.map((channel, index) => ({
+    yAxis: activeChannels.map((channel, index) => ({
       type: "value",
       gridIndex: index,
       name: channel.unit ? `${channel.label} (${channel.unit})` : channel.label,

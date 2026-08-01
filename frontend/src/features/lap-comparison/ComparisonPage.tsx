@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useLapComparison } from "./hooks/useLapComparison";
 import { LapPairSelector } from "./components/LapPairSelector";
 import { ComparisonHeader } from "./components/ComparisonHeader";
+import { DeltaChart } from "./components/DeltaChart";
 import { SectorBreakdownTable } from "./components/SectorBreakdownTable";
 import { ChannelOverlayPanel } from "./components/ChannelOverlayPanel";
 import type { DriverLapSelection } from "./components/DriverLapPicker";
@@ -22,8 +23,8 @@ import type { DriverLapSelection } from "./components/DriverLapPicker";
  *
  * Owns lap-selection state (selectionA/selectionB) directly -- not in
  * comparisonStore, which is scoped to cursor/channel-visibility state only
- * (docs/adr/0007). Chart-heavy pieces (delta chart, telemetry overlays,
- * track map) are Phase 7/8 and are not rendered here.
+ * (docs/adr/0007). Track map delta coloring is Phase 8 and not rendered
+ * here yet.
  */
 export function ComparisonPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -55,8 +56,9 @@ export function ComparisonPage() {
       {comparison && (
         <>
           <ComparisonHeader comparison={comparison} onSwap={handleSwap} />
+          <DeltaChart comparison={comparison} />
           <SectorBreakdownTable sectors={comparison.sectors} />
-          <ChannelOverlayPanel />
+          <ChannelOverlayPanel comparison={comparison} />
         </>
       )}
     </section>

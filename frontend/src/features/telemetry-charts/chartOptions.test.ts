@@ -136,4 +136,36 @@ describe("buildChartOption", () => {
       expect(series.find((entry) => entry.name === "Brake (B)")!.step).toBe("end");
     });
   });
+
+  describe("with a channels filter (M6 Phase 7)", () => {
+    it("only builds grids/series for the requested channels, in CHANNELS order", () => {
+      const option = buildChartOption([sample()], [sample()], ["brake_active", "speed_kph"]);
+      const series = option.series as { name: string }[];
+
+      expect(option.grid).toHaveLength(2);
+      expect(option.xAxis).toHaveLength(2);
+      expect(option.yAxis).toHaveLength(2);
+      expect(series.map((entry) => entry.name)).toEqual([
+        "Speed (A)",
+        "Speed (B)",
+        "Brake (A)",
+        "Brake (B)",
+      ]);
+    });
+
+    it("produces no grids/series when no channels are requested", () => {
+      const option = buildChartOption([sample()], [sample()], []);
+
+      expect(option.grid).toHaveLength(0);
+      expect(option.series).toHaveLength(0);
+    });
+
+    it("defaults to every channel when the filter is omitted", () => {
+      const filtered = buildChartOption([sample()]);
+      const unfiltered = buildChartOption([sample()], undefined, undefined);
+
+      expect(filtered).toEqual(unfiltered);
+      expect((filtered.series as unknown[]).length).toBe(6);
+    });
+  });
 });

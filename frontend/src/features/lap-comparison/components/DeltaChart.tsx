@@ -1,0 +1,76 @@
+import * as echarts from "echarts/core";
+import { LineChart } from "echarts/charts";
+import {
+  GridComponent,
+  LegendComponent,
+  MarkLineComponent,
+  TooltipComponent,
+} from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
+import { useEffect, useRef } from "react";
+import type { LapComparisonResponse } from "../../../api/client";
+import { buildDeltaChartOption } from "./deltaChartOptions";
+
+echarts.use([
+  LineChart,
+  GridComponent,
+  LegendComponent,
+  MarkLineComponent,
+  TooltipComponent,
+  CanvasRenderer,
+]);
+
+const CHART_HEIGHT = 260;
+
+interface DeltaChartProps {
+  comparison: LapComparisonResponse;
+}
+
+/**
+ * Cumulative delta-vs-distance chart (M6 Phase 7, docs/m6-design-review.md
+ * §9). Mirrors TelemetryCharts' own ECharts lifecycle (init once, dispose
+ * on unmount, re-`setOption` on data change) -- see that component for why.
+ *
+ * Static, not cursor-synced: `echarts.connect`/`useCursorSync` cross-chart
+ * sync is V2 scope per docs/success-metrics.md and ADR-0007/ADR-0008 (the
+ * same call already made for TelemetryCharts in Phase 5/6 -- this chart
+ * follows that precedent rather than reintroducing V2 work into M6).
+ */
+export function DeltaChart({ comparison }: DeltaChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<echarts.ECharts | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) {
+      return;
+    }
+    const chart = echarts.init(containerRef.current);
+    chartRef.current = chart;
+
+    const handleResize = () => chart.resize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      chart.dispose();
+      chartRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    chartRef.current?.setOption(buildDeltaChartOption(comparison), true);
+  }, [comparison]);
+
+  return (
+    <div>
+      <div
+        ref={containerRef}
+        role="img"
+        aria-label="Lap delta chart"
+        data-testid="delta-chart"
+        style={{ width: "100%", height: CHART_HEIGHT }}
+      />
+      <p>Positive delta means Lap A is ahead; negative means Lap B is ahead.</p>
+    </div>
+  );
+}

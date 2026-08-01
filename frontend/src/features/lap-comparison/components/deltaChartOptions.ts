@@ -1,0 +1,82 @@
+import type { EChartsCoreOption } from "echarts/core";
+import type { LapComparisonResponse } from "../../../api/client";
+
+// Same fixed A/B pair TelemetryCharts/TrackMap already use -- no team/driver
+// color system exists in this app yet.
+const LAP_A_COLOR = "#5470c6";
+const LAP_B_COLOR = "#ee6666";
+
+/**
+ * Builds the delta-vs-distance chart option (M6 Phase 7,
+ * docs/m6-design-review.md §9). Sign convention: positive `delta_ms` means
+ * lap A is ahead -- documented on the backend's
+ * `LapComparisonResponse.delta_ms` field, and restated here since any PR
+ * touching this file must re-verify the sign, not just glance at it
+ * (docs/m6-implementation-plan.md §0.4).
+ *
+ * Splits `delta_ms` into two NaN-gapped series -- "Lap A ahead" (values
+ * >= 0) and "Lap B ahead" (values <= 0) -- rather than a single series with
+ * `visualMap` piecewise coloring. ECharts skips NaN points when drawing a
+ * line/area, so each series' fill only covers the distance ranges where
+ * that lap is actually ahead, and a sign flip just starts a new segment.
+ * This is the only approach implemented (§0.2): `visualMap` piecewise is
+ * not implemented, not stubbed, not left as a commented-out alternative.
+ */
+export function buildDeltaChartOption(comparison: LapComparisonResponse): EChartsCoreOption {
+  const { distance_m, delta_ms } = comparison;
+
+  const aAhead: [number, number][] = delta_ms.map((value, index) => [
+    distance_m[index],
+    value >= 0 ? value : NaN,
+  ]);
+  const bAhead: [number, number][] = delta_ms.map((value, index) => [
+    distance_m[index],
+    value <= 0 ? value : NaN,
+  ]);
+
+  return {
+    animation: false,
+    grid: { left: 70, right: 20, top: 40, bottom: 50 },
+    xAxis: {
+      type: "value",
+      min: "dataMin",
+      max: "dataMax",
+      name: "Distance (m)",
+      nameLocation: "middle",
+      nameGap: 25,
+    },
+    yAxis: {
+      type: "value",
+      name: "Delta (ms)",
+      nameLocation: "middle",
+      nameGap: 45,
+    },
+    legend: { data: ["Lap A ahead", "Lap B ahead"] },
+    tooltip: { trigger: "axis" },
+    series: [
+      {
+        name: "Lap A ahead",
+        type: "line",
+        showSymbol: false,
+        color: LAP_A_COLOR,
+        areaStyle: { opacity: 0.3 },
+        data: aAhead,
+        markLine: {
+          symbol: "none",
+          silent: true,
+          label: { show: false },
+          lineStyle: { type: "dashed", color: "#999999" },
+          data: [{ yAxis: 0 }],
+        },
+      },
+      {
+        name: "Lap B ahead",
+        type: "line",
+        showSymbol: false,
+        color: LAP_B_COLOR,
+        areaStyle: { opacity: 0.3 },
+        data: bAhead,
+      },
+    ],
+  };
+}

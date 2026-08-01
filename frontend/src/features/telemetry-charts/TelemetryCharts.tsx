@@ -4,7 +4,7 @@ import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { useEffect, useRef } from "react";
 import type { TelemetrySample } from "../../api/client";
-import { buildChartOption } from "./chartOptions";
+import { buildChartOption, type ChannelKey } from "./chartOptions";
 
 echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
@@ -19,6 +19,12 @@ interface TelemetryChartsProps {
    * before M6 (one series per channel, no "(A)"/"(B)" labeling).
    */
   secondarySamples?: TelemetrySample[];
+  /**
+   * Restricts rendering to a subset of channels (M6 Phase 7: the comparison
+   * view's per-channel toggle). Omitted for the single-lap view, which
+   * keeps showing every channel as before.
+   */
+  channels?: ChannelKey[];
 }
 
 /**
@@ -29,7 +35,7 @@ interface TelemetryChartsProps {
  * (TrackMapPage doesn't remount on a route-param change) -- only its
  * visibility toggles when there's no data.
  */
-export function TelemetryCharts({ samples, secondarySamples }: TelemetryChartsProps) {
+export function TelemetryCharts({ samples, secondarySamples, channels }: TelemetryChartsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
   const hasData = samples.length > 0;
@@ -52,8 +58,8 @@ export function TelemetryCharts({ samples, secondarySamples }: TelemetryChartsPr
   }, []);
 
   useEffect(() => {
-    chartRef.current?.setOption(buildChartOption(samples, secondarySamples), true);
-  }, [samples, secondarySamples]);
+    chartRef.current?.setOption(buildChartOption(samples, secondarySamples, channels), true);
+  }, [samples, secondarySamples, channels]);
 
   return (
     <div>

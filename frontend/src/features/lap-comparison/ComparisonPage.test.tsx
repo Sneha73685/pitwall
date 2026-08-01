@@ -5,6 +5,21 @@ import * as client from "../../api/client";
 import { useComparisonStore, type ComparisonChannelKey } from "./comparisonStore";
 import { ComparisonPage } from "./ComparisonPage";
 
+// DeltaChart and ChannelOverlayPanel each own a real ECharts instance
+// (covered by their own test suites, Phase 7); ComparisonPage only needs to
+// know they're wired up with the comparison data, same pattern
+// TrackMapPage.test.tsx uses for TelemetryCharts.
+vi.mock("./components/DeltaChart", () => ({
+  DeltaChart: ({ comparison }: { comparison: client.LapComparisonResponse }) => (
+    <div data-testid="delta-chart-stub">delta for {comparison.lap_a.driver_id}</div>
+  ),
+}));
+vi.mock("./components/ChannelOverlayPanel", () => ({
+  ChannelOverlayPanel: ({ comparison }: { comparison: client.LapComparisonResponse }) => (
+    <div data-testid="channel-overlay-panel-stub">channels for {comparison.lap_b.driver_id}</div>
+  ),
+}));
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter
@@ -118,7 +133,8 @@ describe("ComparisonPage", () => {
     await waitFor(() => expect(screen.getByTestId("lap-a-summary")).toHaveTextContent("VER"));
     expect(screen.getByTestId("lap-b-summary")).toHaveTextContent("LEC");
     expect(screen.getByTestId("sector-row-1")).toBeInTheDocument();
-    expect(screen.getByTestId("channel-placeholder-speed_kph")).toBeInTheDocument();
+    expect(screen.getByTestId("delta-chart-stub")).toBeInTheDocument();
+    expect(screen.getByTestId("channel-overlay-panel-stub")).toBeInTheDocument();
   });
 
   it("swaps A and B when the swap button is clicked, refetching with params flipped", async () => {
