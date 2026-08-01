@@ -13,16 +13,23 @@ const CHART_HEIGHT = 720;
 interface TelemetryChartsProps {
   /** One lap's distance-ordered telemetry samples (same data TrackMap already fetches). */
   samples: TelemetrySample[];
+  /**
+   * A second lap's samples, for two-lap comparison (M6). Omitted entirely
+   * for the single-lap view -- when absent, this renders exactly as it did
+   * before M6 (one series per channel, no "(A)"/"(B)" labeling).
+   */
+  secondarySamples?: TelemetrySample[];
 }
 
 /**
  * M5: static, distance-aligned speed/throttle/brake/RPM/gear/DRS traces for
- * one lap, rendered as one ECharts instance with a grid per channel (ADR-0008).
- * The container div stays mounted regardless of `samples` so the chart
- * instance survives lap-to-lap navigation (TrackMapPage doesn't remount on a
- * route-param change) -- only its visibility toggles when there's no data.
+ * one lap (or two, since M6), rendered as one ECharts instance with a grid
+ * per channel (ADR-0008). The container div stays mounted regardless of
+ * `samples` so the chart instance survives lap-to-lap navigation
+ * (TrackMapPage doesn't remount on a route-param change) -- only its
+ * visibility toggles when there's no data.
  */
-export function TelemetryCharts({ samples }: TelemetryChartsProps) {
+export function TelemetryCharts({ samples, secondarySamples }: TelemetryChartsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
   const hasData = samples.length > 0;
@@ -45,8 +52,8 @@ export function TelemetryCharts({ samples }: TelemetryChartsProps) {
   }, []);
 
   useEffect(() => {
-    chartRef.current?.setOption(buildChartOption(samples), true);
-  }, [samples]);
+    chartRef.current?.setOption(buildChartOption(samples, secondarySamples), true);
+  }, [samples, secondarySamples]);
 
   return (
     <div>

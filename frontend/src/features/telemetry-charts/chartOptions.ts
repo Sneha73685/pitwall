@@ -24,21 +24,66 @@ function channelValue(sample: TelemetrySample, key: ChannelConfig["key"]): numbe
   return typeof raw === "boolean" ? (raw ? 1 : 0) : raw;
 }
 
+// Fixed, consistent series colors for the two-lap comparison case (M6) --
+// there is no team/driver color system anywhere in this app to draw from
+// yet, so these are just a stable "A"/"B" pair, not a real color scheme.
+const LAP_A_COLOR = "#5470c6";
+const LAP_B_COLOR = "#ee6666";
+
 /**
  * Builds a single ECharts option with one grid/axis pair per channel, stacked
  * vertically and sharing a distance_m x-axis (docs/prd.md M5: "aligned by
  * distance"). A pure function so the channel-mapping logic is unit-testable
  * without touching an actual chart instance.
  *
+ * `secondarySamples` is optional (M6): when omitted, this produces exactly
+ * the single-series-per-channel option M5's single-lap view has always
+ * gotten -- unchanged series names, unchanged shape. When provided, each
+ * channel gets a second series for the comparison lap, suffixed "(A)"/"(B)"
+ * and given a fixed, distinguishing color.
+ *
  * Deliberately does not call echarts.connect()/axisPointer.link -- V1 is
  * static per-channel traces, not the synchronized cross-chart cursor that's
  * explicitly V2 scope (docs/success-metrics.md).
  */
-export function buildChartOption(samples: TelemetrySample[]): EChartsCoreOption {
+export function buildChartOption(
+  samples: TelemetrySample[],
+  secondarySamples?: TelemetrySample[],
+): EChartsCoreOption {
   const gridCount = CHANNELS.length;
   const gridGapPct = 3;
   const gridHeightPct = 100 / gridCount - gridGapPct;
   const lastIndex = gridCount - 1;
+
+  const series = CHANNELS.flatMap((channel, index) => {
+    const primary = {
+      name: secondarySamples ? `${channel.label} (A)` : channel.label,
+      type: "line" as const,
+      xAxisIndex: index,
+      yAxisIndex: index,
+      showSymbol: false,
+      step: channel.step ? "end" : undefined,
+      color: secondarySamples ? LAP_A_COLOR : undefined,
+      data: samples.map((sample) => [sample.distance_m, channelValue(sample, channel.key)]),
+    };
+    if (!secondarySamples) {
+      return [primary];
+    }
+    const secondary = {
+      name: `${channel.label} (B)`,
+      type: "line" as const,
+      xAxisIndex: index,
+      yAxisIndex: index,
+      showSymbol: false,
+      step: channel.step ? "end" : undefined,
+      color: LAP_B_COLOR,
+      data: secondarySamples.map((sample) => [
+        sample.distance_m,
+        channelValue(sample, channel.key),
+      ]),
+    };
+    return [primary, secondary];
+  });
 
   return {
     animation: false,
@@ -67,15 +112,7 @@ export function buildChartOption(samples: TelemetrySample[]): EChartsCoreOption 
       nameGap: 45,
       splitNumber: 2,
     })),
-    series: CHANNELS.map((channel, index) => ({
-      name: channel.label,
-      type: "line",
-      xAxisIndex: index,
-      yAxisIndex: index,
-      showSymbol: false,
-      step: channel.step ? "end" : undefined,
-      data: samples.map((sample) => [sample.distance_m, channelValue(sample, channel.key)]),
-    })),
+    series,
     tooltip: { trigger: "axis" },
   };
 }

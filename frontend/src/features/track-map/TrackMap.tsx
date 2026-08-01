@@ -12,11 +12,22 @@ interface TrackMapProps {
   trackPoints: TrackPoint[];
   /** The selected lap's own position samples, plotted as a highlighted line over the track shape. */
   lapPoints: Point[];
+  /**
+   * A second lap's position samples, for two-lap comparison (M6). Omitted
+   * entirely for the single-lap view -- when absent, this renders exactly
+   * as it did before M6 (one lap line, no second color).
+   */
+  secondaryLapPoints?: Point[];
 }
 
 const WIDTH = 600;
 const HEIGHT = 400;
 const PADDING = 20;
+
+// Same fixed "A"/"B" pair TelemetryCharts uses for the comparison case --
+// no team/driver color system exists in this app yet (see chartOptions.ts).
+const LAP_A_COLOR = "#5470c6";
+const LAP_B_COLOR = "#ee6666";
 
 /**
  * Static track map (M4, ADR architecture.md §4): D3 only computes scales and
@@ -24,7 +35,7 @@ const PADDING = 20;
  * touches the DOM directly, avoiding the two libraries fighting over it.
  * No hover/cursor interactivity yet; that's V2 (docs/success-metrics.md).
  */
-export function TrackMap({ trackPoints, lapPoints }: TrackMapProps) {
+export function TrackMap({ trackPoints, lapPoints, secondaryLapPoints }: TrackMapProps) {
   if (trackPoints.length === 0) {
     return <p>No track geometry available for this session.</p>;
   }
@@ -47,6 +58,10 @@ export function TrackMap({ trackPoints, lapPoints }: TrackMapProps) {
   const trackPath = lineGenerator(trackPoints);
   const lapPath = lapPoints.length > 0 ? lineGenerator(lapPoints) : null;
   const startPoint = lapPoints[0];
+  const secondaryLapPath =
+    secondaryLapPoints && secondaryLapPoints.length > 0 ? lineGenerator(secondaryLapPoints) : null;
+  const secondaryStartPoint = secondaryLapPoints?.[0];
+  const lapColor = secondaryLapPoints ? LAP_A_COLOR : "red";
 
   return (
     <svg
@@ -59,15 +74,33 @@ export function TrackMap({ trackPoints, lapPoints }: TrackMapProps) {
         <path d={trackPath} fill="none" stroke="currentColor" strokeWidth={2} opacity={0.4} />
       )}
       {lapPath && (
-        <path d={lapPath} fill="none" stroke="red" strokeWidth={3} data-testid="lap-line" />
+        <path d={lapPath} fill="none" stroke={lapColor} strokeWidth={3} data-testid="lap-line" />
       )}
       {startPoint && (
         <circle
           cx={xScale(startPoint.x)}
           cy={yScale(startPoint.y)}
           r={5}
-          fill="red"
+          fill={lapColor}
           data-testid="lap-start-marker"
+        />
+      )}
+      {secondaryLapPath && (
+        <path
+          d={secondaryLapPath}
+          fill="none"
+          stroke={LAP_B_COLOR}
+          strokeWidth={3}
+          data-testid="secondary-lap-line"
+        />
+      )}
+      {secondaryStartPoint && (
+        <circle
+          cx={xScale(secondaryStartPoint.x)}
+          cy={yScale(secondaryStartPoint.y)}
+          r={5}
+          fill={LAP_B_COLOR}
+          data-testid="secondary-lap-start-marker"
         />
       )}
     </svg>

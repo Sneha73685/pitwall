@@ -90,4 +90,24 @@ describe("TelemetryCharts", () => {
     expect(screen.getByTestId("telemetry-charts")).toHaveStyle({ display: "block" });
     expect(screen.queryByText(/no telemetry data available/i)).not.toBeInTheDocument();
   });
+
+  it("passes secondarySamples through to the built chart option, when given (M6)", () => {
+    const samples = [sample({ distance_m: 0 })];
+    const secondarySamples = [sample({ distance_m: 0, speed_kph: 250 })];
+    render(<TelemetryCharts samples={samples} secondarySamples={secondarySamples} />);
+
+    expect(fakeChart.setOption).toHaveBeenCalledWith(
+      buildChartOption(samples, secondarySamples),
+      true,
+    );
+  });
+
+  it("re-applies options when only secondarySamples changes", () => {
+    const samples = [sample({ distance_m: 0 })];
+    const { rerender } = render(<TelemetryCharts samples={samples} />);
+    rerender(<TelemetryCharts samples={samples} secondarySamples={[sample()]} />);
+
+    expect(echarts.init).toHaveBeenCalledTimes(1);
+    expect(fakeChart.setOption).toHaveBeenCalledTimes(2);
+  });
 });

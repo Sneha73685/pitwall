@@ -89,4 +89,51 @@ describe("buildChartOption", () => {
     expect(series).toHaveLength(6);
     series.forEach((entry) => expect(entry.data).toEqual([]));
   });
+
+  describe("with a second lap (M6 comparison)", () => {
+    it("builds two series per channel, suffixed (A)/(B)", () => {
+      const option = buildChartOption([sample()], [sample()]);
+
+      expect(option.series).toHaveLength(12);
+      const names = (option.series as { name: string }[]).map((series) => series.name);
+      expect(names).toContain("Speed (A)");
+      expect(names).toContain("Speed (B)");
+      expect(names).not.toContain("Speed");
+    });
+
+    it("keeps each series' own channel data independent per lap", () => {
+      const samplesA = [sample({ distance_m: 0, speed_kph: 100 })];
+      const samplesB = [sample({ distance_m: 0, speed_kph: 200 })];
+
+      const option = buildChartOption(samplesA, samplesB);
+      const series = option.series as { name: string; data: [number, number][] }[];
+
+      expect(series.find((entry) => entry.name === "Speed (A)")!.data).toEqual([[0, 100]]);
+      expect(series.find((entry) => entry.name === "Speed (B)")!.data).toEqual([[0, 200]]);
+    });
+
+    it("assigns each lap a fixed, distinct color", () => {
+      const option = buildChartOption([sample()], [sample()]);
+      const series = option.series as { name: string; color?: string }[];
+
+      const colorA = series.find((entry) => entry.name === "Speed (A)")!.color;
+      const colorB = series.find((entry) => entry.name === "Speed (B)")!.color;
+      expect(colorA).toBeTruthy();
+      expect(colorB).toBeTruthy();
+      expect(colorA).not.toBe(colorB);
+      // Same lap gets the same color across every channel.
+      expect(series.find((entry) => entry.name === "Brake (A)")!.color).toBe(colorA);
+      expect(series.find((entry) => entry.name === "Brake (B)")!.color).toBe(colorB);
+    });
+
+    it("still applies the correct step/line interpolation per channel to both series", () => {
+      const option = buildChartOption([sample()], [sample()]);
+      const series = option.series as { name: string; step?: string }[];
+
+      expect(series.find((entry) => entry.name === "Speed (A)")!.step).toBeUndefined();
+      expect(series.find((entry) => entry.name === "Speed (B)")!.step).toBeUndefined();
+      expect(series.find((entry) => entry.name === "Brake (A)")!.step).toBe("end");
+      expect(series.find((entry) => entry.name === "Brake (B)")!.step).toBe("end");
+    });
+  });
 });

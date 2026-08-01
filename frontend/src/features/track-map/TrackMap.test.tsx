@@ -39,4 +39,49 @@ describe("TrackMap", () => {
 
     expect(screen.getByText(/no track geometry available/i)).toBeInTheDocument();
   });
+
+  describe("with a second lap (M6 comparison)", () => {
+    const secondaryLapPoints = [
+      { x: 0, y: 10 },
+      { x: 10, y: 10 },
+    ];
+
+    it("renders both lap lines and start markers", () => {
+      render(
+        <TrackMap
+          trackPoints={trackPoints}
+          lapPoints={lapPoints}
+          secondaryLapPoints={secondaryLapPoints}
+        />,
+      );
+
+      expect(screen.getByTestId("lap-line")).toBeInTheDocument();
+      expect(screen.getByTestId("lap-start-marker")).toBeInTheDocument();
+      expect(screen.getByTestId("secondary-lap-line")).toBeInTheDocument();
+      expect(screen.getByTestId("secondary-lap-start-marker")).toBeInTheDocument();
+    });
+
+    it("gives the two lap lines different colors", () => {
+      render(
+        <TrackMap
+          trackPoints={trackPoints}
+          lapPoints={lapPoints}
+          secondaryLapPoints={secondaryLapPoints}
+        />,
+      );
+
+      const primaryStroke = screen.getByTestId("lap-line").getAttribute("stroke");
+      const secondaryStroke = screen.getByTestId("secondary-lap-line").getAttribute("stroke");
+      expect(primaryStroke).toBeTruthy();
+      expect(secondaryStroke).toBeTruthy();
+      expect(primaryStroke).not.toBe(secondaryStroke);
+    });
+
+    it("omits the secondary lap line and marker when secondaryLapPoints is empty", () => {
+      render(<TrackMap trackPoints={trackPoints} lapPoints={lapPoints} secondaryLapPoints={[]} />);
+
+      expect(screen.queryByTestId("secondary-lap-line")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("secondary-lap-start-marker")).not.toBeInTheDocument();
+    });
+  });
 });
