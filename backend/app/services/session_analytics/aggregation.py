@@ -25,6 +25,7 @@ from app.services.session_analytics.driving_style import (
     pooled_full_throttle_pct,
 )
 from app.services.session_analytics.filtering import (
+    ExclusionReason,
     classify_lap,
     filter_for_aggregate_stats,
     filter_valid_laps,
@@ -44,7 +45,7 @@ class DriverLapMetrics:
     lap_number: int
     lap_time_ms: float | None
     is_valid: bool
-    exclusion_reason: str | None
+    exclusion_reason: ExclusionReason | None
     is_outlier: bool
     delta_to_theoretical_best_ms: float | None
     delta_to_own_median_ms: float | None

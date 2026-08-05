@@ -12,6 +12,14 @@ from app.models.lap_comparison import (
     SectorDelta,
     WarningCode,
 )
+from app.models.session_analytics import (
+    DriverLapMetrics,
+    DriverLapsResponse,
+    DriverSummary,
+    SessionAnalyticsResponse,
+    SessionAnalyticsWarning,
+    SessionAnalyticsWarningCode,
+)
 from app.models.telemetry import Driver, Lap, Session, SessionType, TelemetrySample, TrackPoint
 
 __all__ = [
@@ -26,4 +34,10 @@ __all__ = [
     "LapComparisonResponse",
     "SectorDelta",
     "WarningCode",
+    "DriverLapMetrics",
+    "DriverLapsResponse",
+    "DriverSummary",
+    "SessionAnalyticsResponse",
+    "SessionAnalyticsWarning",
+    "SessionAnalyticsWarningCode",
 ]
