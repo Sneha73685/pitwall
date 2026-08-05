@@ -84,4 +84,23 @@ describe("TrackMap", () => {
       expect(screen.queryByTestId("secondary-lap-start-marker")).not.toBeInTheDocument();
     });
   });
+
+  describe("with segmentColors (M6 Phase 8)", () => {
+    it("renders one colored segment per consecutive trackPoints pair instead of a single outline", () => {
+      render(
+        <TrackMap trackPoints={trackPoints} lapPoints={[]} segmentColors={["red", "green"]} />,
+      );
+
+      expect(screen.queryByTestId("track-outline")).not.toBeInTheDocument();
+      expect(screen.getByTestId("track-segment-0")).toHaveAttribute("stroke", "red");
+      expect(screen.getByTestId("track-segment-1")).toHaveAttribute("stroke", "green");
+    });
+
+    it("falls back to the single-color outline when segmentColors is omitted", () => {
+      render(<TrackMap trackPoints={trackPoints} lapPoints={[]} />);
+
+      expect(screen.getByTestId("track-outline")).toBeInTheDocument();
+      expect(screen.queryByTestId("track-segment-0")).not.toBeInTheDocument();
+    });
+  });
 });

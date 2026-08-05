@@ -6,6 +6,7 @@ import { ComparisonHeader } from "./components/ComparisonHeader";
 import { DeltaChart } from "./components/DeltaChart";
 import { SectorBreakdownTable } from "./components/SectorBreakdownTable";
 import { ChannelOverlayPanel } from "./components/ChannelOverlayPanel";
+import { TrackMapDelta } from "./components/TrackMapDelta";
 import type { DriverLapSelection } from "./components/DriverLapPicker";
 
 /**
@@ -23,8 +24,7 @@ import type { DriverLapSelection } from "./components/DriverLapPicker";
  *
  * Owns lap-selection state (selectionA/selectionB) directly -- not in
  * comparisonStore, which is scoped to cursor/channel-visibility state only
- * (docs/adr/0007). Track map delta coloring is Phase 8 and not rendered
- * here yet.
+ * (docs/adr/0007).
  */
 export function ComparisonPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -56,6 +56,7 @@ export function ComparisonPage() {
       {comparison && (
         <>
           <ComparisonHeader comparison={comparison} onSwap={handleSwap} />
+          <TrackMapDelta sessionId={sessionId} comparison={comparison} />
           <DeltaChart comparison={comparison} />
           <SectorBreakdownTable sectors={comparison.sectors} />
           <ChannelOverlayPanel comparison={comparison} />
