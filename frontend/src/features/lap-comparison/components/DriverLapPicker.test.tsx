@@ -116,4 +116,46 @@ describe("DriverLapPicker", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/could not load drivers for lap b/i),
     );
   });
+
+  it("pre-selects driver and lap from initialSelection once loaded, and fires onSelect", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue(drivers);
+    vi.spyOn(client, "listLaps").mockResolvedValue(verLaps);
+    const onSelect = vi.fn();
+
+    render(
+      <DriverLapPicker
+        sessionId="2023_monza_race"
+        label="Lap A"
+        onSelect={onSelect}
+        initialSelection={{ driverId: "VER", lapNumber: 1 }}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Driver")).toHaveValue("VER"));
+    await waitFor(() => expect(screen.getByLabelText("Lap")).toHaveValue("1"));
+    expect(onSelect).toHaveBeenLastCalledWith({ driverId: "VER", lapNumber: 1 });
+  });
+
+  it("does not override a later user lap choice back to the initial selection", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue(drivers);
+    vi.spyOn(client, "listLaps").mockResolvedValue(verLaps);
+    const onSelect = vi.fn();
+
+    render(
+      <DriverLapPicker
+        sessionId="2023_monza_race"
+        label="Lap A"
+        onSelect={onSelect}
+        initialSelection={{ driverId: "VER", lapNumber: 1 }}
+      />,
+    );
+    await waitFor(() =>
+      expect(onSelect).toHaveBeenLastCalledWith({ driverId: "VER", lapNumber: 1 }),
+    );
+
+    fireEvent.change(screen.getByLabelText("Lap"), { target: { value: "2" } });
+
+    expect(onSelect).toHaveBeenLastCalledWith({ driverId: "VER", lapNumber: 2 });
+    expect(screen.getByLabelText("Lap")).toHaveValue("2");
+  });
 });

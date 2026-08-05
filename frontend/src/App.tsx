@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes } from "react-router-dom";
 import { getHealth } from "./api/client";
+import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
 import { DriverSelectPage } from "./features/session-select/DriverSelectPage";
 import { LapSelectPage } from "./features/session-select/LapSelectPage";
 import { SessionListPage } from "./features/session-select/SessionListPage";
@@ -10,10 +11,10 @@ import { useSelectionStore } from "./state/selectionStore";
 type BackendStatus = "checking" | "online" | "offline";
 
 /**
- * Routing for the session -> driver -> lap -> track map flow (ADR-0010).
- * The final route renders both the track map (M4) and telemetry channel
- * charts (M5) via TrackMapPage; lap/sector comparison (M6) is the next
- * route this file doesn't yet anticipate the shape of.
+ * Routing for the session -> driver -> lap -> track map flow (ADR-0010),
+ * plus the M6 comparison route. "/sessions/:sessionId/compare" (plural,
+ * matching every other route here) renders ComparisonPage, which owns its
+ * own lap-pair selection state independently of driverId/lapNumber params.
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -46,6 +47,7 @@ function App() {
           path="/sessions/:sessionId/drivers/:driverId/laps/:lapNumber"
           element={<TrackMapPage />}
         />
+        <Route path="/sessions/:sessionId/compare" element={<ComparisonPage />} />
       </Routes>
     </main>
   );

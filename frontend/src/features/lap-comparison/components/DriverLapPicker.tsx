@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listDrivers, listLaps, type Driver, type Lap } from "../../../api/client";
 
 export interface DriverLapSelection {
@@ -11,6 +11,14 @@ interface DriverLapPickerProps {
   /** Distinguishes this picker when two are shown side by side (M6), e.g. "Lap A". */
   label: string;
   onSelect: (selection: DriverLapSelection | null) => void;
+  /**
+   * Pre-selects this driver+lap once loaded, then fires onSelect -- used by
+   * the lap-table "Compare Selected" entry point (Phase 9) to land on a
+   * populated comparison instead of two empty dropdowns. Applied once per
+   * mount; a later user change is never overridden back to it. Omitted by
+   * every other caller, so default behavior is unchanged.
+   */
+  initialSelection?: DriverLapSelection;
 }
 
 /**
@@ -24,12 +32,20 @@ interface DriverLapPickerProps {
  * callback, not a navigating list, since selecting here must update local
  * comparison state rather than change the URL.
  */
-export function DriverLapPicker({ sessionId, label, onSelect }: DriverLapPickerProps) {
+export function DriverLapPicker({
+  sessionId,
+  label,
+  onSelect,
+  initialSelection,
+}: DriverLapPickerProps) {
   const [drivers, setDrivers] = useState<Driver[] | null>(null);
   const [laps, setLaps] = useState<Lap[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(
+    initialSelection?.driverId ?? null,
+  );
   const [selectedLapNumber, setSelectedLapNumber] = useState<number | null>(null);
+  const appliedInitialLap = useRef(false);
 
   useEffect(() => {
     listDrivers(sessionId)
@@ -46,6 +62,25 @@ export function DriverLapPicker({ sessionId, label, onSelect }: DriverLapPickerP
       .then(setLaps)
       .catch(() => setError(`Could not load laps for ${label}.`));
   }, [sessionId, selectedDriverId, label]);
+
+  // Once the pre-selected driver's laps have loaded, complete the initial
+  // selection and notify the parent -- mirrors handleLapChange, but driven
+  // by data arriving rather than a user event. Guarded by a ref (not state)
+  // so it fires exactly once and never re-applies after a user picks a
+  // different lap for this same driver.
+  useEffect(() => {
+    if (
+      appliedInitialLap.current ||
+      !initialSelection ||
+      selectedDriverId !== initialSelection.driverId ||
+      !laps?.some((lap) => lap.lap_number === initialSelection.lapNumber)
+    ) {
+      return;
+    }
+    appliedInitialLap.current = true;
+    setSelectedLapNumber(initialSelection.lapNumber);
+    onSelect(initialSelection);
+  }, [laps, initialSelection, selectedDriverId, onSelect]);
 
   function handleDriverChange(driverId: string) {
     setSelectedDriverId(driverId || null);

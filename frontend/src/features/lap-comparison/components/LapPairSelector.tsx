@@ -4,6 +4,9 @@ interface LapPairSelectorProps {
   sessionId: string;
   onSelectA: (selection: DriverLapSelection | null) => void;
   onSelectB: (selection: DriverLapSelection | null) => void;
+  /** Forwarded to each DriverLapPicker (Phase 9 lap-table entry point). */
+  initialSelectionA?: DriverLapSelection;
+  initialSelectionB?: DriverLapSelection;
 }
 
 /**
@@ -12,11 +15,27 @@ interface LapPairSelectorProps {
  * (Phase 5), reporting its own selection via callback; this component
  * only wires those two callbacks to its own props.
  */
-export function LapPairSelector({ sessionId, onSelectA, onSelectB }: LapPairSelectorProps) {
+export function LapPairSelector({
+  sessionId,
+  onSelectA,
+  onSelectB,
+  initialSelectionA,
+  initialSelectionB,
+}: LapPairSelectorProps) {
   return (
     <div>
-      <DriverLapPicker sessionId={sessionId} label="Lap A" onSelect={onSelectA} />
-      <DriverLapPicker sessionId={sessionId} label="Lap B" onSelect={onSelectB} />
+      <DriverLapPicker
+        sessionId={sessionId}
+        label="Lap A"
+        onSelect={onSelectA}
+        initialSelection={initialSelectionA}
+      />
+      <DriverLapPicker
+        sessionId={sessionId}
+        label="Lap B"
+        onSelect={onSelectB}
+        initialSelection={initialSelectionB}
+      />
     </div>
   );
 }

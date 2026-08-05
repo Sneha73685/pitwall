@@ -4,6 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import * as client from "./api/client";
 
+function renderAppAt(path: string) {
+  return render(
+    <MemoryRouter
+      initialEntries={[path]}
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
+      <App />
+    </MemoryRouter>,
+  );
+}
+
 describe("App", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -57,6 +68,16 @@ describe("App", () => {
     );
 
     expect(screen.getByTestId("selected-session")).toHaveTextContent("none");
+    await waitFor(() => expect(screen.getByTestId("backend-status")).toHaveTextContent("online"));
+  });
+
+  it("renders the comparison page at /sessions/:sessionId/compare without error", async () => {
+    vi.spyOn(client, "getHealth").mockResolvedValue({ status: "ok", service: "pitwall-backend" });
+    vi.spyOn(client, "listDrivers").mockResolvedValue([]);
+
+    renderAppAt("/sessions/2023_monza_race/compare");
+
+    expect(screen.getByRole("heading", { name: "Compare laps" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("backend-status")).toHaveTextContent("online"));
   });
 });
