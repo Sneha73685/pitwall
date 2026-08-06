@@ -32,6 +32,28 @@ once from a reference lap, not per-driver/per-lap), so it gets its own route mod
 `telemetry.py` was already split out from `sessions.py` in M2 despite sharing the `/sessions`
 prefix.
 
+## M10 addition: stints and pit stops
+
+`GET /sessions/{session_id}/drivers/{driver_id}/stints` returns `list[Stint]` (`stint_number`,
+`compound`, `start_lap`, `end_lap`, `tyre_life_at_start` — `session_id`/`driver_id` dropped, both
+already implied by the URL path). `GET /sessions/{session_id}/pit-stops?driver_id=` returns
+`list[PitStop]` (`driver_id`, `stop_number`, `lap_number`, `pit_lane_time_seconds` — `session_id`
+dropped, `driver_id` kept since the filter is optional and a response can span multiple drivers, the
+same reason `Lap` keeps `driver_id`). Both routes check session existence via the existing
+`TelemetryRepository` dependency (404 if the session doesn't exist); an existing session with no
+stint/pit-stop rows yet returns `200` with an empty list, not `404` (ADR-0011 — absence isn't an
+error).
+
+Read from a **second**, independent repository interface, `RaceContextRepository`
+(`app/repositories/race_context.py`, ADR-0011), backed by PostgreSQL — not an extension of
+`TelemetryRepository`, and not read from Parquet. See `docs/m10-design-review.md` and ADR-0011 for
+the full rationale for splitting relational race-context data into a second store/interface instead
+of extending `TelemetryRepository`/`ParquetRepository`.
+
+`Lap` also gains one new nullable field, `compound: str | None`, additive and non-breaking on the
+existing `GET /sessions/{session_id}/laps` response — read from Parquet (`laps.parquet`'s new
+`compound` column), not Postgres.
+
 ## Why the backend re-reads Parquet directly (not via the pipeline package)
 
 `TelemetryRepository` (ADR-0006) is defined by the API's own read patterns, not by importing
@@ -92,6 +114,10 @@ same fields for the subset M2 exposes:
 - **`TelemetrySample`** — `distance_m`, `time_seconds`, `speed_kph`, `throttle_pct`, `brake_active`,
   `rpm`, `gear`, `drs_active`, `x`, `y`, `z`.
 - **`TrackPoint`** (M4) — `distance_m`, `x`, `y`.
+- **`Stint`** (M10, `app/models/race_context.py`) — `stint_number`, `compound`, `start_lap`,
+  `end_lap`, `tyre_life_at_start`.
+- **`PitStop`** (M10, `app/models/race_context.py`) — `driver_id`, `stop_number`, `lap_number`,
+  `pit_lane_time_seconds`.
 
 `session_id`/`driver_id`/`lap_number` are dropped from the nested `Lap`/`TelemetrySample`/
 `TrackPoint` payloads where they're already implied by the URL path, to avoid repeating the same
@@ -107,6 +133,8 @@ value on every list item for no reason — a plain response-shaping choice, not 
 | GET | `/sessions/{session_id}/laps?driver_id=` | `list[Lap]` | 404 if session doesn't exist; empty list if `driver_id` filter matches nothing |
 | GET | `/sessions/{session_id}/telemetry?driver_id=&lap_number=` | `list[TelemetrySample]` | 404 if session/driver/lap combination has no samples |
 | GET | `/sessions/{session_id}/track` (M4) | `list[TrackPoint]` | 404 if session doesn't exist; empty list if no track points were derived |
+| GET | `/sessions/{session_id}/drivers/{driver_id}/stints` (M10) | `list[Stint]` | 404 if session doesn't exist; empty list if the driver has no stint data yet |
+| GET | `/sessions/{session_id}/pit-stops?driver_id=` (M10) | `list[PitStop]` | 404 if session doesn't exist; empty list if there's no matching pit-stop data yet |
 
 `driver_id` and `lap_number` are both required query parameters on `/telemetry` — fetching a whole
 session's telemetry in one response isn't a V1 read pattern (PRD's success criteria and

@@ -18,6 +18,9 @@ explicitly V3 (PRD §5) and are not modeled here, even though FastF1 exposes som
 same objects (e.g. `Laps.Compound`) — pulling them in now would be scope creep against a later
 milestone's data source (Jolpica-f1/Postgres), not a free extra field.
 
+**Update (M10):** compound, `Stint`, and `PitStop` are now modeled — see "M10 additions" below.
+Weather and position/gaps remain deferred (`docs/m10-design-review.md` §1.2).
+
 ## Entities (`pitwall_pipeline/models.py`)
 
 All are frozen Pydantic models (validation matters here: PRD §4 flags telemetry completeness as a
@@ -101,3 +104,39 @@ This is a cache format, not an API contract — the (future, M2) `ParquetReposit
 `TelemetryRepository` (ADR-0006) is free to read it however it needs to; nothing here is exposed
 past that boundary (ADR-0009). Layout is deliberately simple (one directory per ingested session)
 since M1 doesn't yet need cross-session queries.
+
+## M10 additions: `compound`, `Stint`, `PitStop`
+
+Tire compound, stints, and pit stops — explicitly deferred above as "V3" when this document was
+written for M1 — are modeled starting at M10 (ADR-0011). Weather and position/gaps remain deferred;
+see `docs/m10-design-review.md` §1.2 for why M10 splits that bundle.
+
+- **`Lap`** gains `compound: str | None = None` — a scalar per-lap fact (FastF1's `Laps.Compound`),
+  identical in shape to `lap_time_seconds`. Still written to `laps.parquet`; no new store needed for
+  this one field.
+- **`Stint`** (new) — `session_id`, `driver_id`, `stint_number`, `compound`, `start_lap`, `end_lap`,
+  `tyre_life_at_start`. Unlike every other model in this document, `Stint` is **not** written to
+  Parquet — it's genuinely relational (a range of laps bounded by pit events), so it's written to
+  PostgreSQL instead (`pitwall_pipeline/postgres_writer.py`), per ADR-0011.
+- **`PitStop`** (new) — `session_id`, `driver_id`, `stop_number`, `lap_number`,
+  `pit_lane_time_seconds` (pit-lane entry-to-exit time, not stationary box time). Also PostgreSQL,
+  same reasoning as `Stint`.
+- `normalize_stints()` / `normalize_pit_stops()` (`pitwall_pipeline/normalize.py`) derive these from
+  the same FastF1 `Laps` DataFrame `normalize_laps()` already reads (`Stint`, `Compound`, `TyreLife`,
+  `PitInTime`, `PitOutTime` columns — verified against a real FastF1 session,
+  `docs/m10-implementation-plan.md` Phase 2 §2.0) — no new FastF1 call.
+
+### PostgreSQL schema (`pipeline/pitwall_pipeline/migrations/`)
+
+```
+stints(session_id, driver_id, stint_number, compound, start_lap, end_lap, tyre_life_at_start)
+    PRIMARY KEY (session_id, driver_id, stint_number)
+pit_stops(session_id, driver_id, stop_number, lap_number, pit_lane_time_seconds)
+    PRIMARY KEY (session_id, driver_id, stop_number)
+```
+
+Composite natural keys, not surrogate ids, so ingestion can upsert (`ON CONFLICT DO UPDATE`) instead
+of accumulating duplicates on re-ingestion. No cross-engine foreign key back to Parquet — referential
+integrity between the two stores is a convention (matching `session_id`/`driver_id` strings), enforced
+by ingestion writing both in the same run, not by a database constraint. Full rationale in
+ADR-0011.

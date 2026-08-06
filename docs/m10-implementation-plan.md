@@ -1,6 +1,6 @@
 # PitWall — M10 Implementation Plan: Hybrid Parquet + PostgreSQL Storage for Race Strategy Data
 
-**Status:** Phase 5 complete — ready for Phase 6
+**Status:** Phase 6 complete — M10 implementation finished pending manual release steps (CI verification on a real push, backfill in any non-local deployment, version tag cut)
 **Baseline:** v0.7.0 (M0–M9 complete)
 **Source documents:** `docs/m10-design-review.md` (design), `docs/adr/0011-hybrid-storage-architecture.md` (accepted)
 

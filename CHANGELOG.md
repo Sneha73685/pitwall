@@ -10,6 +10,38 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Work in progress toward M6 — Lap/sector comparison + delta graph.
 
+## M10 — Hybrid Parquet + PostgreSQL Storage — 2026-08-07
+
+See `docs/m10-design-review.md`, `docs/adr/0011-hybrid-storage-architecture.md`, and
+`docs/m10-implementation-plan.md` for the full design and phased implementation record.
+
+### Added
+
+- PostgreSQL as a second, independent backing store alongside Parquet, for tyre-strategy data only
+  (stints, pit stops) — Parquet remains the source of truth for telemetry, sessions, drivers, laps,
+  and track geometry, unchanged (ADR-0011).
+- `stints`/`pit_stops` tables, applied via versioned SQL migrations
+  (`pipeline/pitwall_pipeline/migrations/`, run with `python -m pitwall_pipeline.migrate`).
+- Pipeline: `normalize_stints()`/`normalize_pit_stops()` and `postgres_writer.py`, writing
+  idempotently (upsert on natural composite keys) after the existing Parquet write; a Postgres write
+  failure is logged and does not block or roll back ingestion.
+- `Lap.compound` — an additive, nullable field on the existing `laps.parquet` schema and the
+  `GET /sessions/{session_id}/laps` response.
+- Backend: `RaceContextRepository` (a second, separate interface from `TelemetryRepository`) and its
+  sole implementation, `PostgresRaceContextRepository`.
+- Two new read endpoints: `GET /sessions/{session_id}/drivers/{driver_id}/stints` and
+  `GET /sessions/{session_id}/pit-stops?driver_id=`.
+- Frontend: a driver-scoped Strategy page (`/sessions/:sessionId/drivers/:driverId/strategy`) showing
+  a stint timeline (compound + lap range per stint) and a pit-stop list; a compound chip and a "View
+  Strategy" entry point added to the existing per-driver lap list.
+- `docker-compose.yml` and CI both gain a `postgres` service.
+
+### Changed
+
+- None to any existing V1/V2 endpoint contract beyond the additive `Lap.compound` field —
+  `TelemetryRepository`/`ParquetRepository` and every pre-existing route are otherwise untouched
+  (verified: `test_laps_compare_route.py` and `test_session_analytics_route.py` pass unmodified).
+
 ## M5 — Telemetry Channel Charts — 2026-07-31
 
 See `docs/releases/m5-summary.md` for the full release summary.
