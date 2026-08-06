@@ -30,6 +30,8 @@ export function buildPaceDistributionChartOption(drivers: DriverSummary[]): ECha
 
   return {
     animation: false,
+    backgroundColor: "transparent",
+    textStyle: { color: "#90a0b3", fontFamily: "monospace" },
     dataset: [
       { source: eligibleDrivers.map((driver) => driver.lap_times_ms) },
       {
@@ -48,14 +50,23 @@ export function buildPaceDistributionChartOption(drivers: DriverSummary[]): ECha
       nameLocation: "middle",
       nameGap: 30,
       boundaryGap: true,
+      axisLine: { lineStyle: { color: "#3a4453" } },
+      splitLine: { lineStyle: { color: "#232a35" } },
     },
     yAxis: {
       type: "value",
       name: "Lap time (ms)",
       nameLocation: "middle",
       nameGap: 55,
+      axisLine: { lineStyle: { color: "#3a4453" } },
+      splitLine: { lineStyle: { color: "#232a35" } },
     },
-    tooltip: { trigger: "item" },
+    tooltip: {
+      trigger: "item",
+      backgroundColor: "#1a2029",
+      borderColor: "#3a4453",
+      textStyle: { color: "#e8edf3" },
+    },
     series: [
       {
         name: "Lap time distribution",

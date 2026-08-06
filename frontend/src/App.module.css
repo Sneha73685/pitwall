@@ -1,0 +1,38 @@
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pw-space-5);
+  flex-wrap: wrap;
+}
+
+.wordmark {
+  margin: 0;
+  font-size: var(--pw-text-xl);
+  letter-spacing: 0.02em;
+}
+
+.wordmark a {
+  color: var(--pw-text-primary);
+  text-decoration: none;
+}
+
+.tagline {
+  margin-top: var(--pw-space-1);
+  max-width: 48ch;
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-xs);
+}
+
+.headerStatus {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--pw-space-1);
+}
+
+.statusLine {
+  font-size: var(--pw-text-xs);
+  color: var(--pw-text-secondary);
+  font-family: var(--pw-font-mono);
+}

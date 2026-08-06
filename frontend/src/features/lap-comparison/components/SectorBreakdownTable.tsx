@@ -1,4 +1,8 @@
 import type { SectorDelta } from "../../../api/client";
+import { Card } from "../../../components/Card";
+import { EmptyState } from "../../../components/EmptyState";
+import { StatusChip } from "../../../components/StatusChip";
+import styles from "./SectorBreakdownTable.module.css";
 
 interface SectorBreakdownTableProps {
   sectors: SectorDelta[];
@@ -11,7 +15,7 @@ interface SectorBreakdownTableProps {
  */
 export function SectorBreakdownTable({ sectors }: SectorBreakdownTableProps) {
   if (sectors.length === 0) {
-    return <p>No sector data available for this comparison.</p>;
+    return <EmptyState>No sector data available for this comparison.</EmptyState>;
   }
 
   const bestSector = sectors.reduce((best, sector) =>
@@ -19,25 +23,35 @@ export function SectorBreakdownTable({ sectors }: SectorBreakdownTableProps) {
   );
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Sector</th>
-          <th>Delta</th>
-          <th>Faster</th>
-          <th />
-        </tr>
-      </thead>
-      <tbody>
-        {sectors.map((sector) => (
-          <tr key={sector.sector} data-testid={`sector-row-${sector.sector}`}>
-            <td>{sector.sector}</td>
-            <td>{Math.abs(sector.delta_ms).toFixed(0)}ms</td>
-            <td>{sector.faster.toUpperCase()}</td>
-            <td>{sector === bestSector && <span data-testid="best-sector-marker">Best</span>}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <Card title="Sector breakdown">
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Sector</th>
+              <th>Delta</th>
+              <th>Faster</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {sectors.map((sector) => (
+              <tr key={sector.sector} data-testid={`sector-row-${sector.sector}`}>
+                <td>S{sector.sector}</td>
+                <td className={styles.mono}>{Math.abs(sector.delta_ms).toFixed(0)}ms</td>
+                <td>{sector.faster.toUpperCase()}</td>
+                <td>
+                  {sector === bestSector && (
+                    <span data-testid="best-sector-marker">
+                      <StatusChip tone="positive">Best</StatusChip>
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }

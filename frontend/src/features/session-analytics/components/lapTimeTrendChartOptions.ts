@@ -15,6 +15,8 @@ export function buildLapTimeTrendChartOption(laps: DriverLapMetrics[]): EChartsC
 
   return {
     animation: false,
+    backgroundColor: "transparent",
+    textStyle: { color: "#90a0b3", fontFamily: "monospace" },
     grid: { left: 70, right: 20, top: 40, bottom: 50 },
     xAxis: {
       type: "value",
@@ -22,19 +24,29 @@ export function buildLapTimeTrendChartOption(laps: DriverLapMetrics[]): EChartsC
       nameLocation: "middle",
       nameGap: 25,
       minInterval: 1,
+      axisLine: { lineStyle: { color: "#3a4453" } },
+      splitLine: { lineStyle: { color: "#232a35" } },
     },
     yAxis: {
       type: "value",
       name: "Lap time (ms)",
       nameLocation: "middle",
       nameGap: 55,
+      axisLine: { lineStyle: { color: "#3a4453" } },
+      splitLine: { lineStyle: { color: "#232a35" } },
     },
-    tooltip: { trigger: "axis" },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "#1a2029",
+      borderColor: "#3a4453",
+      textStyle: { color: "#e8edf3" },
+    },
     series: [
       {
         name: "Lap time",
         type: "line",
         showSymbol: true,
+        color: "#f5a623",
         data: points,
       },
     ],

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { DriverSummary } from "../../../api/client";
+import { StatusChip } from "../../../components/StatusChip";
+import styles from "./DriverSummaryTable.module.css";
 
 /**
  * The first sortable table in the app (plan §0.2 Q5) -- no existing table
@@ -73,53 +75,73 @@ export function DriverSummaryTable({
   );
 
   return (
-    <table>
-      <thead>
-        <tr>
-          {COLUMNS.map((column) => (
-            <th key={column.key}>
-              <button type="button" onClick={() => handleSort(column.key)}>
-                {column.label}
-                {sortColumn === column.key ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
-              </button>
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {sortedDrivers.map((driver) => {
-          const rankingEligible = driver.valid_lap_count >= MIN_VALID_LAPS_FOR_RANKING;
-          return (
-            <tr
-              key={driver.driver}
-              data-testid={`driver-row-${driver.driver}`}
-              data-ranking-eligible={rankingEligible}
-              aria-selected={driver.driver === selectedDriver}
-            >
-              <td>
-                <button type="button" onClick={() => onSelectDriver(driver.driver)}>
-                  {driver.driver}
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            {COLUMNS.map((column) => (
+              <th key={column.key}>
+                <button
+                  type="button"
+                  onClick={() => handleSort(column.key)}
+                  className={styles.sortButton}
+                >
+                  {column.label}
+                  {sortColumn === column.key ? (sortDirection === "asc" ? " ▲" : " ▼") : ""}
                 </button>
-                {!rankingEligible && (
-                  <span data-testid={`ranking-ineligible-${driver.driver}`}>
-                    {" "}
-                    (insufficient laps)
-                  </span>
-                )}
-              </td>
-              <td>{driver.valid_lap_count}</td>
-              <td>{formatMs(driver.best_lap_ms)}</td>
-              <td>{formatMs(driver.theoretical_best_lap_ms)}</td>
-              <td>{formatMs(driver.theoretical_best_delta_ms)}</td>
-              <td>{formatMs(driver.median_lap_ms)}</td>
-              <td>{formatMsPrecise(driver.consistency_ms)}</td>
-              <td>{formatPct(driver.full_throttle_pct)}</td>
-              <td>{driver.outlier_lap_count}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sortedDrivers.map((driver) => {
+            const rankingEligible = driver.valid_lap_count >= MIN_VALID_LAPS_FOR_RANKING;
+            return (
+              <tr
+                key={driver.driver}
+                data-testid={`driver-row-${driver.driver}`}
+                data-ranking-eligible={rankingEligible}
+                aria-selected={driver.driver === selectedDriver}
+                className={styles.row}
+              >
+                <td>
+                  <button
+                    type="button"
+                    onClick={() => onSelectDriver(driver.driver)}
+                    className={styles.driverButton}
+                  >
+                    {driver.driver}
+                  </button>
+                  {!rankingEligible && (
+                    <span
+                      data-testid={`ranking-ineligible-${driver.driver}`}
+                      className={styles.ineligible}
+                    >
+                      {" "}
+                      (insufficient laps)
+                    </span>
+                  )}
+                </td>
+                <td>{driver.valid_lap_count}</td>
+                <td className={styles.mono}>{formatMs(driver.best_lap_ms)}</td>
+                <td className={styles.mono}>{formatMs(driver.theoretical_best_lap_ms)}</td>
+                <td className={styles.mono}>{formatMs(driver.theoretical_best_delta_ms)}</td>
+                <td className={styles.mono}>{formatMs(driver.median_lap_ms)}</td>
+                <td className={styles.mono}>{formatMsPrecise(driver.consistency_ms)}</td>
+                <td className={styles.mono}>{formatPct(driver.full_throttle_pct)}</td>
+                <td>
+                  {driver.outlier_lap_count > 0 ? (
+                    <StatusChip tone="warning">{driver.outlier_lap_count}</StatusChip>
+                  ) : (
+                    driver.outlier_lap_count
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

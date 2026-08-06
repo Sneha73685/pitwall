@@ -1,0 +1,30 @@
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-1);
+}
+
+.fieldLabel {
+  font-size: var(--pw-text-xs);
+  color: var(--pw-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.select {
+  padding: var(--pw-space-2) var(--pw-space-3);
+  background: var(--pw-bg-surface-raised);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-sm);
+  color: var(--pw-text-primary);
+}
+
+.select:disabled {
+  color: var(--pw-text-disabled);
+}

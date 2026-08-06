@@ -10,6 +10,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { useEffect, useRef } from "react";
 import type { DriverSummary } from "../../../api/client";
 import { buildPaceDistributionChartOption } from "./paceDistributionChartOptions";
+import styles from "./PaceDistributionChart.module.css";
 
 echarts.use([
   BoxplotChart,
@@ -62,6 +63,7 @@ export function PaceDistributionChart({ drivers }: PaceDistributionChartProps) {
       role="img"
       aria-label="Pace distribution chart"
       data-testid="pace-distribution-chart"
+      className={styles.chart}
       style={{ width: "100%", height: CHART_HEIGHT }}
     />
   );

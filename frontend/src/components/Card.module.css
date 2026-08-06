@@ -1,0 +1,17 @@
+.card {
+  background: var(--pw-bg-surface);
+  border: 1px solid var(--pw-border-subtle);
+  border-left: 3px solid var(--pw-border-strong);
+  border-radius: var(--pw-radius-md);
+  box-shadow: var(--pw-shadow-card);
+  padding: var(--pw-space-4);
+}
+
+.title {
+  margin: 0 0 var(--pw-space-3);
+  font-size: var(--pw-text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pw-text-secondary);
+}

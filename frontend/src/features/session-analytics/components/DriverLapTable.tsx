@@ -1,4 +1,7 @@
 import type { DriverLapMetrics } from "../../../api/client";
+import { EmptyState } from "../../../components/EmptyState";
+import { StatusChip } from "../../../components/StatusChip";
+import styles from "./DriverLapTable.module.css";
 
 interface DriverLapTableProps {
   laps: DriverLapMetrics[];
@@ -14,44 +17,49 @@ interface DriverLapTableProps {
  */
 export function DriverLapTable({ laps }: DriverLapTableProps) {
   if (laps.length === 0) {
-    return <p>No lap data available for this driver.</p>;
+    return <EmptyState>No lap data available for this driver.</EmptyState>;
   }
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Lap</th>
-          <th>Lap time</th>
-          <th>Delta to theoretical best</th>
-          <th>Delta to median</th>
-          <th>Outlier</th>
-          <th>Full throttle %</th>
-          <th>Brake events</th>
-        </tr>
-      </thead>
-      <tbody>
-        {laps.map((lap) => (
-          <tr key={lap.lap_number} data-testid={`lap-row-${lap.lap_number}`}>
-            <td>
-              {lap.lap_number}
-              {!lap.is_valid && (
-                <span data-testid={`lap-excluded-${lap.lap_number}`}>
-                  {" "}
-                  ({lap.exclusion_reason ?? "excluded"})
-                </span>
-              )}
-            </td>
-            <td>{formatMs(lap.lap_time_ms)}</td>
-            <td>{formatMs(lap.delta_to_theoretical_best_ms)}</td>
-            <td>{formatMs(lap.delta_to_own_median_ms)}</td>
-            <td>{lap.is_outlier ? "Yes" : "No"}</td>
-            <td>{formatPct(lap.full_throttle_pct)}</td>
-            <td>{lap.brake_event_count}</td>
+    <div className={styles.tableWrapper}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            <th>Lap</th>
+            <th>Lap time</th>
+            <th>Delta to theoretical best</th>
+            <th>Delta to median</th>
+            <th>Outlier</th>
+            <th>Full throttle %</th>
+            <th>Brake events</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {laps.map((lap) => (
+            <tr key={lap.lap_number} data-testid={`lap-row-${lap.lap_number}`}>
+              <td className={styles.mono}>
+                {lap.lap_number}
+                {!lap.is_valid && (
+                  <span
+                    data-testid={`lap-excluded-${lap.lap_number}`}
+                    className={styles.excludedTag}
+                  >
+                    {" "}
+                    ({lap.exclusion_reason ?? "excluded"})
+                  </span>
+                )}
+              </td>
+              <td className={styles.mono}>{formatMs(lap.lap_time_ms)}</td>
+              <td className={styles.mono}>{formatMs(lap.delta_to_theoretical_best_ms)}</td>
+              <td className={styles.mono}>{formatMs(lap.delta_to_own_median_ms)}</td>
+              <td>{lap.is_outlier && <StatusChip tone="warning">Yes</StatusChip>}</td>
+              <td className={styles.mono}>{formatPct(lap.full_throttle_pct)}</td>
+              <td className={styles.mono}>{lap.brake_event_count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

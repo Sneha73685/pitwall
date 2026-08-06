@@ -98,6 +98,8 @@ export function buildChartOption(
 
   return {
     animation: false,
+    backgroundColor: "transparent",
+    textStyle: { color: "#90a0b3", fontFamily: "monospace" },
     grid: activeChannels.map((_, index) => ({
       left: 70,
       right: 20,
@@ -114,6 +116,8 @@ export function buildChartOption(
       nameGap: 25,
       axisLabel: { show: index === lastIndex },
       axisTick: { show: index === lastIndex },
+      axisLine: { lineStyle: { color: "#3a4453" } },
+      splitLine: { lineStyle: { color: "#232a35" } },
     })),
     yAxis: activeChannels.map((channel, index) => ({
       type: "value",
@@ -122,8 +126,15 @@ export function buildChartOption(
       nameLocation: "middle",
       nameGap: 45,
       splitNumber: 2,
+      axisLine: { lineStyle: { color: "#3a4453" } },
+      splitLine: { lineStyle: { color: "#232a35" } },
     })),
     series,
-    tooltip: { trigger: "axis" },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "#1a2029",
+      borderColor: "#3a4453",
+      textStyle: { color: "#e8edf3" },
+    },
   };
 }

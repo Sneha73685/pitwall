@@ -43,10 +43,34 @@ const sampleTelemetry: client.TelemetrySample = {
   z: 0,
 };
 
+const sampleSession: client.Session = {
+  session_id: "2023_monza_race",
+  season: 2023,
+  event_name: "Italian Grand Prix",
+  round_number: 16,
+  location: "Monza",
+  country: "Italy",
+  session_type: "race",
+  session_date: null,
+};
+
+const sampleLap: client.Lap = {
+  driver_id: "VER",
+  lap_number: 1,
+  lap_time_seconds: 95.123,
+  sector_1_seconds: 30.1,
+  sector_2_seconds: 35.0,
+  sector_3_seconds: 30.023,
+  is_personal_best: true,
+  is_accurate: true,
+};
+
 describe("TrackMapPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useSelectionStore.setState({ sessionId: null, driverId: null, lapId: null });
+    vi.spyOn(client, "getSession").mockResolvedValue(sampleSession);
+    vi.spyOn(client, "listLaps").mockResolvedValue([sampleLap]);
   });
 
   it("renders the track map and records the selected lap", async () => {
@@ -82,5 +106,14 @@ describe("TrackMapPage", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(/could not load track map/i),
     );
+  });
+
+  it("renders the top summary panel with driver/lap/session context", async () => {
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue([]);
+    vi.spyOn(client, "getTelemetry").mockResolvedValue([sampleTelemetry]);
+
+    renderAt("/sessions/2023_monza_race/drivers/VER/laps/1");
+
+    await waitFor(() => expect(screen.getByText(/italian grand prix/i)).toBeInTheDocument());
   });
 });

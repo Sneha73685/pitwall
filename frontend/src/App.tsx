@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Route, Routes } from "react-router-dom";
 import { getHealth } from "./api/client";
+import { AppShell } from "./components/AppShell";
+import { StatusChip } from "./components/StatusChip";
 import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
 import { SessionAnalyticsPage } from "./features/session-analytics/SessionAnalyticsPage";
 import { DriverSelectPage } from "./features/session-select/DriverSelectPage";
@@ -8,6 +10,7 @@ import { LapSelectPage } from "./features/session-select/LapSelectPage";
 import { SessionListPage } from "./features/session-select/SessionListPage";
 import { TrackMapPage } from "./features/track-map/TrackMapPage";
 import { useSelectionStore } from "./state/selectionStore";
+import styles from "./App.module.css";
 
 type BackendStatus = "checking" | "online" | "offline";
 
@@ -29,19 +32,33 @@ function App() {
       .catch(() => setBackendStatus("offline"));
   }, []);
 
+  const statusTone =
+    backendStatus === "online" ? "positive" : backendStatus === "offline" ? "error" : "neutral";
+
   return (
-    <main>
-      <header>
-        <h1>
-          <Link to="/">PitWall</Link>
-        </h1>
-        <p>
-          An unofficial, fan-made Formula 1 race engineering platform. Not affiliated with Formula
-          1, FOM, or any team.
-        </p>
-        <p data-testid="backend-status">Backend status: {backendStatus}</p>
-        <p data-testid="selected-session">Selected session: {sessionId ?? "none"}</p>
-      </header>
+    <AppShell
+      header={
+        <div className={styles.headerRow}>
+          <div>
+            <h1 className={styles.wordmark}>
+              <Link to="/">PitWall</Link>
+            </h1>
+            <p className={styles.tagline}>
+              An unofficial, fan-made Formula 1 race engineering platform. Not affiliated with
+              Formula 1, FOM, or any team.
+            </p>
+          </div>
+          <div className={styles.headerStatus}>
+            <p data-testid="backend-status" className={styles.statusLine}>
+              Backend status: <StatusChip tone={statusTone}>{backendStatus}</StatusChip>
+            </p>
+            <p data-testid="selected-session" className={styles.statusLine}>
+              Selected session: {sessionId ?? "none"}
+            </p>
+          </div>
+        </div>
+      }
+    >
       <Routes>
         <Route path="/" element={<SessionListPage />} />
         <Route path="/sessions/:sessionId" element={<DriverSelectPage />} />
@@ -53,7 +70,7 @@ function App() {
         <Route path="/sessions/:sessionId/compare" element={<ComparisonPage />} />
         <Route path="/sessions/:sessionId/analytics" element={<SessionAnalyticsPage />} />
       </Routes>
-    </main>
+    </AppShell>
   );
 }
 

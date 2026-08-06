@@ -4,7 +4,9 @@ import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { useEffect, useRef } from "react";
 import type { TelemetrySample } from "../../api/client";
+import { EmptyState } from "../../components/EmptyState";
 import { buildChartOption, type ChannelKey } from "./chartOptions";
+import styles from "./TelemetryCharts.module.css";
 
 echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
@@ -63,12 +65,13 @@ export function TelemetryCharts({ samples, secondarySamples, channels }: Telemet
 
   return (
     <div>
-      {!hasData && <p>No telemetry data available for this lap.</p>}
+      {!hasData && <EmptyState>No telemetry data available for this lap.</EmptyState>}
       <div
         ref={containerRef}
         role="img"
         aria-label="Telemetry channel traces"
         data-testid="telemetry-charts"
+        className={styles.chart}
         style={{ width: "100%", height: CHART_HEIGHT, display: hasData ? "block" : "none" }}
       />
     </div>

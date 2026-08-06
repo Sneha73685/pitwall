@@ -1,0 +1,74 @@
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--pw-space-3);
+  margin-bottom: var(--pw-space-5);
+}
+
+.heading {
+  font-size: var(--pw-text-lg);
+}
+
+.analyticsLink {
+  padding: var(--pw-space-2) var(--pw-space-4);
+  background: var(--pw-accent-muted);
+  color: var(--pw-accent);
+  border-radius: var(--pw-radius-sm);
+  text-decoration: none;
+  font-size: var(--pw-text-sm);
+  font-weight: 600;
+}
+
+.analyticsLink:hover {
+  background: var(--pw-accent);
+  color: var(--pw-bg-canvas);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--pw-space-4);
+}
+
+.cardLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease;
+}
+
+.cardLink:hover {
+  transform: translateY(-2px);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-1);
+}
+
+.driverNumber {
+  font-family: var(--pw-font-mono);
+  color: var(--pw-text-disabled);
+  font-size: var(--pw-text-sm);
+}
+
+.driverCode {
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-text-2xl);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.driverName {
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-sm);
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

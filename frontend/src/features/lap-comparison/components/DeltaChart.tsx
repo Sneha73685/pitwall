@@ -9,7 +9,9 @@ import {
 import { CanvasRenderer } from "echarts/renderers";
 import { useEffect, useRef } from "react";
 import type { LapComparisonResponse } from "../../../api/client";
+import { Card } from "../../../components/Card";
 import { buildDeltaChartOption } from "./deltaChartOptions";
+import styles from "./DeltaChart.module.css";
 
 echarts.use([
   LineChart,
@@ -62,7 +64,7 @@ export function DeltaChart({ comparison }: DeltaChartProps) {
   }, [comparison]);
 
   return (
-    <div>
+    <Card title="Delta">
       <div
         ref={containerRef}
         role="img"
@@ -70,7 +72,9 @@ export function DeltaChart({ comparison }: DeltaChartProps) {
         data-testid="delta-chart"
         style={{ width: "100%", height: CHART_HEIGHT }}
       />
-      <p>Positive delta means Lap A is ahead; negative means Lap B is ahead.</p>
-    </div>
+      <p className={styles.caption}>
+        Positive delta means Lap A is ahead; negative means Lap B is ahead.
+      </p>
+    </Card>
   );
 }

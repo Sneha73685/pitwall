@@ -1,0 +1,31 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--pw-space-2);
+  border-radius: var(--pw-radius-sm);
+  font-size: var(--pw-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.positive {
+  color: var(--pw-status-positive);
+  background: var(--pw-status-positive-muted);
+}
+
+.neutral {
+  color: var(--pw-status-neutral);
+  background: var(--pw-status-neutral-muted);
+}
+
+.warning {
+  color: var(--pw-status-warning);
+  background: var(--pw-status-warning-muted);
+}
+
+.error {
+  color: var(--pw-status-error);
+  background: var(--pw-status-error-muted);
+}

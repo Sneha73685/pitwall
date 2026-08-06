@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getSession, type Session } from "../../api/client";
+import { Card } from "../../components/Card";
+import { ErrorState } from "../../components/ErrorState";
+import { LoadingState } from "../../components/LoadingState";
 import { DriverDrillDown } from "./components/DriverDrillDown";
+import { DriverRankingChart } from "./components/DriverRankingChart";
 import { DriverSummaryTable } from "./components/DriverSummaryTable";
 import { PaceDistributionChart } from "./components/PaceDistributionChart";
 import { SessionAnalyticsHeader } from "./components/SessionAnalyticsHeader";
 import { useSessionAnalytics } from "./hooks/useSessionAnalytics";
+import styles from "./SessionAnalyticsPage.module.css";
 
 /**
  * /sessions/:sessionId/analytics (M8): session-wide driver performance
@@ -27,6 +32,9 @@ import { useSessionAnalytics } from "./hooks/useSessionAnalytics";
  * different resources (`GET /sessions/{id}` vs.
  * `GET /sessions/{id}/analytics/drivers`), matching how DriverSelectPage
  * and LapSelectPage each fetch only what their own route needs.
+ *
+ * M9 adds DriverRankingChart -- fed by the same `analytics.drivers` array
+ * already passed to PaceDistributionChart, zero new fetches.
  */
 export function SessionAnalyticsPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -50,30 +58,41 @@ export function SessionAnalyticsPage() {
 
   const error = sessionError ?? analyticsError;
   if (error) {
-    return <p role="alert">{error}</p>;
+    return <ErrorState>{error}</ErrorState>;
   }
 
   if (session === null || analytics === null) {
-    return <p>Loading session analytics...</p>;
+    return <LoadingState>Loading session analytics...</LoadingState>;
   }
 
   return (
-    <section>
+    <section className={styles.dashboard}>
       <SessionAnalyticsHeader session={session} analytics={analytics} />
-      <DriverSummaryTable
-        drivers={analytics.drivers}
-        selectedDriver={selectedDriver}
-        onSelectDriver={setSelectedDriver}
-      />
-      <PaceDistributionChart drivers={analytics.drivers} />
+      <Card title="Driver Summary">
+        <DriverSummaryTable
+          drivers={analytics.drivers}
+          selectedDriver={selectedDriver}
+          onSelectDriver={setSelectedDriver}
+        />
+      </Card>
+      <div className={styles.chartRow}>
+        <Card title="Pace Distribution">
+          <PaceDistributionChart drivers={analytics.drivers} />
+        </Card>
+        <Card title="Driver Ranking">
+          <DriverRankingChart drivers={analytics.drivers} />
+        </Card>
+      </div>
       {analytics.warnings.length > 0 && (
-        <ul aria-label="Session analytics warnings">
-          {analytics.warnings.map((warning) => (
-            <li key={`${warning.code}-${warning.driver}`}>
-              {warning.driver}: {warning.detail ?? warning.code}
-            </li>
-          ))}
-        </ul>
+        <Card title="Warnings">
+          <ul aria-label="Session analytics warnings" className={styles.warnings}>
+            {analytics.warnings.map((warning) => (
+              <li key={`${warning.code}-${warning.driver}`}>
+                {warning.driver}: {warning.detail ?? warning.code}
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
       {selectedDriver && <DriverDrillDown sessionId={sessionId} driver={selectedDriver} />}
     </section>

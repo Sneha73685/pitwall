@@ -1,0 +1,38 @@
+.toggles {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--pw-space-4);
+}
+
+.legend {
+  font-size: var(--pw-text-xs);
+  color: var(--pw-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  width: 100%;
+  margin-bottom: var(--pw-space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pw-space-1);
+  padding: var(--pw-space-1) var(--pw-space-3);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: 999px;
+  font-size: var(--pw-text-xs);
+  color: var(--pw-text-secondary);
+  cursor: pointer;
+}
+
+.active {
+  border-color: var(--pw-accent);
+  color: var(--pw-accent);
+  background: var(--pw-accent-muted);
+}
+
+.checkbox {
+  accent-color: var(--pw-accent);
+}

@@ -1,6 +1,10 @@
+import { Card } from "../../../components/Card";
+import { ErrorState } from "../../../components/ErrorState";
+import { LoadingState } from "../../../components/LoadingState";
 import { useDriverLapMetrics } from "../hooks/useDriverLapMetrics";
 import { DriverLapTable } from "./DriverLapTable";
 import { LapTimeTrendChart } from "./LapTimeTrendChart";
+import styles from "./DriverDrillDown.module.css";
 
 interface DriverDrillDownProps {
   sessionId: string;
@@ -17,16 +21,19 @@ export function DriverDrillDown({ sessionId, driver }: DriverDrillDownProps) {
   const { metrics, error } = useDriverLapMetrics(sessionId, driver);
 
   return (
-    <section aria-label={`${driver} lap detail`}>
-      <h3>{driver} — lap detail</h3>
-      {error && <p role="alert">{error}</p>}
-      {metrics === null && !error && <p>Loading {driver}&rsquo;s lap data...</p>}
-      {metrics && (
-        <>
-          <LapTimeTrendChart laps={metrics.laps} />
-          <DriverLapTable laps={metrics.laps} />
-        </>
-      )}
+    <section aria-label={`${driver} lap detail`} className={styles.drillDown}>
+      <Card title={`${driver} — Lap Detail`}>
+        {error && <ErrorState>{error}</ErrorState>}
+        {metrics === null && !error && (
+          <LoadingState>Loading {driver}&rsquo;s lap data...</LoadingState>
+        )}
+        {metrics && (
+          <div className={styles.content}>
+            <LapTimeTrendChart laps={metrics.laps} />
+            <DriverLapTable laps={metrics.laps} />
+          </div>
+        )}
+      </Card>
     </section>
   );
 }

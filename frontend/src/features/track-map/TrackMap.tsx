@@ -1,6 +1,8 @@
 import { scaleLinear } from "d3-scale";
 import { line as d3Line } from "d3-shape";
 import type { TrackPoint } from "../../api/client";
+import { EmptyState } from "../../components/EmptyState";
+import styles from "./TrackMap.module.css";
 
 interface Point {
   x: number;
@@ -51,7 +53,7 @@ export function TrackMap({
   segmentColors,
 }: TrackMapProps) {
   if (trackPoints.length === 0) {
-    return <p>No track geometry available for this session.</p>;
+    return <EmptyState>No track geometry available for this session.</EmptyState>;
   }
 
   const xs = trackPoints.map((point) => point.x);
@@ -89,6 +91,7 @@ export function TrackMap({
       role="img"
       aria-label="Track map"
       data-testid="track-map"
+      className={styles.svg}
     >
       {trackSegments
         ? trackSegments.map(

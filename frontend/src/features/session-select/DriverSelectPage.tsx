@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { listDrivers, type Driver } from "../../api/client";
+import { Card } from "../../components/Card";
+import { EmptyState } from "../../components/EmptyState";
+import { ErrorState } from "../../components/ErrorState";
+import { LoadingState } from "../../components/LoadingState";
+import { teamAccent } from "../../components/teamColor";
 import { useSelectionStore } from "../../state/selectionStore";
+import styles from "./DriverSelectPage.module.css";
 
 /**
  * /sessions/:sessionId: lists a session's drivers, linking to its lap
@@ -26,26 +32,41 @@ export function DriverSelectPage() {
   }, [sessionId, setSession]);
 
   if (error) {
-    return <p role="alert">{error}</p>;
+    return <ErrorState>{error}</ErrorState>;
   }
 
   if (drivers === null) {
-    return <p>Loading drivers...</p>;
+    return <LoadingState>Loading drivers...</LoadingState>;
   }
 
   if (drivers.length === 0) {
-    return <p>No drivers found for this session.</p>;
+    return <EmptyState>No drivers found for this session.</EmptyState>;
   }
 
   return (
     <section>
-      <h2>Select a driver</h2>
-      <Link to={`/sessions/${sessionId}/analytics`}>View session analytics</Link>
-      <ul>
+      <div className={styles.headerRow}>
+        <h2 className={styles.heading}>Select a driver</h2>
+        <Link to={`/sessions/${sessionId}/analytics`} className={styles.analyticsLink}>
+          View session analytics
+        </Link>
+      </div>
+      <ul className={styles.grid}>
         {drivers.map((driver) => (
           <li key={driver.driver_id}>
-            <Link to={`/sessions/${sessionId}/drivers/${driver.driver_id}`}>
-              {driver.full_name} ({driver.team_name})
+            <Link
+              to={`/sessions/${sessionId}/drivers/${driver.driver_id}`}
+              className={styles.cardLink}
+            >
+              <Card accent={teamAccent(driver.team_name)}>
+                <div className={styles.cardBody}>
+                  <span className={styles.driverNumber}>#{driver.driver_number}</span>
+                  <span className={styles.driverCode}>{driver.driver_id}</span>
+                  <span className={styles.driverName}>
+                    {driver.full_name} ({driver.team_name})
+                  </span>
+                </div>
+              </Card>
             </Link>
           </li>
         ))}

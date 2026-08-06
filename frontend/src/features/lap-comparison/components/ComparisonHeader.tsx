@@ -1,4 +1,6 @@
 import type { LapComparisonResponse } from "../../../api/client";
+import { Card } from "../../../components/Card";
+import styles from "./ComparisonHeader.module.css";
 
 interface ComparisonHeaderProps {
   comparison: LapComparisonResponse;
@@ -18,27 +20,35 @@ export function ComparisonHeader({ comparison, onSwap }: ComparisonHeaderProps) 
   const fasterLabel = overallDeltaMs >= 0 ? "A" : "B";
 
   return (
-    <header>
-      <div data-testid="lap-a-summary">
-        <span>{comparison.lap_a.driver_id}</span>
-        <span> — Lap {comparison.lap_a.lap_number}</span>
-        {comparison.lap_a.lap_time_seconds !== null && (
-          <span> — {comparison.lap_a.lap_time_seconds.toFixed(3)}s</span>
-        )}
+    <Card>
+      <div className={styles.row}>
+        <div data-testid="lap-a-summary" className={styles.summary}>
+          <span className={styles.driver}>{comparison.lap_a.driver_id}</span>
+          <span className={styles.detail}> — Lap {comparison.lap_a.lap_number}</span>
+          {comparison.lap_a.lap_time_seconds !== null && (
+            <span className={styles.detail}>
+              {" "}
+              — {comparison.lap_a.lap_time_seconds.toFixed(3)}s
+            </span>
+          )}
+        </div>
+        <button type="button" onClick={onSwap} className={styles.swapButton}>
+          Swap A/B
+        </button>
+        <div data-testid="lap-b-summary" className={styles.summary}>
+          <span className={styles.driver}>{comparison.lap_b.driver_id}</span>
+          <span className={styles.detail}> — Lap {comparison.lap_b.lap_number}</span>
+          {comparison.lap_b.lap_time_seconds !== null && (
+            <span className={styles.detail}>
+              {" "}
+              — {comparison.lap_b.lap_time_seconds.toFixed(3)}s
+            </span>
+          )}
+        </div>
       </div>
-      <button type="button" onClick={onSwap}>
-        Swap A/B
-      </button>
-      <div data-testid="lap-b-summary">
-        <span>{comparison.lap_b.driver_id}</span>
-        <span> — Lap {comparison.lap_b.lap_number}</span>
-        {comparison.lap_b.lap_time_seconds !== null && (
-          <span> — {comparison.lap_b.lap_time_seconds.toFixed(3)}s</span>
-        )}
-      </div>
-      <p data-testid="overall-delta">
+      <p data-testid="overall-delta" className={styles.delta}>
         Overall delta: {Math.abs(overallDeltaMs).toFixed(0)}ms ({fasterLabel} faster)
       </p>
-    </header>
+    </Card>
   );
 }

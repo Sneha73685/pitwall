@@ -5,6 +5,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { useEffect, useRef } from "react";
 import type { DriverLapMetrics } from "../../../api/client";
 import { buildLapTimeTrendChartOption } from "./lapTimeTrendChartOptions";
+import styles from "./LapTimeTrendChart.module.css";
 
 echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
@@ -51,6 +52,7 @@ export function LapTimeTrendChart({ laps }: LapTimeTrendChartProps) {
       role="img"
       aria-label="Lap time trend chart"
       data-testid="lap-time-trend-chart"
+      className={styles.chart}
       style={{ width: "100%", height: CHART_HEIGHT }}
     />
   );

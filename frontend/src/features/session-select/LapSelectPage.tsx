@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { listLaps, type Lap } from "../../api/client";
+import { EmptyState } from "../../components/EmptyState";
+import { ErrorState } from "../../components/ErrorState";
+import { LoadingState } from "../../components/LoadingState";
+import { StatusChip } from "../../components/StatusChip";
 import { useSelectionStore } from "../../state/selectionStore";
+import styles from "./LapSelectPage.module.css";
+
+function formatSector(seconds: number | null): string {
+  return seconds === null ? "—" : seconds.toFixed(3);
+}
 
 /**
  * /sessions/:sessionId/drivers/:driverId: lists a driver's laps, linking to
@@ -58,24 +67,24 @@ export function LapSelectPage() {
   }
 
   if (error) {
-    return <p role="alert">{error}</p>;
+    return <ErrorState>{error}</ErrorState>;
   }
 
   if (laps === null) {
-    return <p>Loading laps...</p>;
+    return <LoadingState>Loading laps...</LoadingState>;
   }
 
   if (laps.length === 0) {
-    return <p>No laps found for this driver.</p>;
+    return <EmptyState>No laps found for this driver.</EmptyState>;
   }
 
   return (
     <section>
-      <h2>Select a lap</h2>
-      <ul>
+      <h2 className={styles.heading}>Select a lap</h2>
+      <ul className={styles.list}>
         {laps.map((lap) => (
-          <li key={lap.lap_number}>
-            <label>
+          <li key={lap.lap_number} className={styles.row}>
+            <label className={styles.checkboxLabel}>
               <input
                 type="checkbox"
                 checked={selectedForCompare.includes(lap.lap_number)}
@@ -86,18 +95,26 @@ export function LapSelectPage() {
                 aria-label={`Select lap ${lap.lap_number} for comparison`}
               />
             </label>
-            <Link to={`/sessions/${sessionId}/drivers/${driverId}/laps/${lap.lap_number}`}>
+            <Link
+              to={`/sessions/${sessionId}/drivers/${driverId}/laps/${lap.lap_number}`}
+              className={styles.lapLink}
+            >
               Lap {lap.lap_number}
               {lap.lap_time_seconds !== null
                 ? ` — ${lap.lap_time_seconds.toFixed(3)}s`
                 : " — incomplete"}
               {lap.is_personal_best ? " (PB)" : ""}
             </Link>
+            {lap.is_personal_best && <StatusChip tone="positive">PB</StatusChip>}
+            <span className={styles.sectors}>
+              S1 {formatSector(lap.sector_1_seconds)} · S2 {formatSector(lap.sector_2_seconds)} · S3{" "}
+              {formatSector(lap.sector_3_seconds)}
+            </span>
           </li>
         ))}
       </ul>
       {selectedForCompare.length === 2 && (
-        <button type="button" onClick={handleCompareSelected}>
+        <button type="button" onClick={handleCompareSelected} className={styles.compareButton}>
           Compare Selected
         </button>
       )}

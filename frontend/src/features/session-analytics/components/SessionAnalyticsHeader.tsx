@@ -1,4 +1,6 @@
 import type { Session, SessionAnalyticsResponse } from "../../../api/client";
+import { Card } from "../../../components/Card";
+import styles from "./SessionAnalyticsHeader.module.css";
 
 interface SessionAnalyticsHeaderProps {
   session: Session;
@@ -23,14 +25,14 @@ interface SessionAnalyticsHeaderProps {
  */
 export function SessionAnalyticsHeader({ session, analytics }: SessionAnalyticsHeaderProps) {
   return (
-    <header>
-      <h2>
+    <Card>
+      <h2 className={styles.heading}>
         {session.season} {session.event_name}
       </h2>
-      <p data-testid="session-analytics-summary">
+      <p data-testid="session-analytics-summary" className={styles.summary}>
         {session.location}, {session.country} — {session.session_type} —{" "}
         {analytics.session_lap_count} laps
       </p>
-    </header>
+    </Card>
   );
 }

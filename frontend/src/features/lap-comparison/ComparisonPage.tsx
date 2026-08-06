@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { ErrorState } from "../../components/ErrorState";
 import { useLapComparison } from "./hooks/useLapComparison";
 import { LapPairSelector } from "./components/LapPairSelector";
 import { ComparisonHeader } from "./components/ComparisonHeader";
@@ -8,6 +9,7 @@ import { SectorBreakdownTable } from "./components/SectorBreakdownTable";
 import { ChannelOverlayPanel } from "./components/ChannelOverlayPanel";
 import { TrackMapDelta } from "./components/TrackMapDelta";
 import type { DriverLapSelection } from "./components/DriverLapPicker";
+import styles from "./ComparisonPage.module.css";
 
 /**
  * Two-lap comparison shell (M6), registered at "/sessions/:sessionId/compare"
@@ -51,8 +53,8 @@ export function ComparisonPage() {
   }
 
   return (
-    <section>
-      <h2>Compare laps</h2>
+    <section className={styles.page}>
+      <h2 className={styles.heading}>Compare laps</h2>
       <LapPairSelector
         sessionId={sessionId}
         onSelectA={setSelectionA}
@@ -60,15 +62,17 @@ export function ComparisonPage() {
         initialSelectionA={selectionFromParams(searchParams, "driverA", "lapA")}
         initialSelectionB={selectionFromParams(searchParams, "driverB", "lapB")}
       />
-      {error && <p role="alert">{error}</p>}
+      {error && <ErrorState>{error}</ErrorState>}
       {comparison && (
-        <>
+        <div className={styles.workspace}>
           <ComparisonHeader comparison={comparison} onSwap={handleSwap} />
-          <TrackMapDelta sessionId={sessionId} comparison={comparison} />
-          <DeltaChart comparison={comparison} />
+          <div className={styles.mapAndDelta}>
+            <TrackMapDelta sessionId={sessionId} comparison={comparison} />
+            <DeltaChart comparison={comparison} />
+          </div>
           <SectorBreakdownTable sectors={comparison.sectors} />
           <ChannelOverlayPanel comparison={comparison} />
-        </>
+        </div>
       )}
     </section>
   );
