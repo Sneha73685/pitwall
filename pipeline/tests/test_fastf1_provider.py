@@ -17,7 +17,12 @@ import pytest
 from pitwall_pipeline.models import SessionType
 from pitwall_pipeline.providers import fastf1_provider as fastf1_provider_module
 from pitwall_pipeline.providers.fastf1_provider import FastF1Provider
-from tests.fixtures import build_laps_df, build_results_df, build_telemetry_df
+from tests.fixtures import (
+    build_laps_df,
+    build_laps_df_with_pit_stop,
+    build_results_df,
+    build_telemetry_df,
+)
 
 
 class FakeLap:
@@ -159,3 +164,30 @@ def test_load_session_with_no_laps_returns_empty_track_points(
     assert data.laps == []
     assert data.telemetry == []
     assert data.track_points == []
+
+
+def test_load_session_returns_stints_and_pit_stops(tmp_path: Path, patched_fastf1: Any) -> None:
+    """M10, Phase 2: load_session()'s returned NormalizedSessionData includes
+    non-empty stints/pit_stops, read from the same Laps frame already
+    fetched for normalize_laps -- no new FastF1 call.
+    """
+    laps_df = build_laps_df_with_pit_stop()
+    telemetry_by_key = {
+        ("VER", 1): build_telemetry_df(num_samples=2),
+        ("VER", 2): build_telemetry_df(num_samples=2),
+        ("VER", 3): build_telemetry_df(num_samples=2),
+    }
+    fake_session = _fake_session(FakeLaps(laps_df, telemetry_by_key))
+    patched_fastf1.get_session.return_value = fake_session
+
+    provider = FastF1Provider(tmp_path)
+    data = provider.load_session(2023, "Italian Grand Prix", SessionType.RACE)
+
+    assert len(data.stints) == 2
+    assert {s.stint_number for s in data.stints} == {1, 2}
+    assert all(s.driver_id == "VER" for s in data.stints)
+
+    assert len(data.pit_stops) == 1
+    assert data.pit_stops[0].driver_id == "VER"
+    assert data.pit_stops[0].lap_number == 2
+    assert data.pit_stops[0].pit_lane_time_seconds is not None

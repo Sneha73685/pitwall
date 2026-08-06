@@ -72,6 +72,43 @@ class Lap(DomainModel):
     sector_3_seconds: float | None
     is_personal_best: bool
     is_accurate: bool
+    # None where FastF1 doesn't report it (older seasons, some session types)
+    compound: str | None = None
+
+
+class Stint(DomainModel):
+    """One driver's one stint: a contiguous run of laps on one tyre set.
+
+    See docs/adr/0011-hybrid-storage-architecture.md -- this is genuinely
+    relational (a range of laps bounded by pit events), which is why it's
+    written to PostgreSQL (postgres_writer.py) rather than Parquet, unlike
+    every other model in this file.
+    """
+
+    session_id: str
+    driver_id: str
+    stint_number: int
+    compound: str
+    start_lap: int
+    end_lap: int
+    tyre_life_at_start: int | None  # laps already on this tyre set when the stint began
+
+
+class PitStop(DomainModel):
+    """One pit stop.
+
+    `pit_lane_time_seconds` measures pit-lane entry-to-exit time (FastF1's
+    `PitOutTime` on the following lap minus `PitInTime` on this lap -- see
+    normalize.py's `normalize_pit_stops` docstring for why these two values
+    never coexist on one row), not stationary box time -- it includes
+    driving through the pit lane, not just the tyre change itself.
+    """
+
+    session_id: str
+    driver_id: str
+    stop_number: int
+    lap_number: int
+    pit_lane_time_seconds: float | None
 
 
 class TelemetrySample(DomainModel):
@@ -103,10 +140,24 @@ class TrackPoint(DomainModel):
 
 
 class NormalizedSessionData(DomainModel):
-    """The full output of ingesting one session -- what TelemetryProvider returns."""
+    """The full output of ingesting one session -- what TelemetryProvider returns.
+
+    `stints`/`pit_stops` are written to PostgreSQL (ingest.py, via
+    postgres_writer.py), never to Parquet -- cache_writer.py's
+    `write_session_cache` does not read these two fields, by design
+    (ADR-0011: Parquet remains the source of truth for laps/telemetry/
+    sessions/drivers/track; these two are the only relational entities).
+    Defaulted to empty (unlike `telemetry`/`track_points`, which are
+    required) so existing callers/fixtures that only care about the
+    Parquet-backed fields -- e.g. test_cache_writer.py's `_session_data()`
+    helper -- don't need to change just because this model grew two new
+    fields; `FastF1Provider` always passes both explicitly regardless.
+    """
 
     session: Session
     drivers: list[Driver]
     laps: list[Lap]
     telemetry: list[TelemetrySample]
     track_points: list[TrackPoint]
+    stints: list[Stint] = []
+    pit_stops: list[PitStop] = []

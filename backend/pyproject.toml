@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pandas>=2.2",
     "pyarrow>=17.0",
+    "psycopg[binary,pool]>=3.3.4",
 ]
 
 [dependency-groups]
