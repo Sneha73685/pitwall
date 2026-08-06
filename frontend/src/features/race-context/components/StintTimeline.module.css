@@ -1,0 +1,38 @@
+.timeline {
+  display: flex;
+  width: 100%;
+  height: 48px;
+  border-radius: var(--pw-radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--pw-border-subtle);
+}
+
+.segment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 var(--pw-space-1);
+  color: var(--pw-bg-canvas);
+  font-family: var(--pw-font-mono);
+  font-weight: 600;
+  border-right: 1px solid var(--pw-bg-canvas);
+}
+
+.segment:last-child {
+  border-right: none;
+}
+
+.compound {
+  font-size: var(--pw-text-xs);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.laps {
+  font-size: var(--pw-text-xs);
+  opacity: 0.85;
+}

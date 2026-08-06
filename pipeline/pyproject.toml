@@ -8,6 +8,7 @@ dependencies = [
     "pandas>=2.2",
     "pydantic>=2.7",
     "pyarrow>=17.0",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [dependency-groups]

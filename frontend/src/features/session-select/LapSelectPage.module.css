@@ -3,6 +3,18 @@
   margin-bottom: var(--pw-space-4);
 }
 
+.strategyLink {
+  display: inline-block;
+  margin-bottom: var(--pw-space-4);
+  color: var(--pw-accent);
+  text-decoration: none;
+  font-size: var(--pw-text-sm);
+}
+
+.strategyLink:hover {
+  text-decoration: underline;
+}
+
 .list {
   display: flex;
   flex-direction: column;
@@ -38,6 +50,16 @@
 
 .lapLink:hover {
   color: var(--pw-accent);
+}
+
+.compoundChip {
+  padding: 2px var(--pw-space-2);
+  border-radius: var(--pw-radius-sm);
+  color: var(--pw-bg-canvas);
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .sectors {

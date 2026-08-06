@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from app.models.race_context import PitStop, Stint
+from app.repositories.race_context import RaceContextRepository
+
 SESSION_ID = "2023_monza_race"
 
 
@@ -61,6 +64,7 @@ def write_session_cache(base_dir: Path) -> Path:
                 "sector_3_seconds": 30.023,
                 "is_personal_best": True,
                 "is_accurate": True,
+                "compound": "SOFT",
             },
             {
                 "session_id": SESSION_ID,
@@ -72,6 +76,7 @@ def write_session_cache(base_dir: Path) -> Path:
                 "sector_3_seconds": None,
                 "is_personal_best": False,
                 "is_accurate": False,
+                "compound": None,
             },
             {
                 "session_id": SESSION_ID,
@@ -83,6 +88,7 @@ def write_session_cache(base_dir: Path) -> Path:
                 "sector_3_seconds": 30.756,
                 "is_personal_best": True,
                 "is_accurate": True,
+                "compound": "MEDIUM",
             },
         ]
     ).to_parquet(session_dir / "laps.parquet", index=False)
@@ -169,3 +175,34 @@ def write_session_cache(base_dir: Path) -> Path:
     ).to_parquet(session_dir / "track.parquet", index=False)
 
     return session_dir
+
+
+class FakeRaceContextRepository(RaceContextRepository):
+    """In-memory `RaceContextRepository` for route tests (M10, Phase 4) --
+    no real Postgres needed at this layer, matching
+    test_laps_compare_route.py/test_session_analytics_route.py's existing
+    precedent of overriding `TelemetryRepository` with a fixture instead of
+    a live backing store (ADR-0006's stated fakeability benefit for
+    repository interfaces).
+
+    `Stint`/`PitStop` (the API models) don't carry `session_id`/`driver_id`
+    themselves (those are URL-implied, see app/models/race_context.py), so
+    this fake keys its seed data by them externally instead.
+    """
+
+    def __init__(
+        self,
+        stints_by_driver: dict[tuple[str, str], list[Stint]] | None = None,
+        pit_stops_by_session: dict[str, list[PitStop]] | None = None,
+    ) -> None:
+        self._stints_by_driver = stints_by_driver or {}
+        self._pit_stops_by_session = pit_stops_by_session or {}
+
+    def list_stints(self, session_id: str, driver_id: str) -> list[Stint]:
+        return self._stints_by_driver.get((session_id, driver_id), [])
+
+    def list_pit_stops(self, session_id: str, driver_id: str | None = None) -> list[PitStop]:
+        pit_stops = self._pit_stops_by_session.get(session_id, [])
+        if driver_id is not None:
+            pit_stops = [p for p in pit_stops if p.driver_id == driver_id]
+        return pit_stops

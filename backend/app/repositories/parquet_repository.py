@@ -57,6 +57,9 @@ def _lap_from_row(row: Mapping[Hashable, Any]) -> Lap:
         sector_3_seconds=_optional_float(row["sector_3_seconds"]),
         is_personal_best=bool(row["is_personal_best"]),
         is_accurate=bool(row["is_accurate"]),
+        # .get(), not row["compound"]: a pre-M10 laps.parquet has no
+        # compound column at all, and must deserialize to None, not raise.
+        compound=_optional_str(row.get("compound")),
     )
 
 

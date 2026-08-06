@@ -81,6 +81,12 @@ Open `http://localhost:5173` and navigate `/` → `/sessions/:sessionId` →
 `/sessions/:sessionId/drivers/:driverId` → pick a lap. Charts are static, distance-aligned traces —
 **no hover-driven cursor sync yet** (that's V2); lap/sector comparison and the delta graph are M6.
 
+M10 adds tyre-strategy viewing, backed by a second store (PostgreSQL, alongside Parquet — see
+[ADR-0011](docs/adr/0011-hybrid-storage-architecture.md)): each lap in the driver's lap list shows
+its tyre compound, and a "View Strategy" link opens a per-driver stint timeline and pit-stop list at
+`/sessions/:sessionId/drivers/:driverId/strategy`. Requires PostgreSQL running and migrated once
+before first ingest — see [Quick start](#quick-start) and [Docker](#docker) below.
+
 ## Roadmap
 
 Beyond V1 (M0–M7 above), PitWall is planned to grow through further versions:
@@ -114,7 +120,8 @@ or UI. Full system diagram, layering rules, and the anti-corruption boundary at 
 | Layer | Choice |
 |---|---|
 | Data source | [FastF1](https://github.com/theOehrly/Fast-F1) |
-| Storage | Parquet (→ Postgres in V3) |
+| Storage (telemetry, sessions, drivers, laps, track) | Parquet |
+| Storage (race-strategy: stints, pit stops) | PostgreSQL |
 | Backend | FastAPI |
 | Frontend | React + TypeScript |
 | State management | Zustand |
@@ -157,13 +164,25 @@ uv sync
 uv run uvicorn app.main:app --reload
 ```
 
+Since M10, the backend also reads `PITWALL_DATABASE_URL` (same default as below) to serve the
+stints/pit-stops endpoints — the pipeline's migration step above must have run against the same
+database first.
+
 ### Pipeline
+
+Since M10, ingestion also writes tyre-strategy data (stints, pit stops) to PostgreSQL alongside the
+existing Parquet cache. Requires `PITWALL_DATABASE_URL` (defaults to
+`postgresql://pitwall:pitwall@localhost:5432/pitwall`) and the schema migrated once:
 
 ```sh
 cd pipeline
 uv sync
+uv run python -m pitwall_pipeline.migrate   # one-time, creates stints/pit_stops tables
 uv run python -m pitwall_pipeline.ingest --season 2023 --event Monza --session race
 ```
+
+A Postgres write failure is logged, not fatal — the Parquet cache above is unaffected either way
+(ADR-0011).
 
 ### Frontend
 
@@ -177,6 +196,14 @@ npm run dev
 
 ```sh
 docker compose up backend frontend
+```
+
+Since M10, this also starts a `postgres` service automatically (`backend`/`pipeline` both depend on
+it being healthy first) — no separate step needed for `up`. The schema still needs migrating once,
+the same as local dev:
+
+```sh
+docker compose run --rm pipeline uv run python -m pitwall_pipeline.migrate
 ```
 
 The pipeline is a batch job, not a long-running service, so it's excluded from `up` and run on
@@ -223,6 +250,7 @@ for every real architectural decision.
 | [0008](docs/adr/0008-echarts-over-uplot.md) | Apache ECharts over uPlot for telemetry charts |
 | [0009](docs/adr/0009-internal-api-schema-boundary.md) | Internal API schema boundary (anti-corruption layer) |
 | [0010](docs/adr/0010-react-router-over-tanstack-router.md) | react-router-dom over TanStack Router for frontend routing |
+| [0011](docs/adr/0011-hybrid-storage-architecture.md) | Hybrid Parquet + PostgreSQL storage for race-strategy data |
 
 ## Screenshots
 

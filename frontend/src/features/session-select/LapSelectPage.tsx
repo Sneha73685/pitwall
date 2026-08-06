@@ -5,6 +5,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { StatusChip } from "../../components/StatusChip";
+import { compoundColor } from "../race-context/compoundColor";
 import { useSelectionStore } from "../../state/selectionStore";
 import styles from "./LapSelectPage.module.css";
 
@@ -25,6 +26,11 @@ function formatSector(seconds: number | null): string {
  * table is scoped to one driver, both compared laps share driverId --
  * cross-driver comparison stays available via the dedicated /compare
  * route's pickers (§1.1 path 2), which this page doesn't replace.
+ *
+ * M10 adds a "View Strategy" entry point (this page is already
+ * driver-scoped, matching where the strategy route needs a driverId) and
+ * an inline compound chip per lap, reusing race-context's compoundColor
+ * (docs/m10-implementation-plan.md Phase 5).
  */
 export function LapSelectPage() {
   const { sessionId, driverId } = useParams<{ sessionId: string; driverId: string }>();
@@ -81,6 +87,12 @@ export function LapSelectPage() {
   return (
     <section>
       <h2 className={styles.heading}>Select a lap</h2>
+      <Link
+        to={`/sessions/${sessionId}/drivers/${driverId}/strategy`}
+        className={styles.strategyLink}
+      >
+        View Strategy
+      </Link>
       <ul className={styles.list}>
         {laps.map((lap) => (
           <li key={lap.lap_number} className={styles.row}>
@@ -106,6 +118,15 @@ export function LapSelectPage() {
               {lap.is_personal_best ? " (PB)" : ""}
             </Link>
             {lap.is_personal_best && <StatusChip tone="positive">PB</StatusChip>}
+            {lap.compound && (
+              <span
+                className={styles.compoundChip}
+                style={{ backgroundColor: compoundColor(lap.compound) }}
+                title={`Compound: ${lap.compound}`}
+              >
+                {lap.compound}
+              </span>
+            )}
             <span className={styles.sectors}>
               S1 {formatSector(lap.sector_1_seconds)} · S2 {formatSector(lap.sector_2_seconds)} · S3{" "}
               {formatSector(lap.sector_3_seconds)}

@@ -49,6 +49,17 @@ export interface Lap {
   sector_3_seconds: number | null;
   is_personal_best: boolean;
   is_accurate: boolean;
+  /**
+   * M10 addition. Optional here (not `compound: string | null`) even
+   * though the backend always sends the key -- making it required would
+   * force every existing test fixture across the app that builds a `Lap`
+   * literal (lap-comparison, track-map, session-select) to add it just to
+   * keep compiling, none of which docs/m10-implementation-plan.md Phase 5
+   * lists as a file this milestone touches. Optional mirrors the backend
+   * field's own `= None` default more faithfully than a required field
+   * would anyway.
+   */
+  compound?: string | null;
 }
 
 export interface TelemetrySample {
@@ -249,4 +260,36 @@ export async function getDriverLapMetrics(
   return getJson<DriverLapsResponse>(
     `/sessions/${encodeURIComponent(sessionId)}/analytics/drivers/${encodeURIComponent(driver)}/laps`,
   );
+}
+
+export interface Stint {
+  stint_number: number;
+  compound: string;
+  start_lap: number;
+  end_lap: number;
+  tyre_life_at_start: number | null;
+}
+
+export interface PitStop {
+  driver_id: string;
+  stop_number: number;
+  lap_number: number;
+  pit_lane_time_seconds: number | null;
+}
+
+/**
+ * M10: one driver's stints / one session's pit stops. Added here, sitting
+ * alongside compareLaps/getSessionAnalytics, not a new
+ * features/race-context/api/ module -- same precedent M8 recorded for its
+ * own endpoints (docs/m10-implementation-plan.md Phase 5).
+ */
+export async function getStints(sessionId: string, driverId: string): Promise<Stint[]> {
+  return getJson<Stint[]>(
+    `/sessions/${encodeURIComponent(sessionId)}/drivers/${encodeURIComponent(driverId)}/stints`,
+  );
+}
+
+export async function getPitStops(sessionId: string, driverId?: string): Promise<PitStop[]> {
+  const query = driverId ? `?driver_id=${encodeURIComponent(driverId)}` : "";
+  return getJson<PitStop[]>(`/sessions/${encodeURIComponent(sessionId)}/pit-stops${query}`);
 }

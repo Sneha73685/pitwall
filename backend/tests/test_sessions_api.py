@@ -58,3 +58,12 @@ def test_list_laps_session_not_found_returns_404(client: TestClient) -> None:
     response = client.get("/sessions/2099_nowhere_race/laps")
 
     assert response.status_code == 404
+
+
+def test_list_laps_includes_compound(client: TestClient) -> None:
+    """M10: compound is an additive field on the existing /laps response."""
+    response = client.get("/sessions/2023_monza_race/laps", params={"driver_id": "VER"})
+
+    body = response.json()
+    assert next(lap for lap in body if lap["lap_number"] == 1)["compound"] == "SOFT"
+    assert next(lap for lap in body if lap["lap_number"] == 2)["compound"] is None

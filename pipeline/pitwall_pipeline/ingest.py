@@ -10,8 +10,12 @@ import argparse
 import logging
 from pathlib import Path
 
+import psycopg
+
 from pitwall_pipeline.cache_writer import write_session_cache
+from pitwall_pipeline.db import get_connection
 from pitwall_pipeline.models import SessionType
+from pitwall_pipeline.postgres_writer import write_pit_stops, write_stints
 from pitwall_pipeline.providers import FastF1Provider
 
 logger = logging.getLogger(__name__)
@@ -34,6 +38,25 @@ def ingest_session(
     data = provider.load_session(season, event, session_type)
     output_dir = write_session_cache(data, base_dir=processed_dir)
     logger.info("Ingested %s -> %s", data.session.session_id, output_dir)
+
+    # Second, independent write for relational race-context data
+    # (ADR-0011). The Parquet write above is already complete and is never
+    # rolled back if this fails -- a Postgres failure is logged, not
+    # swallowed, and does not raise: the session is still fully usable for
+    # every V1/V2 feature (docs/m10-implementation-plan.md Phase 2).
+    try:
+        with get_connection() as conn:
+            write_stints(conn, data.stints)
+            write_pit_stops(conn, data.pit_stops)
+    except psycopg.Error:
+        logger.warning(
+            "Failed to write race-context data (stints/pit stops) to PostgreSQL for %s; "
+            "the Parquet cache above was written successfully and ingestion is otherwise "
+            "complete.",
+            data.session.session_id,
+            exc_info=True,
+        )
+
     return output_dir
 
 

@@ -15,7 +15,9 @@ from pitwall_pipeline.models import NormalizedSessionData, SessionType, Telemetr
 from pitwall_pipeline.normalize import (
     normalize_drivers,
     normalize_laps,
+    normalize_pit_stops,
     normalize_session,
+    normalize_stints,
     normalize_telemetry,
 )
 from pitwall_pipeline.providers.base import TelemetryProvider
@@ -66,6 +68,10 @@ class FastF1Provider(TelemetryProvider):
 
         drivers = normalize_drivers(ff1_session.results, session_id=session.session_id)
         laps = normalize_laps(ff1_session.laps, session_id=session.session_id)
+        # Stint/pit-stop data is read from the same Laps frame already
+        # fetched above -- no new FastF1 call (M10, ADR-0011).
+        stints = normalize_stints(ff1_session.laps, session_id=session.session_id)
+        pit_stops = normalize_pit_stops(ff1_session.laps, session_id=session.session_id)
 
         telemetry: list[TelemetrySample] = []
         for driver in drivers:
@@ -100,6 +106,8 @@ class FastF1Provider(TelemetryProvider):
             laps=laps,
             telemetry=telemetry,
             track_points=track_points,
+            stints=stints,
+            pit_stops=pit_stops,
         )
 
     @staticmethod

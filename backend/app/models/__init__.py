@@ -12,6 +12,7 @@ from app.models.lap_comparison import (
     SectorDelta,
     WarningCode,
 )
+from app.models.race_context import PitStop, Stint
 from app.models.session_analytics import (
     DriverLapMetrics,
     DriverLapsResponse,
@@ -40,4 +41,6 @@ __all__ = [
     "SessionAnalyticsResponse",
     "SessionAnalyticsWarning",
     "SessionAnalyticsWarningCode",
+    "Stint",
+    "PitStop",
 ]

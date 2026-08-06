@@ -18,12 +18,17 @@ flowchart LR
         OF1 -.future.-> Provider
         Provider --> Norm["Normalization\n→ internal schema"]
         Norm --> Repo["TelemetryRepository\n(ParquetRepository impl)"]
+        Norm --> PgWriter["postgres_writer.py\n(stints, pit stops)"]
     end
 
     subgraph Backend["Backend API (FastAPI)"]
         Repo --> Boundary[["Anti-corruption layer:\nPitWall Pydantic schemas"]]
+        RCRepo["RaceContextRepository\n(PostgresRaceContextRepository impl)"] --> Boundary
         Boundary --> API["Typed REST API"]
     end
+
+    PgWriter --> PG[("PostgreSQL\nstints, pit_stops")]
+    PG --> RCRepo
 
     subgraph Frontend["Frontend (React + TypeScript)"]
         API --> Store["Zustand: selectionStore"]
@@ -32,6 +37,11 @@ flowchart LR
         Store --> Track["D3 + SVG: track map"]
     end
 ```
+
+M10 (ADR-0011) adds PostgreSQL as a **second, independent** store alongside Parquet — not a
+replacement for it — for the two genuinely relational entities Parquet can't serve well: stints and
+pit stops. Everything else (sessions, drivers, laps including the new `compound` column, telemetry,
+track geometry) stays on Parquet, unchanged.
 
 Why pre-process instead of calling FastF1 live on each request: FastF1 pulls from F1's live-timing archive and parses it, which is slow (seconds to tens of seconds per session) and rate-limit sensitive. An offline/batch ingestion step fetches a session once, normalizes it, and the API only ever reads from the resulting cache — the app also keeps working if the upstream source has a bad day.
 
@@ -49,7 +59,9 @@ This rule exists specifically so that changing a data provider or a storage engi
 
 **`TelemetryProvider`** (pipeline layer, ADR-0005): an interface shaped around PitWall's normalized internal schema, not around FastF1's API. `FastF1Provider` is the sole V1 implementation. Future sources (OpenF1 for live data, file imports, simulator telemetry) become new implementations of this interface rather than changes to ingestion logic.
 
-**`TelemetryRepository`** (backend layer, ADR-0006): an interface defined by the API's actual read patterns (fetch a session/driver/lap's telemetry, list sessions), injected into route handlers via FastAPI's `Depends()`. `ParquetRepository` is the sole V1 implementation; Postgres becomes a second implementation in V3 when relational queries (stints joined against pit stops, etc.) are actually needed.
+**`TelemetryRepository`** (backend layer, ADR-0006): an interface defined by the API's actual read patterns (fetch a session/driver/lap's telemetry, list sessions), injected into route handlers via FastAPI's `Depends()`. `ParquetRepository` remains its sole implementation. M10 (ADR-0011) resolved the Postgres migration this ADR anticipated differently than originally predicted here: relational race-strategy data is served through a second, separate interface instead of extending this one (below) — `TelemetryRepository` itself was never touched.
+
+**`RaceContextRepository`** (backend layer, ADR-0011, M10): a second, independent interface for the genuinely relational data Parquet can't serve well — stints and pit stops. `PostgresRaceContextRepository` is its sole implementation, backed by PostgreSQL. Deliberately not merged into `TelemetryRepository`: the two interfaces have unrelated read patterns and back onto unrelated storage engines — see ADR-0011 for the full rationale.
 
 Both interfaces are intentionally minimal today — they grow when a second real implementation forces them to, not in anticipation of one.
 
@@ -62,7 +74,8 @@ Full rationale and rejected alternatives for each row live in the linked ADR —
 | Layer | V1 choice | ADR |
 |---|---|---|
 | Data source | FastF1 | ADR-0005 |
-| Storage | Parquet (→ Postgres in V3) | ADR-0004 |
+| Storage (telemetry, sessions, drivers, laps, track) | Parquet | ADR-0004 |
+| Storage (race-strategy: stints, pit stops) | PostgreSQL | ADR-0011 |
 | Backend | FastAPI | ADR-0002 |
 | Frontend | React + TypeScript | ADR-0003 |
 | State management | Zustand, stores scoped by concern | ADR-0007 |

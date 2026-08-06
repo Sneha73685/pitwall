@@ -1,8 +1,25 @@
-# Local development only. No database service (V1 uses Parquet, ADR-0004
-# -- Postgres arrives in V3 when it's actually needed). The pipeline is
-# a batch job, not a long-running service (ADR-0001): use
+# Local development only. Telemetry/lap data stays on Parquet (ADR-0004);
+# `postgres` is M10's addition (ADR-0011) for relational race-context data
+# only (stints, pit stops) -- it does not replace Parquet for anything.
+# The pipeline is a batch job, not a long-running service (ADR-0001): use
 # `docker compose run --rm pipeline` rather than including it in `up`.
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=pitwall
+      - POSTGRES_PASSWORD=pitwall
+      - POSTGRES_DB=pitwall
+    ports:
+      - "5432:5432"
+    volumes:
+      - pitwall-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pitwall -d pitwall"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -13,6 +30,10 @@ services:
       - ./data:/data
     environment:
       - PITWALL_DATA_DIR=/data
+      - PITWALL_DATABASE_URL=postgresql://pitwall:pitwall@postgres:5432/pitwall
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
@@ -37,3 +58,10 @@ services:
       - ./data:/data
     environment:
       - PITWALL_DATA_DIR=/data
+      - PITWALL_DATABASE_URL=postgresql://pitwall:pitwall@postgres:5432/pitwall
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pitwall-postgres-data:

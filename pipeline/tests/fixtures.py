@@ -34,6 +34,14 @@ def build_results_df() -> pd.DataFrame:
 
 
 def build_laps_df() -> pd.DataFrame:
+    # Stint/Compound/TyreLife/PitInTime/PitOutTime column names and dtypes
+    # (Stint, TyreLife float64; Compound object/str; PitInTime/PitOutTime
+    # timedelta64[ns]) verified against a real FastF1 session -- see
+    # docs/m10-implementation-plan.md Phase 2 §2.0. Both rows here are lap 1
+    # of stint 1 with no pit stop (PitInTime/PitOutTime both NaT); the
+    # multi-lap/stint-transition/pit-stop scenarios this single-lap-per-
+    # driver fixture can't represent live in build_laps_df_with_pit_stop()
+    # below, used only by the dedicated stint/pit-stop normalization tests.
     return pd.DataFrame(
         [
             {
@@ -45,6 +53,11 @@ def build_laps_df() -> pd.DataFrame:
                 "Sector3Time": pd.Timedelta(seconds=30.134),
                 "IsPersonalBest": True,
                 "IsAccurate": True,
+                "Stint": 1.0,
+                "Compound": "SOFT",
+                "TyreLife": 2.0,
+                "PitInTime": pd.NaT,
+                "PitOutTime": pd.NaT,
             },
             {
                 "Driver": "HAM",
@@ -55,6 +68,72 @@ def build_laps_df() -> pd.DataFrame:
                 "Sector3Time": pd.Timedelta(seconds=30.8),
                 "IsPersonalBest": False,
                 "IsAccurate": True,
+                "Stint": 1.0,
+                "Compound": "MEDIUM",
+                "TyreLife": 1.0,
+                "PitInTime": pd.NaT,
+                "PitOutTime": pd.NaT,
+            },
+        ]
+    )
+
+
+def build_laps_df_with_pit_stop() -> pd.DataFrame:
+    """One driver (VER), three laps, one pit stop between stint 1 and stint 2.
+
+    Dedicated to the stint/pit-stop normalization tests -- `build_laps_df()`
+    above is shared by many pre-existing single-lap-per-driver tests and
+    deliberately isn't reshaped to also carry a multi-lap stint transition.
+    Mirrors the real pattern verified against FastF1 (Phase 2 §2.0):
+    PitInTime is set on the in-lap (lap 2) with PitOutTime null; PitOutTime
+    is set on the very next lap (lap 3) with PitInTime null.
+    """
+    return pd.DataFrame(
+        [
+            {
+                "Driver": "VER",
+                "LapNumber": 1,
+                "LapTime": pd.Timedelta(seconds=91.0),
+                "Sector1Time": pd.Timedelta(seconds=30.0),
+                "Sector2Time": pd.Timedelta(seconds=31.0),
+                "Sector3Time": pd.Timedelta(seconds=30.0),
+                "IsPersonalBest": False,
+                "IsAccurate": True,
+                "Stint": 1.0,
+                "Compound": "SOFT",
+                "TyreLife": 4.0,
+                "PitInTime": pd.NaT,
+                "PitOutTime": pd.NaT,
+            },
+            {
+                "Driver": "VER",
+                "LapNumber": 2,
+                "LapTime": pd.Timedelta(seconds=91.5),
+                "Sector1Time": pd.Timedelta(seconds=30.2),
+                "Sector2Time": pd.Timedelta(seconds=31.1),
+                "Sector3Time": pd.Timedelta(seconds=30.2),
+                "IsPersonalBest": False,
+                "IsAccurate": True,
+                "Stint": 1.0,
+                "Compound": "SOFT",
+                "TyreLife": 5.0,
+                "PitInTime": pd.Timedelta(hours=1, minutes=27, seconds=30.291),
+                "PitOutTime": pd.NaT,
+            },
+            {
+                "Driver": "VER",
+                "LapNumber": 3,
+                "LapTime": pd.Timedelta(seconds=95.0),
+                "Sector1Time": pd.Timedelta(seconds=32.0),
+                "Sector2Time": pd.Timedelta(seconds=32.5),
+                "Sector3Time": pd.Timedelta(seconds=30.5),
+                "IsPersonalBest": False,
+                "IsAccurate": True,
+                "Stint": 2.0,
+                "Compound": "HARD",
+                "TyreLife": 1.0,
+                "PitInTime": pd.NaT,
+                "PitOutTime": pd.Timedelta(hours=1, minutes=27, seconds=55.379),
             },
         ]
     )
