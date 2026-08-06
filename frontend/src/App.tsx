@@ -4,6 +4,7 @@ import { getHealth } from "./api/client";
 import { AppShell } from "./components/AppShell";
 import { StatusChip } from "./components/StatusChip";
 import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
+import { StrategyPage } from "./features/race-context/StrategyPage";
 import { SessionAnalyticsPage } from "./features/session-analytics/SessionAnalyticsPage";
 import { DriverSelectPage } from "./features/session-select/DriverSelectPage";
 import { LapSelectPage } from "./features/session-select/LapSelectPage";
@@ -16,11 +17,14 @@ type BackendStatus = "checking" | "online" | "offline";
 
 /**
  * Routing for the session -> driver -> lap -> track map flow (ADR-0010),
- * plus the M6 comparison route and the M8 session-analytics route.
- * "/sessions/:sessionId/compare" and "/sessions/:sessionId/analytics"
- * (plural, matching every other route here) render ComparisonPage and
- * SessionAnalyticsPage respectively, each owning its own state
- * independently of driverId/lapNumber params.
+ * plus the M6 comparison route, the M8 session-analytics route, and the
+ * M10 strategy route. "/sessions/:sessionId/compare" and
+ * "/sessions/:sessionId/analytics" (plural, matching every other route
+ * here) render ComparisonPage and SessionAnalyticsPage respectively, each
+ * owning its own state independently of driverId/lapNumber params.
+ * "/sessions/:sessionId/drivers/:driverId/strategy" is driver-scoped, at
+ * the same route depth as the track-map route, since stints are fetched
+ * per driver (docs/m10-implementation-plan.md Phase 5).
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -69,6 +73,7 @@ function App() {
         />
         <Route path="/sessions/:sessionId/compare" element={<ComparisonPage />} />
         <Route path="/sessions/:sessionId/analytics" element={<SessionAnalyticsPage />} />
+        <Route path="/sessions/:sessionId/drivers/:driverId/strategy" element={<StrategyPage />} />
       </Routes>
     </AppShell>
   );

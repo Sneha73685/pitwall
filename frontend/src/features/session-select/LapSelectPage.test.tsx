@@ -148,4 +148,35 @@ describe("LapSelectPage", () => {
       ),
     );
   });
+
+  it("shows a link to the driver's strategy page", async () => {
+    vi.spyOn(client, "listLaps").mockResolvedValue([sampleLap]);
+
+    renderAt("/sessions/2023_monza_race/drivers/VER");
+
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /view strategy/i })).toHaveAttribute(
+        "href",
+        "/sessions/2023_monza_race/drivers/VER/strategy",
+      ),
+    );
+  });
+
+  it("shows a compound chip for a lap with compound data", async () => {
+    vi.spyOn(client, "listLaps").mockResolvedValue([{ ...sampleLap, compound: "SOFT" }]);
+
+    renderAt("/sessions/2023_monza_race/drivers/VER");
+
+    await waitFor(() => expect(screen.getByText("SOFT")).toBeInTheDocument());
+    expect(screen.getByTitle("Compound: SOFT")).toBeInTheDocument();
+  });
+
+  it("shows no compound chip for a lap without compound data", async () => {
+    vi.spyOn(client, "listLaps").mockResolvedValue([sampleLap]);
+
+    renderAt("/sessions/2023_monza_race/drivers/VER");
+
+    await waitFor(() => expect(screen.getByText(/lap 1/i)).toBeInTheDocument());
+    expect(screen.queryByTitle(/compound:/i)).not.toBeInTheDocument();
+  });
 });
