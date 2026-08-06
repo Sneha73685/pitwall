@@ -112,6 +112,55 @@ export interface CompareLapsParams {
   resolution?: number;
 }
 
+export type SessionAnalyticsWarningCode = "insufficient_laps";
+
+export interface SessionAnalyticsWarning {
+  code: SessionAnalyticsWarningCode;
+  driver: string;
+  detail: string | null;
+}
+
+export interface DriverSummary {
+  driver: string;
+  valid_lap_count: number;
+  best_lap_ms: number | null;
+  theoretical_best_lap_ms: number | null;
+  theoretical_best_delta_ms: number | null;
+  median_lap_ms: number | null;
+  consistency_ms: number | null;
+  consistency_cv: number | null;
+  full_throttle_pct: number | null;
+  outlier_lap_count: number;
+}
+
+export interface SessionAnalyticsResponse {
+  session_id: string;
+  session_lap_count: number;
+  drivers: DriverSummary[];
+  warnings: SessionAnalyticsWarning[];
+}
+
+export type ExclusionReason = "yellow_flag";
+
+export interface DriverLapMetrics {
+  lap_number: number;
+  lap_time_ms: number | null;
+  is_valid: boolean;
+  exclusion_reason: ExclusionReason | null;
+  is_outlier: boolean;
+  delta_to_theoretical_best_ms: number | null;
+  delta_to_own_median_ms: number | null;
+  full_throttle_pct: number | null;
+  brake_event_count: number;
+}
+
+export interface DriverLapsResponse {
+  session_id: string;
+  driver: string;
+  laps: DriverLapMetrics[];
+  warnings: SessionAnalyticsWarning[];
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`);
 
@@ -166,5 +215,30 @@ export async function compareLaps(
     (params.resolution !== undefined ? `&resolution=${params.resolution}` : "");
   return getJson<LapComparisonResponse>(
     `/sessions/${encodeURIComponent(sessionId)}/laps/compare${query}`,
+  );
+}
+
+/**
+ * M8: session-wide driver performance analytics. Added here, not as a
+ * separate features/session-analytics/api/sessionAnalytics.ts module --
+ * docs/m8-design-review.md §3 itself says to add these "to the existing
+ * typed API client... sitting alongside compareLaps", and that's what M6
+ * actually did (compareLaps lives here too, not in a
+ * features/lap-comparison/api/ file the M6 design's own file structure
+ * once proposed but never shipped). This file remains the only place
+ * allowed to call fetch.
+ */
+export async function getSessionAnalytics(sessionId: string): Promise<SessionAnalyticsResponse> {
+  return getJson<SessionAnalyticsResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/analytics/drivers`,
+  );
+}
+
+export async function getDriverLapMetrics(
+  sessionId: string,
+  driver: string,
+): Promise<DriverLapsResponse> {
+  return getJson<DriverLapsResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/analytics/drivers/${encodeURIComponent(driver)}/laps`,
   );
 }

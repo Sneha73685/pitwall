@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Route, Routes } from "react-router-dom";
 import { getHealth } from "./api/client";
 import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
+import { SessionAnalyticsPage } from "./features/session-analytics/SessionAnalyticsPage";
 import { DriverSelectPage } from "./features/session-select/DriverSelectPage";
 import { LapSelectPage } from "./features/session-select/LapSelectPage";
 import { SessionListPage } from "./features/session-select/SessionListPage";
@@ -12,9 +13,11 @@ type BackendStatus = "checking" | "online" | "offline";
 
 /**
  * Routing for the session -> driver -> lap -> track map flow (ADR-0010),
- * plus the M6 comparison route. "/sessions/:sessionId/compare" (plural,
- * matching every other route here) renders ComparisonPage, which owns its
- * own lap-pair selection state independently of driverId/lapNumber params.
+ * plus the M6 comparison route and the M8 session-analytics route.
+ * "/sessions/:sessionId/compare" and "/sessions/:sessionId/analytics"
+ * (plural, matching every other route here) render ComparisonPage and
+ * SessionAnalyticsPage respectively, each owning its own state
+ * independently of driverId/lapNumber params.
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -48,6 +51,7 @@ function App() {
           element={<TrackMapPage />}
         />
         <Route path="/sessions/:sessionId/compare" element={<ComparisonPage />} />
+        <Route path="/sessions/:sessionId/analytics" element={<SessionAnalyticsPage />} />
       </Routes>
     </main>
   );

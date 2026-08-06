@@ -3,7 +3,12 @@ import { Link, useParams } from "react-router-dom";
 import { listDrivers, type Driver } from "../../api/client";
 import { useSelectionStore } from "../../state/selectionStore";
 
-/** /sessions/:sessionId: lists a session's drivers, linking to its lap selector. */
+/**
+ * /sessions/:sessionId: lists a session's drivers, linking to its lap
+ * selector. Also links to /sessions/:sessionId/analytics (M8) -- the
+ * session-analytics entry point, same navigational tier as driver
+ * selection rather than nested under it (docs/m8-design-review.md §1.1).
+ */
 export function DriverSelectPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const setSession = useSelectionStore((state) => state.setSession);
@@ -35,6 +40,7 @@ export function DriverSelectPage() {
   return (
     <section>
       <h2>Select a driver</h2>
+      <Link to={`/sessions/${sessionId}/analytics`}>View session analytics</Link>
       <ul>
         {drivers.map((driver) => (
           <li key={driver.driver_id}>
