@@ -74,13 +74,21 @@ export function DriverSummaryTable({
     compareValues(a[sortColumn], b[sortColumn], sortDirection),
   );
 
+  // Session-best ("purple") values: computed from the full, unsorted
+  // roster so the highlight stays on the actual fastest driver regardless
+  // of which column the table is currently sorted by.
+  const sessionBestLapMs = minOrNull(drivers.map((driver) => driver.best_lap_ms));
+  const sessionBestTheoreticalMs = minOrNull(
+    drivers.map((driver) => driver.theoretical_best_lap_ms),
+  );
+
   return (
     <div className={styles.tableWrapper}>
       <table className={styles.table}>
         <thead>
           <tr>
             {COLUMNS.map((column) => (
-              <th key={column.key}>
+              <th key={column.key} aria-sort={ariaSortFor(column.key, sortColumn, sortDirection)}>
                 <button
                   type="button"
                   onClick={() => handleSort(column.key)}
@@ -96,19 +104,26 @@ export function DriverSummaryTable({
         <tbody>
           {sortedDrivers.map((driver) => {
             const rankingEligible = driver.valid_lap_count >= MIN_VALID_LAPS_FOR_RANKING;
+            const isSelected = driver.driver === selectedDriver;
+            const isBestLap =
+              driver.best_lap_ms !== null && driver.best_lap_ms === sessionBestLapMs;
+            const isBestTheoretical =
+              driver.theoretical_best_lap_ms !== null &&
+              driver.theoretical_best_lap_ms === sessionBestTheoreticalMs;
             return (
               <tr
                 key={driver.driver}
                 data-testid={`driver-row-${driver.driver}`}
                 data-ranking-eligible={rankingEligible}
-                aria-selected={driver.driver === selectedDriver}
-                className={styles.row}
+                data-selected={isSelected}
+                className={isSelected ? `${styles.row} ${styles.selected}` : styles.row}
               >
                 <td>
                   <button
                     type="button"
                     onClick={() => onSelectDriver(driver.driver)}
                     className={styles.driverButton}
+                    aria-pressed={isSelected}
                   >
                     {driver.driver}
                   </button>
@@ -123,8 +138,24 @@ export function DriverSummaryTable({
                   )}
                 </td>
                 <td>{driver.valid_lap_count}</td>
-                <td className={styles.mono}>{formatMs(driver.best_lap_ms)}</td>
-                <td className={styles.mono}>{formatMs(driver.theoretical_best_lap_ms)}</td>
+                <td className={cellClass(isBestLap)}>
+                  {formatMs(driver.best_lap_ms)}
+                  {isBestLap && (
+                    <span className={styles.bestMarker} title="Session best">
+                      {" "}
+                      ◆<span className={styles.srOnly}> (session best)</span>
+                    </span>
+                  )}
+                </td>
+                <td className={cellClass(isBestTheoretical)}>
+                  {formatMs(driver.theoretical_best_lap_ms)}
+                  {isBestTheoretical && (
+                    <span className={styles.bestMarker} title="Session best">
+                      {" "}
+                      ◆<span className={styles.srOnly}> (session best)</span>
+                    </span>
+                  )}
+                </td>
                 <td className={styles.mono}>{formatMs(driver.theoretical_best_delta_ms)}</td>
                 <td className={styles.mono}>{formatMs(driver.median_lap_ms)}</td>
                 <td className={styles.mono}>{formatMsPrecise(driver.consistency_ms)}</td>
@@ -143,6 +174,26 @@ export function DriverSummaryTable({
       </table>
     </div>
   );
+}
+
+function cellClass(isBest: boolean): string {
+  return isBest ? `${styles.mono} ${styles.best}` : styles.mono;
+}
+
+function minOrNull(values: (number | null)[]): number | null {
+  const present = values.filter((value): value is number => value !== null);
+  return present.length > 0 ? Math.min(...present) : null;
+}
+
+function ariaSortFor(
+  column: SortableColumn,
+  sortColumn: SortableColumn,
+  sortDirection: SortDirection,
+): "ascending" | "descending" | "none" {
+  if (column !== sortColumn) {
+    return "none";
+  }
+  return sortDirection === "asc" ? "ascending" : "descending";
 }
 
 function compareValues(

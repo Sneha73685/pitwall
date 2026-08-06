@@ -2,8 +2,8 @@ import * as echarts from "echarts/core";
 import { LineChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
-import { useEffect, useRef } from "react";
 import type { DriverLapMetrics } from "../../../api/client";
+import { useEChartsInstance } from "../../../components/useEChartsInstance";
 import { buildLapTimeTrendChartOption } from "./lapTimeTrendChartOptions";
 import styles from "./LapTimeTrendChart.module.css";
 
@@ -22,29 +22,7 @@ interface LapTimeTrendChartProps {
  * added here.
  */
 export function LapTimeTrendChart({ laps }: LapTimeTrendChartProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-    const chart = echarts.init(containerRef.current);
-    chartRef.current = chart;
-
-    const handleResize = () => chart.resize();
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(buildLapTimeTrendChartOption(laps), true);
-  }, [laps]);
+  const containerRef = useEChartsInstance(() => buildLapTimeTrendChartOption(laps), [laps]);
 
   return (
     <div

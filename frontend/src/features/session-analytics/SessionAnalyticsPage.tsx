@@ -68,6 +68,17 @@ export function SessionAnalyticsPage() {
   return (
     <section className={styles.dashboard}>
       <SessionAnalyticsHeader session={session} analytics={analytics} />
+      {analytics.warnings.length > 0 && (
+        <Card title="Warnings">
+          <ul aria-label="Session analytics warnings" className={styles.warnings}>
+            {analytics.warnings.map((warning) => (
+              <li key={`${warning.code}-${warning.driver}`}>
+                {warning.driver}: {warning.detail ?? warning.code}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <Card title="Driver Summary">
         <DriverSummaryTable
           drivers={analytics.drivers}
@@ -83,17 +94,6 @@ export function SessionAnalyticsPage() {
           <DriverRankingChart drivers={analytics.drivers} />
         </Card>
       </div>
-      {analytics.warnings.length > 0 && (
-        <Card title="Warnings">
-          <ul aria-label="Session analytics warnings" className={styles.warnings}>
-            {analytics.warnings.map((warning) => (
-              <li key={`${warning.code}-${warning.driver}`}>
-                {warning.driver}: {warning.detail ?? warning.code}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
       {selectedDriver && <DriverDrillDown sessionId={sessionId} driver={selectedDriver} />}
     </section>
   );

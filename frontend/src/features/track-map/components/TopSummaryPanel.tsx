@@ -1,16 +1,7 @@
 import type { Lap, Session } from "../../../api/client";
 import { Card } from "../../../components/Card";
+import { SESSION_TYPE_LABELS } from "../../../components/sessionTypeLabels";
 import styles from "./TopSummaryPanel.module.css";
-
-const SESSION_TYPE_LABELS: Record<Session["session_type"], string> = {
-  practice_1: "Practice 1",
-  practice_2: "Practice 2",
-  practice_3: "Practice 3",
-  qualifying: "Qualifying",
-  sprint_qualifying: "Sprint Qualifying",
-  sprint: "Sprint",
-  race: "Race",
-};
 
 interface TopSummaryPanelProps {
   driver: string;

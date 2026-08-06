@@ -20,11 +20,22 @@
   /* Text */
   --pw-text-primary: #e8edf3;
   --pw-text-secondary: #90a0b3;
-  --pw-text-disabled: #4b5768;
+  /* #7a8a9c, not the original #4b5768 -- that failed WCAG AA contrast
+     (~2.5:1) against both --pw-bg-canvas and --pw-bg-surface; this hits
+     ~4.8:1 / ~5.1:1 respectively while still reading as visually muted
+     relative to --pw-text-secondary. */
+  --pw-text-disabled: #7a8a9c;
 
   /* Accent -- a single technical accent, not tied to any team */
   --pw-accent: #f5a623;
   --pw-accent-muted: rgba(245, 166, 35, 0.15);
+
+  /* Session-best ("purple") highlight -- the FIA/timing-screen convention
+     for the session's fastest lap/theoretical-best, shown regardless of
+     the table's current sort column. ~5.2:1 against --pw-bg-surface as
+     plain bold text (no muted-background pairing -- that combination
+     drops below AA for text this size). */
+  --pw-purple: #c15bf2;
 
   /* Status set -- backend status, PB/outlier/excluded/ranking-ineligible flags */
   --pw-status-positive: #3ddc84;

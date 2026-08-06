@@ -2,9 +2,9 @@ import * as echarts from "echarts/core";
 import { LineChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
-import { useEffect, useRef } from "react";
 import type { TelemetrySample } from "../../api/client";
 import { EmptyState } from "../../components/EmptyState";
+import { useEChartsInstance } from "../../components/useEChartsInstance";
 import { buildChartOption, type ChannelKey } from "./chartOptions";
 import styles from "./TelemetryCharts.module.css";
 
@@ -38,30 +38,11 @@ interface TelemetryChartsProps {
  * visibility toggles when there's no data.
  */
 export function TelemetryCharts({ samples, secondarySamples, channels }: TelemetryChartsProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
   const hasData = samples.length > 0;
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-    const chart = echarts.init(containerRef.current);
-    chartRef.current = chart;
-
-    const handleResize = () => chart.resize();
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(buildChartOption(samples, secondarySamples, channels), true);
-  }, [samples, secondarySamples, channels]);
+  const containerRef = useEChartsInstance(
+    () => buildChartOption(samples, secondarySamples, channels),
+    [samples, secondarySamples, channels],
+  );
 
   return (
     <div>

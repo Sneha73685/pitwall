@@ -7,8 +7,8 @@ import {
   TransformComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
-import { useEffect, useRef } from "react";
 import type { DriverSummary } from "../../../api/client";
+import { useEChartsInstance } from "../../../components/useEChartsInstance";
 import { buildPaceDistributionChartOption } from "./paceDistributionChartOptions";
 import styles from "./PaceDistributionChart.module.css";
 
@@ -33,29 +33,10 @@ interface PaceDistributionChartProps {
  * once, dispose on unmount, re-`setOption` on data change).
  */
 export function PaceDistributionChart({ drivers }: PaceDistributionChartProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-    const chart = echarts.init(containerRef.current);
-    chartRef.current = chart;
-
-    const handleResize = () => chart.resize();
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(buildPaceDistributionChartOption(drivers), true);
-  }, [drivers]);
+  const containerRef = useEChartsInstance(
+    () => buildPaceDistributionChartOption(drivers),
+    [drivers],
+  );
 
   return (
     <div

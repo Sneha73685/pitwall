@@ -2,8 +2,8 @@ import * as echarts from "echarts/core";
 import { BarChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
-import { useEffect, useRef } from "react";
 import type { DriverSummary } from "../../../api/client";
+import { useEChartsInstance } from "../../../components/useEChartsInstance";
 import { buildDriverRankingChartOption } from "./driverRankingChartOptions";
 import styles from "./DriverRankingChart.module.css";
 
@@ -22,29 +22,7 @@ interface DriverRankingChartProps {
  * already passes to PaceDistributionChart -- no new fetch.
  */
 export function DriverRankingChart({ drivers }: DriverRankingChartProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-    const chart = echarts.init(containerRef.current);
-    chartRef.current = chart;
-
-    const handleResize = () => chart.resize();
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(buildDriverRankingChartOption(drivers), true);
-  }, [drivers]);
+  const containerRef = useEChartsInstance(() => buildDriverRankingChartOption(drivers), [drivers]);
 
   return (
     <div

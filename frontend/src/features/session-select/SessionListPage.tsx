@@ -5,18 +5,9 @@ import { Card } from "../../components/Card";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
+import { SESSION_TYPE_LABELS } from "../../components/sessionTypeLabels";
 import { StatusChip } from "../../components/StatusChip";
 import styles from "./SessionListPage.module.css";
-
-const SESSION_TYPE_LABELS: Record<Session["session_type"], string> = {
-  practice_1: "Practice 1",
-  practice_2: "Practice 2",
-  practice_3: "Practice 3",
-  qualifying: "Qualifying",
-  sprint_qualifying: "Sprint Qualifying",
-  sprint: "Sprint",
-  race: "Race",
-};
 
 /** Root route: lists every ingested session, linking to its driver selector. */
 export function SessionListPage() {
