@@ -73,6 +73,7 @@ def _to_driver_summary_model(summary: DriverSummaryResult) -> DriverSummary:
         consistency_cv=summary.consistency_cv,
         full_throttle_pct=summary.full_throttle_pct,
         outlier_lap_count=summary.outlier_lap_count,
+        lap_times_ms=summary.lap_times_ms,
     )
 
 

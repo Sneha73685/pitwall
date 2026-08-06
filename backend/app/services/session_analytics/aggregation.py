@@ -59,6 +59,16 @@ class DriverSummary:
     (M8 §3). `laps` includes every lap the driver has, valid or not (§3's
     `/drivers/{driver}/laps` schema note: "Returns ALL laps for the
     driver").
+
+    `lap_times_ms` is the same `aggregate_lap_times_ms` population that
+    feeds `best_lap_ms`/`median_lap_ms`/`consistency_ms` below -- added in
+    Phase 4 (not the Phase 0 schema draft, which omitted it) because
+    `PaceDistributionChart` needs each driver's raw lap-time distribution
+    to build its boxplot, and the design doc's B5 decision explicitly
+    calls for "ECharts' own quartile transform over raw arrays" rather
+    than a backend-computed five-number summary. Not the same population
+    as `valid_lap_count` (which stays `is_accurate`-only, per the note
+    below).
     """
 
     driver_id: str
@@ -71,6 +81,7 @@ class DriverSummary:
     consistency_cv: float | None
     full_throttle_pct: float | None
     outlier_lap_count: int
+    lap_times_ms: list[float] = field(default_factory=list)
     laps: list[DriverLapMetrics] = field(default_factory=list)
 
 
@@ -184,5 +195,6 @@ def summarize_driver(
         consistency_cv=consistency_cv_value,
         full_throttle_pct=driver_full_throttle_pct,
         outlier_lap_count=len(outlier_lap_numbers),
+        lap_times_ms=aggregate_lap_times_ms,
         laps=lap_metrics,
     )

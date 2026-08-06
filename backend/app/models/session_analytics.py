@@ -48,7 +48,15 @@ class SessionAnalyticsWarning(ApiModel):
 
 
 class DriverSummary(ApiModel):
-    """One driver's session-wide summary row (plan §0.4)."""
+    """One driver's session-wide summary row (plan §0.4).
+
+    `lap_times_ms` is a Phase 4 addition, not part of the original §0.4
+    draft: `PaceDistributionChart` needs each driver's raw lap-time
+    distribution (the same population behind `best_lap_ms`/`median_lap_ms`/
+    `consistency_ms`) so the frontend boxplot can use ECharts' own quartile
+    transform over raw arrays, per the design doc's B5 decision -- a
+    backend-computed five-number summary was explicitly rejected there.
+    """
 
     driver: str
     valid_lap_count: int
@@ -60,6 +68,7 @@ class DriverSummary(ApiModel):
     consistency_cv: float | None
     full_throttle_pct: float | None
     outlier_lap_count: int
+    lap_times_ms: list[float]
 
 
 class SessionAnalyticsResponse(ApiModel):

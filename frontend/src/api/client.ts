@@ -131,6 +131,14 @@ export interface DriverSummary {
   consistency_cv: number | null;
   full_throttle_pct: number | null;
   outlier_lap_count: number;
+  /**
+   * Phase 4 addition (not in the original Phase 0 schema draft): the same
+   * lap-time population behind best_lap_ms/median_lap_ms/consistency_ms,
+   * needed so PaceDistributionChart can hand raw arrays to ECharts' own
+   * boxplot quartile transform rather than the backend pre-computing a
+   * five-number summary (design doc B5 decision).
+   */
+  lap_times_ms: number[];
 }
 
 export interface SessionAnalyticsResponse {
