@@ -1,0 +1,72 @@
+.heading {
+  font-size: var(--pw-text-lg);
+  margin-bottom: var(--pw-space-4);
+}
+
+.filters {
+  display: flex;
+  gap: var(--pw-space-3);
+  margin-bottom: var(--pw-space-5);
+  flex-wrap: wrap;
+}
+
+.search {
+  flex: 1;
+  min-width: 240px;
+  padding: var(--pw-space-2) var(--pw-space-3);
+  background: var(--pw-bg-surface);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-sm);
+  color: var(--pw-text-primary);
+}
+
+.seasonFilter {
+  padding: var(--pw-space-2) var(--pw-space-3);
+  background: var(--pw-bg-surface);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-sm);
+  color: var(--pw-text-primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--pw-space-4);
+}
+
+.cardLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.cardLink:hover {
+  transform: translateY(-2px);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-2);
+  align-items: flex-start;
+}
+
+.location {
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-sm);
+}
+
+.round {
+  color: var(--pw-text-disabled);
+  font-size: var(--pw-text-xs);
+  font-family: var(--pw-font-mono);
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,4 +1,5 @@
 import { DriverLapPicker, type DriverLapSelection } from "./DriverLapPicker";
+import styles from "./LapPairSelector.module.css";
 
 interface LapPairSelectorProps {
   sessionId: string;
@@ -23,7 +24,7 @@ export function LapPairSelector({
   initialSelectionB,
 }: LapPairSelectorProps) {
   return (
-    <div>
+    <div className={styles.pair}>
       <DriverLapPicker
         sessionId={sessionId}
         label="Lap A"

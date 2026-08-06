@@ -1,0 +1,24 @@
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--pw-space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label {
+  font-size: var(--pw-text-xs);
+  color: var(--pw-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.value {
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-text-lg);
+  color: var(--pw-text-primary);
+}

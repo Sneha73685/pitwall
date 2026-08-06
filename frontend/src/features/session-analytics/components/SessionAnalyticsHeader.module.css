@@ -1,0 +1,10 @@
+.heading {
+  font-size: var(--pw-text-xl);
+}
+
+.summary {
+  margin-top: var(--pw-space-1);
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-sm);
+  font-family: var(--pw-font-mono);
+}

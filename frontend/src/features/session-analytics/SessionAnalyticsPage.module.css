@@ -1,0 +1,25 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-4);
+}
+
+.chartRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pw-space-4);
+}
+
+.warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-1);
+  color: var(--pw-status-warning);
+  font-size: var(--pw-text-sm);
+}
+
+@media (max-width: 1024px) {
+  .chartRow {
+    grid-template-columns: 1fr;
+  }
+}

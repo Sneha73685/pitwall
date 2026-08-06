@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { getTrackPoints, type LapComparisonResponse, type TrackPoint } from "../../../api/client";
+import { Card } from "../../../components/Card";
+import { ErrorState } from "../../../components/ErrorState";
+import { LoadingState } from "../../../components/LoadingState";
 import { TrackMap } from "../../track-map/TrackMap";
 import { computeSegmentColors } from "./trackMapSegmentColors";
 
@@ -47,11 +50,15 @@ export function TrackMapDelta({ sessionId, comparison }: TrackMapDeltaProps) {
   );
 
   if (error) {
-    return <p role="alert">{error}</p>;
+    return <ErrorState>{error}</ErrorState>;
   }
   if (!trackPoints) {
-    return <p>Loading track map...</p>;
+    return <LoadingState>Loading track map...</LoadingState>;
   }
 
-  return <TrackMap trackPoints={trackPoints} lapPoints={[]} segmentColors={segmentColors} />;
+  return (
+    <Card title="Track Map — Delta">
+      <TrackMap trackPoints={trackPoints} lapPoints={[]} segmentColors={segmentColors} />
+    </Card>
+  );
 }

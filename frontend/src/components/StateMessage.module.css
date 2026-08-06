@@ -1,0 +1,15 @@
+.loading,
+.empty {
+  padding: var(--pw-space-5);
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-sm);
+}
+
+.error {
+  padding: var(--pw-space-4);
+  border: 1px solid var(--pw-status-error);
+  border-radius: var(--pw-radius-md);
+  background: var(--pw-status-error-muted);
+  color: var(--pw-status-error);
+  font-size: var(--pw-text-sm);
+}

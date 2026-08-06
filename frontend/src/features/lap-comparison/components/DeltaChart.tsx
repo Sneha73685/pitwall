@@ -7,9 +7,11 @@ import {
   TooltipComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
-import { useEffect, useRef } from "react";
 import type { LapComparisonResponse } from "../../../api/client";
+import { Card } from "../../../components/Card";
+import { useEChartsInstance } from "../../../components/useEChartsInstance";
 import { buildDeltaChartOption } from "./deltaChartOptions";
+import styles from "./DeltaChart.module.css";
 
 echarts.use([
   LineChart,
@@ -37,32 +39,10 @@ interface DeltaChartProps {
  * follows that precedent rather than reintroducing V2 work into M6).
  */
 export function DeltaChart({ comparison }: DeltaChartProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
-    const chart = echarts.init(containerRef.current);
-    chartRef.current = chart;
-
-    const handleResize = () => chart.resize();
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.dispose();
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    chartRef.current?.setOption(buildDeltaChartOption(comparison), true);
-  }, [comparison]);
+  const containerRef = useEChartsInstance(() => buildDeltaChartOption(comparison), [comparison]);
 
   return (
-    <div>
+    <Card title="Delta">
       <div
         ref={containerRef}
         role="img"
@@ -70,7 +50,9 @@ export function DeltaChart({ comparison }: DeltaChartProps) {
         data-testid="delta-chart"
         style={{ width: "100%", height: CHART_HEIGHT }}
       />
-      <p>Positive delta means Lap A is ahead; negative means Lap B is ahead.</p>
-    </div>
+      <p className={styles.caption}>
+        Positive delta means Lap A is ahead; negative means Lap B is ahead.
+      </p>
+    </Card>
   );
 }

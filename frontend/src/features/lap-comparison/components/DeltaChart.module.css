@@ -1,0 +1,5 @@
+.caption {
+  margin-top: var(--pw-space-2);
+  color: var(--pw-text-disabled);
+  font-size: var(--pw-text-xs);
+}

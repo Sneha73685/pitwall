@@ -1,0 +1,90 @@
+/**
+ * Design tokens for PitWall's dark, engineering-software UI. Breakpoints
+ * are documented here as a comment only -- CSS custom properties can't
+ * hold media-query values, so each *.module.css hardcodes these literally:
+ *   sm: 640px  (single column)
+ *   md: 1024px (sidebar collapses)
+ *   lg: 1440px (full multi-column dashboards)
+ */
+:root {
+  /* Background / surface scale */
+  --pw-bg-canvas: #0a0d12;
+  --pw-bg-surface: #12161d;
+  --pw-bg-surface-raised: #1a2029;
+  --pw-bg-surface-sunken: #080a0e;
+
+  /* Borders */
+  --pw-border-subtle: #232a35;
+  --pw-border-strong: #3a4453;
+
+  /* Text */
+  --pw-text-primary: #e8edf3;
+  --pw-text-secondary: #90a0b3;
+  /* #7a8a9c, not the original #4b5768 -- that failed WCAG AA contrast
+     (~2.5:1) against both --pw-bg-canvas and --pw-bg-surface; this hits
+     ~4.8:1 / ~5.1:1 respectively while still reading as visually muted
+     relative to --pw-text-secondary. */
+  --pw-text-disabled: #7a8a9c;
+
+  /* Accent -- a single technical accent, not tied to any team */
+  --pw-accent: #f5a623;
+  --pw-accent-muted: rgba(245, 166, 35, 0.15);
+
+  /* Session-best ("purple") highlight -- the FIA/timing-screen convention
+     for the session's fastest lap/theoretical-best, shown regardless of
+     the table's current sort column. ~5.2:1 against --pw-bg-surface as
+     plain bold text (no muted-background pairing -- that combination
+     drops below AA for text this size). */
+  --pw-purple: #c15bf2;
+
+  /* Status set -- backend status, PB/outlier/excluded/ranking-ineligible flags */
+  --pw-status-positive: #3ddc84;
+  --pw-status-positive-muted: rgba(61, 220, 132, 0.15);
+  --pw-status-neutral: #5b6472;
+  --pw-status-neutral-muted: rgba(91, 100, 114, 0.2);
+  --pw-status-warning: #f5a623;
+  --pw-status-warning-muted: rgba(245, 166, 35, 0.15);
+  --pw-status-error: #ef4444;
+  --pw-status-error-muted: rgba(239, 68, 68, 0.15);
+
+  /* Reference only -- the real lap-A/lap-B colors stay hardcoded as JS
+     constants in TrackMap.tsx / chartOptions.ts / trackMapSegmentColors.ts
+     (tests assert on those literal values); these mirror them for any
+     chrome that wants to stay visually consistent without duplicating logic. */
+  --pw-lap-a: #5470c6;
+  --pw-lap-b: #ee6666;
+
+  /* Typography -- mono for numeric telemetry values, sans for UI chrome */
+  --pw-font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --pw-font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  --pw-text-xs: 0.75rem;
+  --pw-text-sm: 0.8125rem;
+  --pw-text-base: 0.9375rem;
+  --pw-text-lg: 1.125rem;
+  --pw-text-xl: 1.5rem;
+  --pw-text-2xl: 2rem;
+
+  /* Spacing -- 4px base grid */
+  --pw-space-1: 4px;
+  --pw-space-2: 8px;
+  --pw-space-3: 12px;
+  --pw-space-4: 16px;
+  --pw-space-5: 24px;
+  --pw-space-6: 32px;
+  --pw-space-8: 48px;
+
+  /* Radii -- sharp, MoTeC/ATLAS-style, not rounded */
+  --pw-radius-sm: 2px;
+  --pw-radius-md: 4px;
+  --pw-radius-lg: 8px;
+
+  /* Shadows */
+  --pw-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --pw-shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  /* Z-index */
+  --pw-z-sidebar: 10;
+  --pw-z-header: 20;
+  --pw-z-overlay: 30;
+}

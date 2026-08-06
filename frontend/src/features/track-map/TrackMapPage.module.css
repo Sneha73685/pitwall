@@ -1,0 +1,5 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-4);
+}

@@ -1,7 +1,9 @@
 import type { LapComparisonResponse } from "../../../api/client";
+import { Card } from "../../../components/Card";
 import { TelemetryCharts } from "../../telemetry-charts/TelemetryCharts";
 import { COMPARISON_CHANNELS, useComparisonStore } from "../comparisonStore";
 import { toChannelSamples } from "./toChannelSamples";
+import styles from "./ChannelOverlayPanel.module.css";
 
 interface ChannelOverlayPanelProps {
   comparison: LapComparisonResponse;
@@ -29,15 +31,21 @@ export function ChannelOverlayPanel({ comparison }: ChannelOverlayPanelProps) {
   const samplesB = toChannelSamples(comparison.distance_m, comparison.channels, "b");
 
   return (
-    <div>
-      <fieldset>
-        <legend>Telemetry channels</legend>
+    <Card title="Telemetry overlay">
+      <fieldset className={styles.toggles}>
+        <legend className={styles.legend}>Telemetry channels</legend>
         {COMPARISON_CHANNELS.map((channel) => (
-          <label key={channel.key}>
+          <label
+            key={channel.key}
+            className={
+              visibleChannels.has(channel.key) ? `${styles.chip} ${styles.active}` : styles.chip
+            }
+          >
             <input
               type="checkbox"
               checked={visibleChannels.has(channel.key)}
               onChange={() => toggleChannel(channel.key)}
+              className={styles.checkbox}
             />
             {channel.label}
           </label>
@@ -48,6 +56,6 @@ export function ChannelOverlayPanel({ comparison }: ChannelOverlayPanelProps) {
         secondarySamples={samplesB}
         channels={[...visibleChannels]}
       />
-    </div>
+    </Card>
   );
 }

@@ -36,6 +36,8 @@ export function buildDeltaChartOption(comparison: LapComparisonResponse): EChart
 
   return {
     animation: false,
+    backgroundColor: "transparent",
+    textStyle: { color: "#90a0b3", fontFamily: "monospace" },
     grid: { left: 70, right: 20, top: 40, bottom: 50 },
     xAxis: {
       type: "value",
@@ -44,15 +46,24 @@ export function buildDeltaChartOption(comparison: LapComparisonResponse): EChart
       name: "Distance (m)",
       nameLocation: "middle",
       nameGap: 25,
+      axisLine: { lineStyle: { color: "#3a4453" } },
+      splitLine: { lineStyle: { color: "#232a35" } },
     },
     yAxis: {
       type: "value",
       name: "Delta (ms)",
       nameLocation: "middle",
       nameGap: 45,
+      axisLine: { lineStyle: { color: "#3a4453" } },
+      splitLine: { lineStyle: { color: "#232a35" } },
     },
-    legend: { data: ["Lap A ahead", "Lap B ahead"] },
-    tooltip: { trigger: "axis" },
+    legend: { data: ["Lap A ahead", "Lap B ahead"], textStyle: { color: "#90a0b3" } },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "#1a2029",
+      borderColor: "#3a4453",
+      textStyle: { color: "#e8edf3" },
+    },
     series: [
       {
         name: "Lap A ahead",
