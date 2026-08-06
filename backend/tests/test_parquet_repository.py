@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pandas as pd
+
 from app.repositories.parquet_repository import ParquetRepository
 
 
@@ -66,6 +68,67 @@ def test_list_laps_handles_missing_lap_time(session_cache_dir: Path) -> None:
 
     assert incomplete_lap.lap_time_seconds is None
     assert incomplete_lap.is_accurate is False
+
+
+def test_list_laps_round_trips_compound(session_cache_dir: Path) -> None:
+    """M10: compound is an additive column on laps.parquet -- round-trips
+    through ParquetRepository, and is None where the fixture has it as
+    None (VER's incomplete lap 2), not "None" (the string) or missing.
+    """
+    repo = ParquetRepository(session_cache_dir)
+
+    laps = repo.list_laps("2023_monza_race", driver_id="VER")
+    lec_laps = repo.list_laps("2023_monza_race", driver_id="LEC")
+
+    assert next(lap for lap in laps if lap.lap_number == 1).compound == "SOFT"
+    assert next(lap for lap in laps if lap.lap_number == 2).compound is None
+    assert lec_laps[0].compound == "MEDIUM"
+
+
+def test_list_laps_missing_compound_column_deserializes_to_none(tmp_path: Path) -> None:
+    """A pre-M10 laps.parquet has no `compound` column at all -- must
+    deserialize to None, not raise a KeyError (docs/m10-implementation-plan.md
+    Phase 4 "Testing required").
+    """
+    session_dir = tmp_path / "2022" / "silverstone" / "race"
+    session_dir.mkdir(parents=True)
+
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2022_silverstone_race",
+                "season": 2022,
+                "event_name": "British Grand Prix",
+                "round_number": 10,
+                "location": "Silverstone",
+                "country": "United Kingdom",
+                "session_type": "race",
+                "session_date": None,
+            }
+        ]
+    ).to_parquet(session_dir / "session.parquet", index=False)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2022_silverstone_race",
+                "driver_id": "VER",
+                "lap_number": 1,
+                "lap_time_seconds": 90.0,
+                "sector_1_seconds": 30.0,
+                "sector_2_seconds": 30.0,
+                "sector_3_seconds": 30.0,
+                "is_personal_best": True,
+                "is_accurate": True,
+                # deliberately no "compound" key/column at all
+            }
+        ]
+    ).to_parquet(session_dir / "laps.parquet", index=False)
+
+    repo = ParquetRepository(tmp_path)
+
+    laps = repo.list_laps("2022_silverstone_race")
+
+    assert laps[0].compound is None
 
 
 def test_get_telemetry_returns_samples_sorted_by_distance(session_cache_dir: Path) -> None:

@@ -63,6 +63,9 @@ class Lap(ApiModel):
     sector_3_seconds: float | None
     is_personal_best: bool
     is_accurate: bool
+    # Additive M10 field (docs/adr/0011-hybrid-storage-architecture.md):
+    # None for pre-M10 ingested sessions, or where FastF1 doesn't report it.
+    compound: str | None = None
 
 
 class TelemetrySample(ApiModel):
