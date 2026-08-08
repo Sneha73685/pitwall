@@ -198,8 +198,15 @@ class FakeRaceContextRepository(RaceContextRepository):
         self._stints_by_driver = stints_by_driver or {}
         self._pit_stops_by_session = pit_stops_by_session or {}
 
-    def list_stints(self, session_id: str, driver_id: str) -> list[Stint]:
-        return self._stints_by_driver.get((session_id, driver_id), [])
+    def list_stints(self, session_id: str, driver_id: str | None = None) -> list[Stint]:
+        if driver_id is not None:
+            return self._stints_by_driver.get((session_id, driver_id), [])
+        return [
+            stint
+            for (stint_session_id, _), stints in self._stints_by_driver.items()
+            if stint_session_id == session_id
+            for stint in stints
+        ]
 
     def list_pit_stops(self, session_id: str, driver_id: str | None = None) -> list[PitStop]:
         pit_stops = self._pit_stops_by_session.get(session_id, [])

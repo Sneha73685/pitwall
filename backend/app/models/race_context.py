@@ -10,13 +10,17 @@ docs/adr/0011-hybrid-storage-architecture.md for why this data lives in a
 second, separate repository rather than as an extension of
 `TelemetryRepository`.
 
-`session_id`/`driver_id` are dropped where the URL path already implies
-them, matching the existing convention (docs/api-model.md): `Stint` drops
-both (both are path params on `GET /sessions/{session_id}/drivers/{driver_id}/stints`);
-`PitStop` drops only `session_id`, keeping `driver_id`, since `driver_id` is
-an optional filter on `GET /sessions/{session_id}/pit-stops` and a response
-can span multiple drivers -- the same reason the existing `Lap` model keeps
-`driver_id` but drops `session_id`.
+`session_id` is dropped everywhere -- every route in this module is
+session-scoped by URL path. `driver_id` is kept on both models: `PitStop`
+always has, and `Stint` gained in M11 (docs/m11-design-review.md §6.1),
+`driver_id` because `RaceContextRepository.list_stints`/`list_pit_stops`
+both support an optional `driver_id` filter and a response can therefore
+span multiple drivers -- the same reason the existing `Lap` model keeps
+`driver_id` but drops `session_id`. On the existing single-driver
+`GET /sessions/{session_id}/drivers/{driver_id}/stints` route this is a
+redundant-but-harmless additive field (M10's `compound`-on-`Lap` precedent
+for "additive, non-breaking"); on M11's session-wide read it's required to
+tell one driver's stints apart from another's.
 """
 
 from app.models.telemetry import ApiModel
@@ -25,6 +29,7 @@ from app.models.telemetry import ApiModel
 class Stint(ApiModel):
     """One driver's one stint: a contiguous run of laps on one tyre set."""
 
+    driver_id: str
     stint_number: int
     compound: str
     start_lap: int

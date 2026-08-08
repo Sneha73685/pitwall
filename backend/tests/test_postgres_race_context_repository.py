@@ -101,6 +101,7 @@ def test_list_stints_returns_multiple_stints_ordered_by_stint_number(
     stints = repository.list_stints(SESSION_ID, "VER")
 
     assert [s.stint_number for s in stints] == [1, 2]
+    assert stints[0].driver_id == "VER"
     assert stints[0].compound == "SOFT"
     assert stints[0].start_lap == 1
     assert stints[0].end_lap == 17
@@ -161,6 +162,139 @@ def test_list_stints_only_returns_the_requested_driver(
 
     assert len(stints) == 1
     assert stints[0].compound == "SOFT"
+
+
+def test_list_stints_without_driver_filter_returns_stints_for_every_driver(
+    pool: ConnectionPool, repository: PostgresRaceContextRepository
+) -> None:
+    """docs/m11-design-review.md §6.1's resolved decision: `list_stints`
+    widened to an optional `driver_id`, mirroring `list_pit_stops`, rather
+    than a second method."""
+    _insert_stint(
+        pool,
+        session_id=SESSION_ID,
+        driver_id="VER",
+        stint_number=1,
+        compound="SOFT",
+        start_lap=1,
+        end_lap=17,
+        tyre_life_at_start=4,
+    )
+    _insert_stint(
+        pool,
+        session_id=SESSION_ID,
+        driver_id="HAM",
+        stint_number=1,
+        compound="MEDIUM",
+        start_lap=1,
+        end_lap=20,
+        tyre_life_at_start=2,
+    )
+
+    stints = repository.list_stints(SESSION_ID)
+
+    assert {s.driver_id for s in stints} == {"VER", "HAM"}
+    assert len(stints) == 2
+
+
+def test_list_stints_without_driver_filter_orders_by_driver_then_stint_number(
+    pool: ConnectionPool, repository: PostgresRaceContextRepository
+) -> None:
+    # Inserted out of order deliberately -- ORDER BY driver_id, stint_number
+    # must sort them, matching list_pit_stops's existing ordering convention.
+    _insert_stint(
+        pool,
+        session_id=SESSION_ID,
+        driver_id="HAM",
+        stint_number=2,
+        compound="HARD",
+        start_lap=21,
+        end_lap=40,
+        tyre_life_at_start=1,
+    )
+    _insert_stint(
+        pool,
+        session_id=SESSION_ID,
+        driver_id="HAM",
+        stint_number=1,
+        compound="MEDIUM",
+        start_lap=1,
+        end_lap=20,
+        tyre_life_at_start=2,
+    )
+    _insert_stint(
+        pool,
+        session_id=SESSION_ID,
+        driver_id="ALB",
+        stint_number=1,
+        compound="SOFT",
+        start_lap=1,
+        end_lap=15,
+        tyre_life_at_start=1,
+    )
+
+    stints = repository.list_stints(SESSION_ID)
+
+    assert [(s.driver_id, s.stint_number) for s in stints] == [
+        ("ALB", 1),
+        ("HAM", 1),
+        ("HAM", 2),
+    ]
+
+
+def test_list_stints_without_driver_filter_still_requires_the_requested_driver_when_given(
+    pool: ConnectionPool, repository: PostgresRaceContextRepository
+) -> None:
+    """Preserves existing per-driver behavior -- widening the parameter
+    must not change what a caller who still passes `driver_id` gets back."""
+    _insert_stint(
+        pool,
+        session_id=SESSION_ID,
+        driver_id="VER",
+        stint_number=1,
+        compound="SOFT",
+        start_lap=1,
+        end_lap=17,
+        tyre_life_at_start=4,
+    )
+    _insert_stint(
+        pool,
+        session_id=SESSION_ID,
+        driver_id="HAM",
+        stint_number=1,
+        compound="MEDIUM",
+        start_lap=1,
+        end_lap=20,
+        tyre_life_at_start=2,
+    )
+
+    stints = repository.list_stints(SESSION_ID, driver_id="VER")
+
+    assert len(stints) == 1
+    assert stints[0].driver_id == "VER"
+
+
+def test_list_stints_without_driver_filter_on_a_session_with_no_stints_returns_empty_list(
+    repository: PostgresRaceContextRepository,
+) -> None:
+    assert repository.list_stints(SESSION_ID) == []
+
+
+def test_list_stints_without_driver_filter_on_a_nonexistent_session_returns_empty_list(
+    pool: ConnectionPool, repository: PostgresRaceContextRepository
+) -> None:
+    _insert_stint(
+        pool,
+        session_id=SESSION_ID,
+        driver_id="VER",
+        stint_number=1,
+        compound="SOFT",
+        start_lap=1,
+        end_lap=17,
+        tyre_life_at_start=4,
+    )
+
+    assert repository.list_stints("2099_nonexistent_race") == []
 
 
 def test_list_pit_stops_without_filter_returns_all_drivers(

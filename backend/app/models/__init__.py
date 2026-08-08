@@ -22,6 +22,17 @@ from app.models.session_analytics import (
     SessionAnalyticsWarningCode,
 )
 from app.models.telemetry import Driver, Lap, Session, SessionType, TelemetrySample, TrackPoint
+from app.models.tyre_performance import (
+    CompoundAggregate,
+    CompoundLapIndexAggregate,
+    CompoundUsageCount,
+    DriverStintPaceResponse,
+    DriverStrategySummary,
+    RawLapTimeByCompound,
+    StintPace,
+    StintPaceLap,
+    TyrePerformanceResponse,
+)
 
 __all__ = [
     "Session",
@@ -43,4 +54,13 @@ __all__ = [
     "SessionAnalyticsWarningCode",
     "Stint",
     "PitStop",
+    "StintPaceLap",
+    "StintPace",
+    "DriverStintPaceResponse",
+    "DriverStrategySummary",
+    "CompoundUsageCount",
+    "CompoundAggregate",
+    "CompoundLapIndexAggregate",
+    "RawLapTimeByCompound",
+    "TyrePerformanceResponse",
 ]
