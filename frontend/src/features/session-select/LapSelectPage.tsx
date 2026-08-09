@@ -31,6 +31,9 @@ function formatSector(seconds: number | null): string {
  * driver-scoped, matching where the strategy route needs a driverId) and
  * an inline compound chip per lap, reusing race-context's compoundColor
  * (docs/m10-implementation-plan.md Phase 5).
+ *
+ * M11 Phase 4 adds "View Stint Pace" alongside it, for the same reason and
+ * at the same navigational tier (docs/m11-frontend-design-note.md §4/§22).
  */
 export function LapSelectPage() {
   const { sessionId, driverId } = useParams<{ sessionId: string; driverId: string }>();
@@ -92,6 +95,12 @@ export function LapSelectPage() {
         className={styles.strategyLink}
       >
         View Strategy
+      </Link>
+      <Link
+        to={`/sessions/${sessionId}/drivers/${driverId}/stint-pace`}
+        className={`${styles.strategyLink} ${styles.stintPaceLink}`}
+      >
+        View Stint Pace
       </Link>
       <ul className={styles.list}>
         {laps.map((lap) => (

@@ -1,11 +1,7 @@
-.strategy {
+.page {
   display: flex;
   flex-direction: column;
   gap: var(--pw-space-5);
-}
-
-.heading {
-  font-size: var(--pw-text-lg);
 }
 
 .headerRow {
@@ -16,6 +12,10 @@
   gap: var(--pw-space-3);
 }
 
+.heading {
+  font-size: var(--pw-text-lg);
+}
+
 .crossLink {
   color: var(--pw-accent);
   font-size: var(--pw-text-sm);
@@ -24,4 +24,11 @@
 
 .crossLink:hover {
   text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

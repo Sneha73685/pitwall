@@ -1,0 +1,27 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-4);
+}
+
+.heading {
+  font-size: var(--pw-text-lg);
+}
+
+.summary {
+  margin: 0;
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-sm);
+}
+
+.chartRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pw-space-4);
+}
+
+@media (max-width: 1024px) {
+  .chartRow {
+    grid-template-columns: 1fr;
+  }
+}

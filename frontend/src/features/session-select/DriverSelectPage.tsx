@@ -11,9 +11,11 @@ import styles from "./DriverSelectPage.module.css";
 
 /**
  * /sessions/:sessionId: lists a session's drivers, linking to its lap
- * selector. Also links to /sessions/:sessionId/analytics (M8) -- the
- * session-analytics entry point, same navigational tier as driver
- * selection rather than nested under it (docs/m8-design-review.md §1.1).
+ * selector. Also links to /sessions/:sessionId/analytics (M8) and
+ * /sessions/:sessionId/tyre-performance (M11 Phase 4) -- both session-wide
+ * entry points, same navigational tier as driver selection rather than
+ * nested under it (docs/m8-design-review.md §1.1,
+ * docs/m11-frontend-design-note.md §4/§22).
  */
 export function DriverSelectPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -47,9 +49,14 @@ export function DriverSelectPage() {
     <section>
       <div className={styles.headerRow}>
         <h2 className={styles.heading}>Select a driver</h2>
-        <Link to={`/sessions/${sessionId}/analytics`} className={styles.analyticsLink}>
-          View session analytics
-        </Link>
+        <div className={styles.headerLinks}>
+          <Link to={`/sessions/${sessionId}/analytics`} className={styles.analyticsLink}>
+            View session analytics
+          </Link>
+          <Link to={`/sessions/${sessionId}/tyre-performance`} className={styles.analyticsLink}>
+            View tyre performance
+          </Link>
+        </div>
       </div>
       <ul className={styles.grid}>
         {drivers.map((driver) => (

@@ -15,6 +15,10 @@
   text-decoration: underline;
 }
 
+.stintPaceLink {
+  margin-left: var(--pw-space-3);
+}
+
 .list {
   display: flex;
   flex-direction: column;

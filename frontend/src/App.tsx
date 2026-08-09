@@ -10,6 +10,8 @@ import { DriverSelectPage } from "./features/session-select/DriverSelectPage";
 import { LapSelectPage } from "./features/session-select/LapSelectPage";
 import { SessionListPage } from "./features/session-select/SessionListPage";
 import { TrackMapPage } from "./features/track-map/TrackMapPage";
+import { StintPacePage } from "./features/tyre-performance/StintPacePage";
+import { TyrePerformancePage } from "./features/tyre-performance/TyrePerformancePage";
 import { useSelectionStore } from "./state/selectionStore";
 import styles from "./App.module.css";
 
@@ -25,6 +27,13 @@ type BackendStatus = "checking" | "online" | "offline";
  * "/sessions/:sessionId/drivers/:driverId/strategy" is driver-scoped, at
  * the same route depth as the track-map route, since stints are fetched
  * per driver (docs/m10-implementation-plan.md Phase 5).
+ *
+ * M11 Phase 4 adds "/sessions/:sessionId/tyre-performance" (session-wide,
+ * same depth as "/analytics") and
+ * "/sessions/:sessionId/drivers/:driverId/stint-pace" (driver-scoped, same
+ * depth as "/strategy") -- descriptive tyre/stint analytics, following the
+ * exact route-depth conventions already established by M8/M10
+ * (docs/m11-frontend-design-note.md §5).
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -74,6 +83,11 @@ function App() {
         <Route path="/sessions/:sessionId/compare" element={<ComparisonPage />} />
         <Route path="/sessions/:sessionId/analytics" element={<SessionAnalyticsPage />} />
         <Route path="/sessions/:sessionId/drivers/:driverId/strategy" element={<StrategyPage />} />
+        <Route path="/sessions/:sessionId/tyre-performance" element={<TyrePerformancePage />} />
+        <Route
+          path="/sessions/:sessionId/drivers/:driverId/stint-pace"
+          element={<StintPacePage />}
+        />
       </Routes>
     </AppShell>
   );

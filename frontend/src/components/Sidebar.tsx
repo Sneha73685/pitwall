@@ -5,8 +5,8 @@ import styles from "./Sidebar.module.css";
 /**
  * Contextual navigation trail driven entirely by the existing
  * selectionStore (read-only -- no new store state per ADR-0007) so users
- * can jump between Sessions/Drivers/Laps/Track Map/Compare/Analytics for
- * their current session without losing context.
+ * can jump between Sessions/Drivers/Laps/Track Map/Compare/Analytics/Tyre
+ * Performance for their current session without losing context.
  */
 export function Sidebar() {
   const sessionId = useSelectionStore((state) => state.sessionId);
@@ -44,6 +44,9 @@ export function Sidebar() {
           </NavLink>
           <NavLink to={`/sessions/${sessionId}/analytics`} className={linkClass}>
             Session Analytics
+          </NavLink>
+          <NavLink to={`/sessions/${sessionId}/tyre-performance`} className={linkClass}>
+            Tyre Performance
           </NavLink>
         </>
       )}
