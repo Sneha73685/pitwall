@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M5 — Telemetry channel charts — complete.**
+**Current milestone: M11 — Tyre & stint performance analytics (descriptive) — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -39,13 +39,17 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M3 | Frontend shell | ✅ Done |
 | M4 | Track map | ✅ Done |
 | M5 | Telemetry channel charts | ✅ Done |
-| M6 | Lap/sector comparison + delta graph | ⏭ Next |
-| M7 | Polish & release (tag `v1.0.0`) | Planned |
+| M6 | Lap/sector comparison + delta graph | ✅ Done |
+| M7 | Polish & release (V1) | ✅ Done |
+| M8 | Driver performance & session analytics | ✅ Done |
+| M9 | Professional telemetry UI (frontend redesign) | ✅ Done |
+| M10 | Hybrid Parquet + PostgreSQL storage (stints, pit stops) | ✅ Done |
+| M11 | Tyre & stint performance analytics (descriptive) | ✅ Done |
 
-See `docs/prd.md` §3 for the full roadmap and `docs/releases/` for a summary of each completed
-milestone (currently: [`m1-summary.md`](docs/releases/m1-summary.md),
-[`m2-summary.md`](docs/releases/m2-summary.md), [`m3-summary.md`](docs/releases/m3-summary.md),
-[`m4-summary.md`](docs/releases/m4-summary.md), [`m5-summary.md`](docs/releases/m5-summary.md)).
+M8–M11 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7); each has its own
+design review under `docs/` (`m8-design-review.md` onward). No milestone beyond M11 is scheduled
+yet. See `docs/releases/` for per-milestone summaries (currently covering M1–M5; later milestones'
+records are their own design-review/implementation-plan docs plus `CHANGELOG.md`).
 
 ## Current capabilities
 
@@ -86,6 +90,16 @@ M10 adds tyre-strategy viewing, backed by a second store (PostgreSQL, alongside 
 its tyre compound, and a "View Strategy" link opens a per-driver stint timeline and pit-stop list at
 `/sessions/:sessionId/drivers/:driverId/strategy`. Requires PostgreSQL running and migrated once
 before first ingest — see [Quick start](#quick-start) and [Docker](#docker) below.
+
+M11 adds **descriptive** tyre & stint performance analytics on top of that — no new store, no new
+dependency: a session-wide **Tyre Performance** dashboard (`/sessions/:sessionId/tyre-performance`
+— strategy summary, compound usage, per-compound pace and lap-time-by-tyre-age charts, a raw
+driver/compound comparison, pit-lane time) and a driver-scoped **Stint Pace** page
+(`/sessions/:sessionId/drivers/:driverId/stint-pace` — a segmented lap-time trace with in-lap/
+out-lap markers, per-stint consistency, and a full lap table), reachable from the driver/lap
+selectors, the sidebar, and the existing Strategy page. These are raw values, medians, and quartiles
+only — never a fitted degradation curve, ranking, or performance verdict; see
+[`docs/m11-design-review.md`](docs/m11-design-review.md) for the audit behind that boundary.
 
 ## Roadmap
 

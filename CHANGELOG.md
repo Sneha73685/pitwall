@@ -10,6 +10,40 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Work in progress toward M6 — Lap/sector comparison + delta graph.
 
+## M11 — Tyre & Stint Performance Analytics (Descriptive) — 2026-08-10
+
+See `docs/m11-design-review.md`, `docs/m11-implementation-plan.md`, and
+`docs/m11-frontend-design-note.md` for the full design and phased implementation record.
+
+### Added
+
+- `app/services/tyre_performance/` — PitWall's first backend domain-logic package to read from both
+  `TelemetryRepository` (Parquet) and `RaceContextRepository` (PostgreSQL) in the same request,
+  joined in application code, not across storage engines: stint/lap joining, in-lap/out-lap boundary
+  detection, trend eligibility, per-stint pace consistency, per-compound aggregation, raw
+  driver/compound comparison, and strategy summaries.
+- Two new read endpoints: `GET /sessions/{session_id}/drivers/{driver_id}/stint-pace` (one driver's
+  per-stint raw lap-time trace, boundary-lap flags, and consistency figures) and
+  `GET /sessions/{session_id}/tyre-performance` (session-wide strategy summaries, compound usage,
+  per-compound pace aggregates, and raw per-driver/per-compound lap-time comparison).
+- `RaceContextRepository.list_stints` widened to an optional `driver_id` filter, mirroring
+  `list_pit_stops`'s existing shape; `Stint` gains an additive `driver_id` field.
+- Frontend: a session-wide `TyrePerformancePage` (strategy summary, compound-usage table,
+  per-compound pace boxplot and lap-time-by-tyre-age scatter, raw driver/compound comparison chart,
+  pit-lane time summary) and a driver-scoped `StintPacePage` (reused stint timeline, segmented
+  lap-time trace with boundary-lap markers, per-stint consistency table, per-lap table), reachable
+  from `DriverSelectPage`, `LapSelectPage`, `StrategyPage`, and a new sidebar link.
+- This is **descriptive analytics only** — raw values, medians, and quartiles. No fitted degradation
+  curve, regression, slope/coefficient, driver ranking, fuel correction, or safety-car/weather/
+  traffic adjustment is computed or implied anywhere in the API or UI (`docs/m11-design-review.md`
+  §4, §8).
+
+### Changed
+
+- None to any existing endpoint contract beyond the additive `Stint.driver_id` field — the existing
+  per-driver `/stints` route, `TelemetryRepository`, and every pre-existing route are otherwise
+  untouched.
+
 ## M10 — Hybrid Parquet + PostgreSQL Storage — 2026-08-07
 
 See `docs/m10-design-review.md`, `docs/adr/0011-hybrid-storage-architecture.md`, and

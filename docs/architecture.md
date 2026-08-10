@@ -65,6 +65,8 @@ This rule exists specifically so that changing a data provider or a storage engi
 
 Both interfaces are intentionally minimal today — they grow when a second real implementation forces them to, not in anticipation of one.
 
+**Domain-logic services** (backend layer, `app/services/`): business logic beyond a simple repository read. `app/services/session_analytics/` (M8) computes descriptive per-driver/session statistics from `TelemetryRepository` data alone. `app/services/tyre_performance/` (M11) is the first such package to read from **both** repositories in the same request — it joins `Lap`/`TelemetrySample` (Parquet, via `TelemetryRepository`) against `Stint`/`PitStop` (PostgreSQL, via `RaceContextRepository`) entirely in application code, over already-typed Pydantic objects. This is not a database-level join and does not introduce a cross-engine foreign key — ADR-0011's "no FK from Postgres to a Parquet file" constraint is about the storage layer, and remains untouched; the two repositories are still queried independently, each ignorant of the other. It backs two endpoints: `GET /sessions/{session_id}/drivers/{driver_id}/stint-pace` (one driver's per-stint raw lap-time series) and `GET /sessions/{session_id}/tyre-performance` (session-wide compound/strategy aggregates) — descriptive statistics only, see `docs/api-model.md` for response shapes and `docs/m11-design-review.md` for why no fitted/predictive metric is in scope.
+
 The concrete normalized schema `TelemetryProvider` implementations produce — `Session`, `Driver`, `Lap`, `TelemetrySample`, `TrackPoint` — is defined in `docs/data-model.md`, along with the Parquet cache layout `TelemetryRepository` will read in M2.
 
 ## 4. Technology Stack
@@ -121,7 +123,7 @@ pitwall/
 │   │   ├── api/                 # route modules per resource
 │   │   ├── models/              # Pydantic schemas (the anti-corruption boundary)
 │   │   ├── repositories/        # TelemetryRepository interface + ParquetRepository
-│   │   └── services/
+│   │   └── services/            # domain logic (session_analytics/, tyre_performance/)
 │   └── tests/
 ├── frontend/                  # React + TypeScript app
 │   ├── package.json

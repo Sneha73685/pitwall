@@ -1,11 +1,14 @@
 # PitWall — M11 Frontend Design Note: Tyre & Stint Performance Analytics (Phase 4)
 
-**Status:** Design only — no implementation. This is the frontend design note
-`docs/m11-design-review.md` §7 and `docs/m11-implementation-plan.md` Phase 4 both flagged as a
-prerequisite ("a dedicated frontend design note should precede this phase's implementation, the
-same sequencing M8 → M9 and M10 → (its own deferred frontend note) already used"). Phase 1
-(domain logic), Phase 2 (backend API), and Phase 3 (frontend data layer/hooks) are complete,
-approved, and pushed. This document is the Phase 4 implementation contract.
+**Status:** Design complete; Phase 4 implementation shipped matching this contract without
+modification — see `docs/m11-implementation-plan.md` Phase 6 for overall M11 documentation status.
+This document is preserved as the frontend design record, not rewritten as an implementation report.
+This is the frontend design note `docs/m11-design-review.md` §7 and
+`docs/m11-implementation-plan.md` Phase 4 both flagged as a prerequisite ("a dedicated frontend
+design note should precede this phase's implementation, the same sequencing M8 → M9 and M10 →
+(its own deferred frontend note) already used"). Phase 1 (domain logic), Phase 2 (backend API), and
+Phase 3 (frontend data layer/hooks) are complete, approved, and pushed. This document is the Phase 4
+implementation contract.
 
 **Author's framing:** senior frontend design review, ready for implementation sign-off — matching
 the M6/M8/M10/M11-backend precedent of a design document before code.

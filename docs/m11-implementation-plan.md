@@ -1,8 +1,11 @@
 # PitWall — M11 Implementation Plan: Tyre & Stint Performance Analytics (Descriptive)
 
-**Status:** Planning document only — no implementation has started. Companion to
-`docs/m11-design-review.md`, which this plan does not re-argue; read that document first for the
-scope rationale, the A/B/C/D metric audit, and the non-goals this plan is bound by.
+**Status:** Phases 0–6 are all complete. Phases 1–5 (domain logic, backend API, frontend data layer,
+UI, and tests/integration) were implemented and verified as planned below — phase descriptions are
+left as originally written, not rewritten after the fact. Phase 6 (documentation) is recorded as
+complete at the end of this document. Companion to `docs/m11-design-review.md`, which this plan does
+not re-argue; read that document first for the scope rationale, the A/B/C/D metric audit, and the
+non-goals this plan is bound by.
 
 Phased per the established project pattern (M8/M10 implementation plans). Each phase lists intent,
 inputs, and open decisions to resolve *when that phase actually starts* — this document does not
@@ -37,7 +40,7 @@ load-bearing (each is cross-referenced below).
 
 ---
 
-## Phase 1 — Domain Logic
+## Phase 1 — Domain Logic (complete)
 
 **Goal:** pure, storage-agnostic functions that join and filter `Lap`/`Stint`/`PitStop` data into
 the shapes M11's metrics need — no FastAPI, no repository changes, no database access. Mirrors
@@ -111,7 +114,7 @@ service layer underneath, same as `session_analytics/` backing two routes today)
 
 ---
 
-## Phase 2 — Backend API
+## Phase 2 — Backend API (complete)
 
 **Goal:** expose Phase 1's domain logic through typed endpoints, plus the one `RaceContextRepository`
 extension the design review identified (§6.1).
@@ -183,7 +186,7 @@ Parquet or Postgres needed), following `test_race_context_route.py`'s existing p
 
 ---
 
-## Phase 3 — Frontend Data Layer
+## Phase 3 — Frontend Data Layer (complete)
 
 **Goal:** typed API client coverage and data-fetching hooks for the new endpoints — no UI yet.
 
@@ -200,7 +203,7 @@ pattern.
 
 ---
 
-## Phase 4 — Visualization / UI
+## Phase 4 — Visualization / UI (complete)
 
 **Goal:** render the descriptive views design review §5.1 and §7 describe. This phase's exact
 component breakdown is intentionally left light here — per the design review's own posture (§7,
@@ -230,7 +233,7 @@ exact test list deferred to the frontend design note this phase should start wit
 
 ---
 
-## Phase 5 — Tests / Integration
+## Phase 5 — Tests / Integration (complete)
 
 **Goal:** end-to-end confidence that Phase 1–4's pieces compose correctly, beyond each phase's own
 unit tests.
@@ -254,27 +257,37 @@ unit tests.
 
 ---
 
-## Phase 6 — Documentation / Release
+## Phase 6 — Documentation / Release (complete)
 
-- `docs/architecture.md`: add the `tyre_performance` service package to the repo-structure listing
-  (§5) if it materially changes the annotated layout; note in §3 that this is the first
-  domain-logic layer reading from both repositories at once (design review §6.2).
-- `docs/api-model.md`: document the two new endpoints, their response models, and the
-  `RaceContextRepository` interface extension — following the exact section format M10's addition
-  to this document already used ("M10 addition: stints and pit stops" → "M11 addition: tyre
-  performance").
-- `docs/data-model.md`: no changes expected — M11 introduces no new stored fields, only derived
-  computation over existing ones (confirm this holds once Phase 1/2 are actually built; if any new
-  persisted field turns out to be needed, that's a signal Phase 1 quietly grew scope beyond what the
-  design review approved, and should be caught here, not shipped silently).
-- `CHANGELOG.md`: new `## M11 — Tyre & Stint Performance Analytics` entry, following the exact
-  structure of the M10 entry.
-- `README.md`: update the milestone status table (currently stale at "M5" per the repo's actual
-  git history through M10 — worth fixing as part of this pass regardless of M11, since an accurate
-  status table is part of every milestone's Definition of Done, not a new debt M11 introduces).
-- Confirm whether design review §11's flagged backlog candidate (a future, narrowly-scoped
-  track-status-only ingestion milestone) gets added to `docs/backlog.md` — a documentation
-  decision, not implementation.
+- `docs/architecture.md`: added the `tyre_performance` service package to the repo-structure listing
+  (§5) and a new paragraph in §3 documenting it as the first domain-logic layer reading from both
+  repositories at once, joined in application code (design review §6.2) — confirmed this does not
+  touch ADR-0011's cross-engine-FK constraint.
+- `docs/api-model.md`: documented both new endpoints and their actual shipped response models
+  (`DriverStintPaceResponse`/`StintPaceLap`/`StintPace`, `TyrePerformanceResponse` and its five
+  nested models), plus the `RaceContextRepository.list_stints` widening and `Stint.driver_id`
+  addition — following the exact section format M10's addition already used ("M10 addition: stints
+  and pit stops" → "M11 addition: tyre & stint performance analytics").
+- `docs/data-model.md`: confirmed Phase 1/2 introduced no new persisted field — a short "M11: no new
+  persisted schema" section was added, not a new entity.
+- `CHANGELOG.md`: added `## M11 — Tyre & Stint Performance Analytics (Descriptive)`, matching the
+  M10 entry's structure and tone; explicitly not described as degradation modeling.
+- `README.md`: fixed the stale "Current milestone: M5" status line and extended the milestone table
+  through M11 (M6–M10 had also shipped without the table being updated); added an M11 capabilities
+  paragraph alongside the existing M10 one.
+- `docs/backlog.md`: **not** updated. Its stated scope is code-level technical debt found during an
+  audit ("Code-level improvements... deliberately not implemented"), not product/milestone
+  proposals — design review §11's flagged candidate (a narrowly-scoped track-status-ingestion
+  milestone) is a roadmap item, the same category as `docs/prd.md` §5's existing "Intentionally
+  Deferred" table (which already lists track status/weather/position under V3). No existing backlog
+  convention fits a future-milestone candidate, so nothing was added there; the candidate remains
+  recorded in the design review's own Open Questions (§ at the end of that document) as this plan
+  originally anticipated it might.
+- Repo-wide consistency audit: searched for stale M10/M11/M5 milestone references, endpoint lists
+  missing the two new routes, and architecture descriptions missing `tyre_performance`; fixed the
+  ones in scope (the six files above). `docs/prd.md`'s milestone roadmap (§3) and `docs/releases/`
+  still stop at M7/M5 respectively — pre-existing gaps from M8–M10 that this pass did not expand
+  into, per CLAUDE.md's scope discipline (not M11-specific staleness).
 
 ---
 

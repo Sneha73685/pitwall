@@ -1,6 +1,9 @@
 # PitWall — M11 Design Review: Tyre & Stint Performance Analytics (Descriptive)
 
-**Status:** Design only — no implementation. Phase 0 (audit) is complete; Phase 0.1 (design
+**Status:** Design complete; implementation and documentation shipped matching this design without
+modification — see `docs/m11-implementation-plan.md` (Phases 1–6, all complete) for the
+phase-by-phase record. This document is preserved as the original design/audit record and is not
+rewritten to reflect implementation detail. Phase 0 (audit) is complete; Phase 0.1 (design
 resolution over the four open items Phase 0 left unresolved) is also complete; this document is
 their combined output.
 **Baseline:** M10 complete and merged (`docs/m10-design-review.md`, ADR-0011) — compound-per-lap,
