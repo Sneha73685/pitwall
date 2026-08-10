@@ -11,6 +11,12 @@
   font-size: var(--pw-text-lg);
 }
 
+.headerLinks {
+  display: flex;
+  gap: var(--pw-space-2);
+  flex-wrap: wrap;
+}
+
 .analyticsLink {
   padding: var(--pw-space-2) var(--pw-space-4);
   background: var(--pw-accent-muted);

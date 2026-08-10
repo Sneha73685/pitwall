@@ -140,3 +140,12 @@ of accumulating duplicates on re-ingestion. No cross-engine foreign key back to 
 integrity between the two stores is a convention (matching `session_id`/`driver_id` strings), enforced
 by ingestion writing both in the same run, not by a database constraint. Full rationale in
 ADR-0011.
+
+## M11: no new persisted schema
+
+M11 (tyre & stint performance analytics) introduces no new Parquet column, no new PostgreSQL table
+or column, and no migration. It reads the `Lap`/`Stint`/`PitStop` data already defined above and
+derives descriptive statistics (stint-scoped lap joins, in/out-lap flags, per-compound aggregates)
+entirely in backend application code (`app/services/tyre_performance/`) — nothing new is written to
+either store. See `docs/api-model.md`'s M11 addition for the derived API response shapes this
+produces.

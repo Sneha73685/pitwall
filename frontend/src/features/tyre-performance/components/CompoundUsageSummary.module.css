@@ -1,0 +1,40 @@
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  font-size: var(--pw-text-sm);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--pw-space-2) var(--pw-space-3);
+  border-bottom: 1px solid var(--pw-border-strong);
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table td {
+  padding: var(--pw-space-2) var(--pw-space-3);
+  border-bottom: 1px solid var(--pw-border-subtle);
+}
+
+.table tbody tr:hover {
+  background: var(--pw-bg-surface-raised);
+}
+
+.mono {
+  font-family: var(--pw-font-mono);
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--pw-radius-sm);
+  margin-right: var(--pw-space-2);
+  vertical-align: middle;
+}

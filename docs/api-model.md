@@ -54,6 +54,60 @@ of extending `TelemetryRepository`/`ParquetRepository`.
 existing `GET /sessions/{session_id}/laps` response — read from Parquet (`laps.parquet`'s new
 `compound` column), not Postgres.
 
+## M11 addition: tyre & stint performance analytics
+
+Two new, session-scoped read endpoints, both descriptive-only (no fitted trend, degradation rate,
+ranking, fuel correction, or traffic/weather adjustment — see `docs/m11-design-review.md` §4/§8 for
+the full non-goal list this boundary enforces):
+
+`GET /sessions/{session_id}/drivers/{driver_id}/stint-pace` returns `DriverStintPaceResponse`
+(`session_id`, `driver_id`, `laps: list[StintPaceLap]`, `stints: list[StintPace]`). `StintPaceLap`
+is one raw lap annotated with its stint context — `lap_number`, `lap_time_seconds`, `compound`,
+`stint_number`, `lap_in_stint_index`, plus `is_valid`/`is_in_lap`/`is_out_lap`/`is_trend_eligible`
+flags. Every lap the driver had appears here, including in-laps, out-laps, and invalid laps —
+excluded observations are flagged, never omitted. `StintPace` is one stint's identity plus its
+trend-eligible-lap consistency summary — `stint_number`, `compound`, `start_lap`, `end_lap`,
+`tyre_life_at_start`, `eligible_lap_count`, `consistency_ms`, `consistency_cv` (the latter two
+reusing M8's `consistency_ms`/`consistency_cv` shape, `None` below 2 eligible laps). Every stint
+appears here, even one with zero eligible laps (e.g. a one-lap stint that is itself the pit-in lap).
+
+`GET /sessions/{session_id}/tyre-performance` returns `TyrePerformanceResponse` (`session_id`,
+`driver_strategies`, `compound_usage`, `compound_aggregates`, `compound_lap_index_aggregates`,
+`raw_lap_times_by_compound`) — a session-wide, all-drivers view:
+
+- **`DriverStrategySummary`** (`driver_id`, `stint_count`, `compound_sequence`, `stint_lengths`) —
+  one driver's factual stint sequence, never a judgement of whether it was a good strategy.
+- **`CompoundUsageCount`** (`compound`, `stint_count`, `driver_count`, `total_laps`) — session-wide
+  usage counts per compound, no ranking of compounds against each other.
+- **`CompoundAggregate`** (`compound`, `lap_count`, `driver_count`, `lap_times_ms`,
+  `median_lap_time_ms`, `p25_lap_time_ms`, `p75_lap_time_ms`) — one compound's pooled raw lap times
+  plus standard descriptive statistics; never a fitted parameter.
+- **`CompoundLapIndexAggregate`** (`compound`, `lap_in_stint_index`, `lap_count`, `lap_times_ms`,
+  `median_lap_time_ms`) — one compound's trend-eligible laps at one lap-in-stint index, pooled
+  across every driver/stint that reached it; no curve is fitted across index values.
+- **`RawLapTimeByCompound`** (`driver_id`, `compound`, `lap_count`, `lap_times_ms`,
+  `lap_in_stint_indices`, `median_lap_time_ms`) — one driver's raw lap times on one compound within
+  this session, deliberately **not** a "driver pace comparison" or ranking: no `rank`, `position`,
+  `faster_than`, `pace_score`, or `degradation_rate` field exists, or ever will, on this model. Raw
+  lap-time differences between drivers are confounded by fuel load, track position/traffic, and
+  driver/car differences that this data model does not control for (`docs/m11-design-review.md`
+  §4.3).
+
+Both routes check session existence via the existing `TelemetryRepository` dependency (404 if the
+session doesn't exist); an existing session with no strategy data yet returns `200` with
+empty/zero-valued collections, not `404` (the same ADR-0011 "absence isn't an error" convention M10
+established). Read from **both** `TelemetryRepository` (Parquet) and `RaceContextRepository`
+(PostgreSQL) at once — the first PitWall routes to do so for actual data, not just an existence
+check — joined in `app/services/tyre_performance/` application code, never across storage engines
+(`docs/architecture.md` §3, `docs/m11-design-review.md` §6.2).
+
+`RaceContextRepository.list_stints` widens from a required `driver_id` to `list_stints(session_id,
+driver_id: str | None = None)`, mirroring `list_pit_stops`'s existing optional-filter shape rather
+than adding a second method. `Stint` gains one new field, `driver_id: str`, additive and
+non-breaking on the existing `GET /sessions/{session_id}/drivers/{driver_id}/stints` response — the
+existing per-driver route is unaffected (still passes `driver_id` explicitly); the field is only
+required to tell drivers' stints apart on M11's session-wide read.
+
 ## Why the backend re-reads Parquet directly (not via the pipeline package)
 
 `TelemetryRepository` (ADR-0006) is defined by the API's own read patterns, not by importing
@@ -135,6 +189,8 @@ value on every list item for no reason — a plain response-shaping choice, not 
 | GET | `/sessions/{session_id}/track` (M4) | `list[TrackPoint]` | 404 if session doesn't exist; empty list if no track points were derived |
 | GET | `/sessions/{session_id}/drivers/{driver_id}/stints` (M10) | `list[Stint]` | 404 if session doesn't exist; empty list if the driver has no stint data yet |
 | GET | `/sessions/{session_id}/pit-stops?driver_id=` (M10) | `list[PitStop]` | 404 if session doesn't exist; empty list if there's no matching pit-stop data yet |
+| GET | `/sessions/{session_id}/drivers/{driver_id}/stint-pace` (M11) | `DriverStintPaceResponse` | 404 if session doesn't exist; empty `laps`/`stints` if the driver has no stint data yet |
+| GET | `/sessions/{session_id}/tyre-performance` (M11) | `TyrePerformanceResponse` | 404 if session doesn't exist; empty/zero-valued collections if the session has no strategy data yet |
 
 `driver_id` and `lap_number` are both required query parameters on `/telemetry` — fetching a whole
 session's telemetry in one response isn't a V1 read pattern (PRD's success criteria and

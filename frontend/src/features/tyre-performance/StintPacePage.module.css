@@ -1,0 +1,34 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-5);
+}
+
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--pw-space-3);
+}
+
+.heading {
+  font-size: var(--pw-text-lg);
+}
+
+.crossLink {
+  color: var(--pw-accent);
+  font-size: var(--pw-text-sm);
+  text-decoration: none;
+}
+
+.crossLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

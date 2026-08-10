@@ -30,6 +30,7 @@ def race_context_client(tmp_path: Path) -> Iterator[TestClient]:
         stints_by_driver={
             (SESSION_ID, "VER"): [
                 Stint(
+                    driver_id="VER",
                     stint_number=1,
                     compound="SOFT",
                     start_lap=1,
@@ -37,6 +38,7 @@ def race_context_client(tmp_path: Path) -> Iterator[TestClient]:
                     tyre_life_at_start=4,
                 ),
                 Stint(
+                    driver_id="VER",
                     stint_number=2,
                     compound="HARD",
                     start_lap=18,

@@ -22,8 +22,11 @@ class RaceContextRepository(ABC):
     """Reads relational race-strategy data (stints, pit stops) for the API to serve."""
 
     @abstractmethod
-    def list_stints(self, session_id: str, driver_id: str) -> list[Stint]:
-        """Return one driver's stints for one session, ordered by stint number."""
+    def list_stints(self, session_id: str, driver_id: str | None = None) -> list[Stint]:
+        """Return stints for one session, optionally filtered to one driver,
+        ordered by driver then stint number (docs/m11-design-review.md §6.1
+        -- mirrors `list_pit_stops`'s existing optional-filter shape rather
+        than a second method)."""
         raise NotImplementedError
 
     @abstractmethod

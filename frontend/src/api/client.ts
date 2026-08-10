@@ -293,3 +293,104 @@ export async function getPitStops(sessionId: string, driverId?: string): Promise
   const query = driverId ? `?driver_id=${encodeURIComponent(driverId)}` : "";
   return getJson<PitStop[]>(`/sessions/${encodeURIComponent(sessionId)}/pit-stops${query}`);
 }
+
+export interface StintPaceLap {
+  lap_number: number;
+  lap_time_seconds: number | null;
+  compound: string | null;
+  stint_number: number | null;
+  lap_in_stint_index: number | null;
+  is_valid: boolean;
+  is_in_lap: boolean;
+  is_out_lap: boolean;
+  is_trend_eligible: boolean;
+}
+
+export interface StintPace {
+  stint_number: number;
+  compound: string;
+  start_lap: number;
+  end_lap: number;
+  tyre_life_at_start: number | null;
+  eligible_lap_count: number;
+  consistency_ms: number | null;
+  consistency_cv: number | null;
+}
+
+export interface DriverStintPaceResponse {
+  session_id: string;
+  driver_id: string;
+  laps: StintPaceLap[];
+  stints: StintPace[];
+}
+
+export interface DriverStrategySummary {
+  driver_id: string;
+  stint_count: number;
+  compound_sequence: string[];
+  stint_lengths: number[];
+}
+
+export interface CompoundUsageCount {
+  compound: string;
+  stint_count: number;
+  driver_count: number;
+  total_laps: number;
+}
+
+export interface CompoundAggregate {
+  compound: string;
+  lap_count: number;
+  driver_count: number;
+  lap_times_ms: number[];
+  median_lap_time_ms: number | null;
+  p25_lap_time_ms: number | null;
+  p75_lap_time_ms: number | null;
+}
+
+export interface CompoundLapIndexAggregate {
+  compound: string;
+  lap_in_stint_index: number;
+  lap_count: number;
+  lap_times_ms: number[];
+  median_lap_time_ms: number | null;
+}
+
+export interface RawLapTimeByCompound {
+  driver_id: string;
+  compound: string;
+  lap_count: number;
+  lap_times_ms: number[];
+  lap_in_stint_indices: number[];
+  median_lap_time_ms: number | null;
+}
+
+export interface TyrePerformanceResponse {
+  session_id: string;
+  driver_strategies: DriverStrategySummary[];
+  compound_usage: CompoundUsageCount[];
+  compound_aggregates: CompoundAggregate[];
+  compound_lap_index_aggregates: CompoundLapIndexAggregate[];
+  raw_lap_times_by_compound: RawLapTimeByCompound[];
+}
+
+/**
+ * M11: descriptive tyre/stint performance analytics. Added here, sitting
+ * alongside getStints/getPitStops, not a new features/tyre-performance/api/
+ * module -- same precedent M8/M10 recorded for their own endpoints
+ * (docs/m11-implementation-plan.md Phase 3).
+ */
+export async function getDriverStintPace(
+  sessionId: string,
+  driverId: string,
+): Promise<DriverStintPaceResponse> {
+  return getJson<DriverStintPaceResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/drivers/${encodeURIComponent(driverId)}/stint-pace`,
+  );
+}
+
+export async function getTyrePerformance(sessionId: string): Promise<TyrePerformanceResponse> {
+  return getJson<TyrePerformanceResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/tyre-performance`,
+  );
+}

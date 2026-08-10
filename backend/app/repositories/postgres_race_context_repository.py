@@ -19,10 +19,11 @@ from app.models.race_context import PitStop, Stint
 from app.repositories.race_context import RaceContextRepository
 
 _LIST_STINTS_SQL = """
-    SELECT stint_number, compound, start_lap, end_lap, tyre_life_at_start
+    SELECT driver_id, stint_number, compound, start_lap, end_lap, tyre_life_at_start
     FROM stints
-    WHERE session_id = %(session_id)s AND driver_id = %(driver_id)s
-    ORDER BY stint_number
+    WHERE session_id = %(session_id)s
+      AND (%(driver_id)s::text IS NULL OR driver_id = %(driver_id)s::text)
+    ORDER BY driver_id, stint_number
 """
 
 _LIST_PIT_STOPS_SQL = """
@@ -36,6 +37,7 @@ _LIST_PIT_STOPS_SQL = """
 
 def _stint_from_row(row: DictRow) -> Stint:
     return Stint(
+        driver_id=row["driver_id"],
         stint_number=row["stint_number"],
         compound=row["compound"],
         start_lap=row["start_lap"],
@@ -59,7 +61,7 @@ class PostgresRaceContextRepository(RaceContextRepository):
     def __init__(self, pool: ConnectionPool) -> None:
         self._pool = pool
 
-    def list_stints(self, session_id: str, driver_id: str) -> list[Stint]:
+    def list_stints(self, session_id: str, driver_id: str | None = None) -> list[Stint]:
         with self._pool.connection() as conn, conn.cursor(row_factory=dict_row) as cur:
             cur.execute(_LIST_STINTS_SQL, {"session_id": session_id, "driver_id": driver_id})
             return [_stint_from_row(row) for row in cur.fetchall()]

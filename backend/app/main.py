@@ -2,8 +2,9 @@
 
 Wires the FastAPI app: CORS, health check, and the read endpoints for
 sessions/drivers/laps/telemetry/track/laps-compare/session-analytics/
-race-context (see docs/api-model.md, docs/m8-implementation-plan.md, and
-docs/m10-implementation-plan.md).
+race-context/tyre-performance (see docs/api-model.md,
+docs/m8-implementation-plan.md, docs/m10-implementation-plan.md, and
+docs/m11-implementation-plan.md).
 """
 
 from fastapi import FastAPI
@@ -17,6 +18,7 @@ from app.api import (
     sessions,
     telemetry,
     track,
+    tyre_performance,
 )
 
 app = FastAPI(
@@ -44,3 +46,4 @@ app.include_router(track.router)
 app.include_router(laps_compare.router)
 app.include_router(session_analytics.router)
 app.include_router(race_context.router)
+app.include_router(tyre_performance.router)

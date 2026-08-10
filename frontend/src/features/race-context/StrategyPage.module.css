@@ -7,3 +7,21 @@
 .heading {
   font-size: var(--pw-text-lg);
 }
+
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--pw-space-3);
+}
+
+.crossLink {
+  color: var(--pw-accent);
+  font-size: var(--pw-text-sm);
+  text-decoration: none;
+}
+
+.crossLink:hover {
+  text-decoration: underline;
+}
