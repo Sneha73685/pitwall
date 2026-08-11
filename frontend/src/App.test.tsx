@@ -32,7 +32,8 @@ function renderAppAt(path: string) {
 describe("App", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.spyOn(client, "listSessions").mockResolvedValue([]);
+    // The root route ("/") now renders SeasonListPage (M12 Phase 5).
+    vi.spyOn(client, "listSeasons").mockResolvedValue([]);
   });
 
   it("renders the disclaimer", async () => {
@@ -101,11 +102,13 @@ describe("App", () => {
       session_id: "2024_bahrain_grand_prix_race",
       season: 2024,
       event_name: "Bahrain Grand Prix",
+      event_id: "2024_bahrain_grand_prix",
       round_number: 1,
       location: "Sakhir",
       country: "Bahrain",
       session_type: "race",
       session_date: "2024-03-02T15:00:00",
+      has_telemetry: true,
     });
     vi.spyOn(client, "getTyrePerformance").mockResolvedValue({
       session_id: "2024_bahrain_grand_prix_race",

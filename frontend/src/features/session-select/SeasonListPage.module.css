@@ -1,0 +1,41 @@
+.heading {
+  font-size: var(--pw-text-lg);
+  margin-bottom: var(--pw-space-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--pw-space-4);
+}
+
+.cardLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.cardLink:hover {
+  transform: translateY(-2px);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-2);
+  align-items: flex-start;
+}
+
+.eventCount {
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-sm);
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -45,3 +45,17 @@ class TelemetryRepository(ABC):
     def list_track_points(self, session_id: str) -> list[TrackPoint]:
         """Return one session's track geometry, ordered by distance."""
         raise NotImplementedError
+
+    @abstractmethod
+    def has_telemetry(self, session_id: str) -> bool:
+        """Whether this session has any telemetry samples at all (M12
+        Phase 4). Added because no existing method answers this cheaply --
+        `get_telemetry` requires a specific driver/lap and reads the full
+        matching rows; this needs only a row-count check, and a real
+        consumer (`Session.has_telemetry`, docs/m12-design-review.md
+        §19.2's 2018 finding) forces it, per ADR-0006's "grows when a real
+        consumer forces it" principle. `False` for an unknown session_id,
+        matching `list_laps`/`list_track_points`'s existing "unknown ->
+        empty/false, not an exception" convention.
+        """
+        raise NotImplementedError

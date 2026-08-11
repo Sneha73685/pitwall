@@ -37,11 +37,13 @@ const sampleSession: client.Session = {
   session_id: "2024_bahrain_grand_prix_race",
   season: 2024,
   event_name: "Bahrain Grand Prix",
+  event_id: "2024_bahrain_grand_prix",
   round_number: 1,
   location: "Sakhir",
   country: "Bahrain",
   session_type: "race",
   session_date: "2024-03-02T15:00:00",
+  has_telemetry: true,
 };
 
 const sampleTyrePerformance: client.TyrePerformanceResponse = {

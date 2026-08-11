@@ -3,31 +3,6 @@
   margin-bottom: var(--pw-space-4);
 }
 
-.filters {
-  display: flex;
-  gap: var(--pw-space-3);
-  margin-bottom: var(--pw-space-5);
-  flex-wrap: wrap;
-}
-
-.search {
-  flex: 1;
-  min-width: 240px;
-  padding: var(--pw-space-2) var(--pw-space-3);
-  background: var(--pw-bg-surface);
-  border: 1px solid var(--pw-border-subtle);
-  border-radius: var(--pw-radius-sm);
-  color: var(--pw-text-primary);
-}
-
-.seasonFilter {
-  padding: var(--pw-space-2) var(--pw-space-3);
-  background: var(--pw-bg-surface);
-  border: 1px solid var(--pw-border-subtle);
-  border-radius: var(--pw-radius-sm);
-  color: var(--pw-text-primary);
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -63,6 +38,13 @@
   color: var(--pw-text-disabled);
   font-size: var(--pw-text-xs);
   font-family: var(--pw-font-mono);
+}
+
+.sessionTypes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pw-space-1);
+  margin-top: var(--pw-space-1);
 }
 
 @media (max-width: 640px) {

@@ -37,6 +37,67 @@ def make_session_id(season: int, event_name: str, session_type: SessionType) -> 
     return f"{season}_{slugify(event_name)}_{session_type.value}"
 
 
+def make_event_id(season: int, event_name: str) -> str:
+    """Build a stable event identifier: (season, event slug) -- the identity
+    promoted above Session, per docs/m12-design-review.md §6. `round_number`
+    is deliberately excluded: it collides within a season for non-championship
+    (testing) events and is metadata, not identity (design review §3.7, §6).
+    Shares its two components, in the same order, with `make_session_id`'s
+    own prefix -- an `Event`'s sessions are exactly the sessions whose
+    `session_id` starts with this `event_id`."""
+    return f"{season}_{slugify(event_name)}"
+
+
+class Event(DomainModel):
+    """One F1 event (race weekend) within a season -- the grouping identity
+    above Session (docs/m12-design-review.md §6, M12 Phase 1).
+
+    Event identity is `(season, event slug)` -- see `make_event_id`. Not
+    written to Parquet or Postgres by this phase; a provider/discovery-layer
+    concept only, promoted to a typed model because both `FastF1Provider`
+    (this phase) and Phase 2's future discovery step need to construct and
+    reason about it, not because it has a store of its own yet (ADR-0006's
+    "grows when a second real implementation forces it" principle applied to
+    a data shape, not just an interface).
+    """
+
+    event_id: str
+    season: int
+    round_number: int
+    event_name: str
+    # FastF1's own vocabulary (conventional/sprint/sprint_shootout/
+    # sprint_qualifying/testing) -- kept verbatim as metadata, not
+    # re-canonicalized into a PitWall enum, since it is consumed (e.g. to
+    # exclude testing events) rather than persisted or exposed as a stable
+    # PitWall-owned taxonomy the way SessionType is (design review §6).
+    event_format: str
+    location: str
+    country: str
+    event_date: str | None = None  # ISO 8601 UTC date; not all events report one
+
+
+class EventDiscovery(DomainModel):
+    """The result of resolving and enumerating one event's real sessions
+    (M12 Phase 2) -- `Event` identity/metadata plus which canonical
+    `SessionType`s are actually available for it and the literal FastF1
+    display name each resolves to. Not persisted -- a discovery-time
+    result only, matching `Event`'s own status (docs/m12-design-review.md
+    §7: "do not persist an Event table yet unless... genuinely required").
+    """
+
+    event: Event
+    # This event's real Session1..5 display names, in schedule order, for
+    # display/debugging -- entries are None for a slot the event doesn't
+    # have (e.g. testing events, though those are excluded before this
+    # model is ever built -- see find_event_row's include_testing=False).
+    session_names: list[str | None]
+    # Canonical SessionType -> the literal FastF1 identifier to pass to
+    # fastf1.get_session() for it. Absent keys mean "not available for
+    # this event" (docs/m12-design-review.md §3.2/§3.3) -- never a
+    # misresolved or substituted session.
+    available_sessions: dict[SessionType, str]
+
+
 class Session(DomainModel):
     """One ingested session (e.g. 2023 Italian GP Race)."""
 

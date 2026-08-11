@@ -13,6 +13,88 @@ from app.repositories.race_context import RaceContextRepository
 SESSION_ID = "2023_monza_race"
 
 
+def write_minimal_session(
+    base_dir: Path,
+    *,
+    session_id: str,
+    season: int,
+    event_slug: str,
+    session_type: str,
+    event_name: str,
+    round_number: int,
+    location: str,
+    country: str,
+    session_date: str | None,
+    include_telemetry: bool = True,
+) -> Path:
+    """Write just session.parquet (+ telemetry.parquet, present but
+    possibly empty) for one session -- session/event/season discovery
+    tests (M12 Phase 4) need many distinct, minimal sessions across
+    seasons/events/types, not the full driver/lap/telemetry detail
+    `write_session_cache` builds for its one fixed session.
+    """
+    session_dir = base_dir / str(season) / event_slug / session_type
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    pd.DataFrame(
+        [
+            {
+                "session_id": session_id,
+                "season": season,
+                "event_name": event_name,
+                "round_number": round_number,
+                "location": location,
+                "country": country,
+                "session_type": session_type,
+                "session_date": session_date,
+            }
+        ]
+    ).to_parquet(session_dir / "session.parquet", index=False)
+
+    telemetry_columns = [
+        "session_id",
+        "driver_id",
+        "lap_number",
+        "distance_m",
+        "time_seconds",
+        "speed_kph",
+        "throttle_pct",
+        "brake_active",
+        "rpm",
+        "gear",
+        "drs_active",
+        "x",
+        "y",
+        "z",
+    ]
+    if include_telemetry:
+        telemetry_rows = [
+            {
+                "session_id": session_id,
+                "driver_id": "VER",
+                "lap_number": 1,
+                "distance_m": 0.0,
+                "time_seconds": 0.0,
+                "speed_kph": 300.0,
+                "throttle_pct": 100.0,
+                "brake_active": False,
+                "rpm": 11000.0,
+                "gear": 8,
+                "drs_active": False,
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+            }
+        ]
+        pd.DataFrame(telemetry_rows).to_parquet(session_dir / "telemetry.parquet", index=False)
+    else:
+        pd.DataFrame(columns=telemetry_columns).to_parquet(
+            session_dir / "telemetry.parquet", index=False
+        )
+
+    return session_dir
+
+
 def write_session_cache(base_dir: Path) -> Path:
     """Write one synthetic session's cache under base_dir. Returns the session directory."""
     session_dir = base_dir / "2023" / "monza" / "race"

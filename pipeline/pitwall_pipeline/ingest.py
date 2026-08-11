@@ -8,6 +8,7 @@ decoupled from request time).
 
 import argparse
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import psycopg
@@ -25,6 +26,24 @@ DEFAULT_FASTF1_CACHE_DIR = _REPO_ROOT / "data" / "fastf1_cache"
 DEFAULT_PROCESSED_DIR = _REPO_ROOT / "data" / "processed"
 
 
+@dataclass(frozen=True)
+class IngestResult:
+    """Result of ingesting one session (M12 Phase 2, added to what was
+    previously a bare `Path` return -- no existing caller relied on the old
+    return type: `main()` below discards it, and no test asserted its
+    shape). Carries enough for a caller to detect a session that ingested
+    successfully but with no telemetry (the real, verified 2018 finding,
+    docs/m12-design-review.md §19.2) without re-deriving it by re-reading
+    the Parquet cache -- `pitwall_pipeline/ingest_event.py`'s orchestrator
+    is the first consumer.
+    """
+
+    session_id: str
+    output_dir: Path
+    lap_count: int
+    telemetry_sample_count: int
+
+
 def ingest_session(
     season: int,
     event: str,
@@ -32,8 +51,12 @@ def ingest_session(
     *,
     fastf1_cache_dir: Path = DEFAULT_FASTF1_CACHE_DIR,
     processed_dir: Path = DEFAULT_PROCESSED_DIR,
-) -> Path:
-    """Fetch, normalize, and cache one session. Returns the written cache directory."""
+) -> IngestResult:
+    """Fetch, normalize, and cache one session -- the single source of
+    truth for actual ingestion (docs/m12-implementation-plan.md Phase 2);
+    `ingest_event.py`'s event-level orchestration calls this unchanged,
+    once per session, rather than re-implementing any part of it.
+    """
     provider = FastF1Provider(fastf1_cache_dir)
     data = provider.load_session(season, event, session_type)
     output_dir = write_session_cache(data, base_dir=processed_dir)
@@ -57,7 +80,12 @@ def ingest_session(
             exc_info=True,
         )
 
-    return output_dir
+    return IngestResult(
+        session_id=data.session.session_id,
+        output_dir=output_dir,
+        lap_count=len(data.laps),
+        telemetry_sample_count=len(data.telemetry),
+    )
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:

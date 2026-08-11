@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from app.repositories.parquet_repository import ParquetRepository
+from tests.fixtures import write_minimal_session
 
 
 def test_list_sessions_returns_ingested_session(session_cache_dir: Path) -> None:
@@ -15,6 +16,62 @@ def test_list_sessions_returns_ingested_session(session_cache_dir: Path) -> None
     assert len(sessions) == 1
     assert sessions[0].session_id == "2023_monza_race"
     assert sessions[0].season == 2023
+
+
+def test_list_sessions_includes_event_id(session_cache_dir: Path) -> None:
+    """M12 Phase 4: event_id is additive, computed from (season,
+    event_name), matching pitwall_pipeline.models.make_event_id's formula
+    (parity asserted in test_ids.py)."""
+    repo = ParquetRepository(session_cache_dir)
+
+    sessions = repo.list_sessions()
+
+    assert sessions[0].event_id == "2023_italian_grand_prix"
+
+
+def test_list_sessions_reports_has_telemetry_true_when_present(session_cache_dir: Path) -> None:
+    repo = ParquetRepository(session_cache_dir)
+
+    sessions = repo.list_sessions()
+
+    assert sessions[0].has_telemetry is True
+
+
+def test_has_telemetry_true_for_session_with_real_telemetry_rows(session_cache_dir: Path) -> None:
+    repo = ParquetRepository(session_cache_dir)
+
+    assert repo.has_telemetry("2023_monza_race") is True
+
+
+def test_has_telemetry_false_for_session_with_empty_telemetry_parquet(tmp_path: Path) -> None:
+    """M12 Phase 4: the real, verified 2018 finding (docs/m12-design-
+    review.md §19.2) -- a session can be fully ingested (laps/session
+    metadata present) while telemetry.parquet has zero rows."""
+    write_minimal_session(
+        tmp_path,
+        session_id="2018_bahrain_grand_prix_race",
+        season=2018,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2018-04-08T15:10:00+00:00",
+        include_telemetry=False,
+    )
+    repo = ParquetRepository(tmp_path)
+
+    assert repo.has_telemetry("2018_bahrain_grand_prix_race") is False
+    session = repo.get_session("2018_bahrain_grand_prix_race")
+    assert session is not None
+    assert session.has_telemetry is False
+
+
+def test_has_telemetry_false_for_unknown_session(tmp_path: Path) -> None:
+    repo = ParquetRepository(tmp_path)
+
+    assert repo.has_telemetry("2099_nowhere_race") is False
 
 
 def test_list_sessions_empty_cache_returns_empty_list(tmp_path: Path) -> None:

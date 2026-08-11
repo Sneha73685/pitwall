@@ -7,8 +7,10 @@ import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
 import { StrategyPage } from "./features/race-context/StrategyPage";
 import { SessionAnalyticsPage } from "./features/session-analytics/SessionAnalyticsPage";
 import { DriverSelectPage } from "./features/session-select/DriverSelectPage";
+import { EventListPage } from "./features/session-select/EventListPage";
 import { LapSelectPage } from "./features/session-select/LapSelectPage";
-import { SessionListPage } from "./features/session-select/SessionListPage";
+import { SeasonListPage } from "./features/session-select/SeasonListPage";
+import { SessionListForEventPage } from "./features/session-select/SessionListForEventPage";
 import { TrackMapPage } from "./features/track-map/TrackMapPage";
 import { StintPacePage } from "./features/tyre-performance/StintPacePage";
 import { TyrePerformancePage } from "./features/tyre-performance/TyrePerformancePage";
@@ -34,6 +36,14 @@ type BackendStatus = "checking" | "online" | "offline";
  * depth as "/strategy") -- descriptive tyre/stint analytics, following the
  * exact route-depth conventions already established by M8/M10
  * (docs/m11-frontend-design-note.md §5).
+ *
+ * M12 Phase 5 replaces the old flat, all-sessions root page with a real
+ * Season -> Event -> Session hierarchy: "/" (seasons), "/seasons/:season"
+ * (events), "/seasons/:season/events/:eventId" (sessions) -- all three
+ * reflecting only what PitWall actually has locally ingested (M12 Phase 4's
+ * discovery API), never fabricating a session that hasn't been ingested.
+ * Everything from "/sessions/:sessionId" onward is unchanged
+ * (docs/m12-frontend-design-note.md).
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -73,7 +83,9 @@ function App() {
       }
     >
       <Routes>
-        <Route path="/" element={<SessionListPage />} />
+        <Route path="/" element={<SeasonListPage />} />
+        <Route path="/seasons/:season" element={<EventListPage />} />
+        <Route path="/seasons/:season/events/:eventId" element={<SessionListForEventPage />} />
         <Route path="/sessions/:sessionId" element={<DriverSelectPage />} />
         <Route path="/sessions/:sessionId/drivers/:driverId" element={<LapSelectPage />} />
         <Route

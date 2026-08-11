@@ -13,8 +13,14 @@ from typing import Any
 
 import pandas as pd
 
+# pyarrow ships no type stubs/py.typed marker (unlike pandas, covered by the
+# pandas-stubs dev dependency) -- used only for cheap Parquet-metadata-only
+# row counts (_telemetry_row_count), not for any typed data manipulation.
+import pyarrow.parquet as pq  # type: ignore[import-untyped]
+
 from app.models import Driver, Lap, Session, SessionType, TelemetrySample, TrackPoint
 from app.repositories.base import TelemetryRepository
+from app.utils.ids import make_event_id
 
 
 def _optional_str(value: Any) -> str | None:
@@ -25,17 +31,31 @@ def _optional_float(value: Any) -> float | None:
     return None if pd.isna(value) else float(value)
 
 
-def _session_from_row(row: Mapping[Hashable, Any]) -> Session:
+def _session_from_row(row: Mapping[Hashable, Any], *, has_telemetry: bool) -> Session:
+    season = int(row["season"])
+    event_name = str(row["event_name"])
     return Session(
         session_id=str(row["session_id"]),
-        season=int(row["season"]),
-        event_name=str(row["event_name"]),
+        season=season,
+        event_name=event_name,
+        event_id=make_event_id(season, event_name),
         round_number=int(row["round_number"]),
         location=str(row["location"]),
         country=str(row["country"]),
         session_type=SessionType(row["session_type"]),
         session_date=_optional_str(row["session_date"]),
+        has_telemetry=has_telemetry,
     )
+
+
+def _telemetry_row_count(session_dir: Path) -> int:
+    """Parquet footer metadata only -- no data read (M12 Phase 4). Cheap
+    even for a full race's telemetry.parquet (hundreds of thousands of
+    rows), since only the file's row-group counts are inspected."""
+    telemetry_file = session_dir / "telemetry.parquet"
+    if not telemetry_file.exists():
+        return 0
+    return int(pq.ParquetFile(telemetry_file).metadata.num_rows)
 
 
 def _driver_from_row(row: Mapping[Hashable, Any]) -> Driver:
@@ -98,7 +118,9 @@ class ParquetRepository(TelemetryRepository):
             df = pd.read_parquet(session_file)
             if df.empty:
                 continue
-            yield session_file.parent, _session_from_row(df.iloc[0].to_dict())
+            session_dir = session_file.parent
+            has_telemetry = _telemetry_row_count(session_dir) > 0
+            yield session_dir, _session_from_row(df.iloc[0].to_dict(), has_telemetry=has_telemetry)
 
     def _find_session(self, session_id: str) -> tuple[Path, Session] | None:
         for session_dir, session in self._iter_session_dirs():
@@ -112,6 +134,13 @@ class ParquetRepository(TelemetryRepository):
     def get_session(self, session_id: str) -> Session | None:
         found = self._find_session(session_id)
         return found[1] if found else None
+
+    def has_telemetry(self, session_id: str) -> bool:
+        found = self._find_session(session_id)
+        if found is None:
+            return False
+        session_dir, _ = found
+        return _telemetry_row_count(session_dir) > 0
 
     def list_drivers(self, session_id: str) -> list[Driver]:
         found = self._find_session(session_id)

@@ -7,11 +7,13 @@ const session: Session = {
   session_id: "2023_monza_race",
   season: 2023,
   event_name: "Italian Grand Prix",
+  event_id: "2023_italian_grand_prix",
   round_number: 16,
   location: "Monza",
   country: "Italy",
   session_type: "race",
   session_date: null,
+  has_telemetry: true,
 };
 
 const laps: Lap[] = [

@@ -36,11 +36,23 @@ class Session(ApiModel):
     session_id: str
     season: int
     event_name: str
+    # M12 Phase 4, additive: (season, event slug) -- the identity Season/
+    # Event discovery groups by (docs/m12-design-review.md §6). Computed
+    # from season/event_name via app.utils.ids.make_event_id, matching
+    # pitwall_pipeline.models.make_event_id's formula; never persisted.
+    event_id: str
     round_number: int
     location: str
     country: str
     session_type: SessionType
     session_date: str | None = None
+    # M12 Phase 4, additive: whether this session's telemetry is actually
+    # available in PitWall's Parquet cache -- not always true even for a
+    # successfully ingested session (the real, verified 2018 finding,
+    # docs/m12-design-review.md §19.2: lap/stint/compound data can load
+    # while telemetry access fails). A client must check this before
+    # assuming a track-map/telemetry view has data to show.
+    has_telemetry: bool
 
 
 class Driver(ApiModel):

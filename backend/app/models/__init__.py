@@ -5,6 +5,7 @@ docs/adr/0009-internal-api-schema-boundary.md. See docs/api-model.md for
 the schema design note.
 """
 
+from app.models.discovery import EventSummary, SeasonSummary
 from app.models.lap_comparison import (
     ChannelSeries,
     ComparisonWarning,
@@ -37,6 +38,8 @@ from app.models.tyre_performance import (
 __all__ = [
     "Session",
     "SessionType",
+    "SeasonSummary",
+    "EventSummary",
     "Driver",
     "Lap",
     "TelemetrySample",

@@ -19,6 +19,30 @@ def test_get_session_returns_session_detail(client: TestClient) -> None:
     assert response.json()["event_name"] == "Italian Grand Prix"
 
 
+def test_get_session_includes_event_id(client: TestClient) -> None:
+    """M12 Phase 4: event_id is an additive field on the existing
+    /sessions/{session_id} response -- (season, event slug)."""
+    response = client.get("/sessions/2023_monza_race")
+
+    assert response.json()["event_id"] == "2023_italian_grand_prix"
+
+
+def test_get_session_includes_has_telemetry(client: TestClient) -> None:
+    """M12 Phase 4: has_telemetry is an additive field -- true here since
+    the shared fixture includes real telemetry rows."""
+    response = client.get("/sessions/2023_monza_race")
+
+    assert response.json()["has_telemetry"] is True
+
+
+def test_list_sessions_includes_event_id_and_has_telemetry(client: TestClient) -> None:
+    response = client.get("/sessions")
+
+    body = response.json()
+    assert body[0]["event_id"] == "2023_italian_grand_prix"
+    assert body[0]["has_telemetry"] is True
+
+
 def test_get_session_not_found_returns_404(client: TestClient) -> None:
     response = client.get("/sessions/2099_nowhere_race")
 

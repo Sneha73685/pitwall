@@ -1,12 +1,21 @@
 """Tests for PostgresRaceContextRepository (Phase 3, M10).
 
-Requires a real PostgreSQL instance with the Phase 1 migrations already
-applied (reachable via `PITWALL_DATABASE_URL` or the default local-dev
-connection string) -- see docs/m10-implementation-plan.md Phase 3 "Testing
-required". Seeded via direct SQL inserts in the test itself, not via the
-pipeline package -- the backend has no dependency on `pitwall_pipeline`
-(docs/api-model.md's workspace-independence rule, already established for
-Parquet and carried forward here for Postgres).
+Requires a real PostgreSQL server reachable via `PITWALL_DATABASE_URL` (or
+the default local-dev connection string) -- see docs/m10-implementation-plan.md
+Phase 3 "Testing required". Seeded via direct SQL inserts in the test
+itself, not via the pipeline package -- the backend has no dependency on
+`pitwall_pipeline` (docs/api-model.md's workspace-independence rule, already
+established for Parquet and carried forward here for Postgres).
+
+Runs against a dedicated *test* database on that same server
+(`postgres_test_db.resolve_test_database_url`), never the real one that
+`PITWALL_DATABASE_URL` names -- M12 Phase 6 found that this file's own
+`TRUNCATE TABLE stints, pit_stops` setup previously destroyed real ingested
+data by running directly against the real app database (see
+`docs/m12-implementation-plan.md`'s Phase 6 section and
+`postgres_test_db.py`'s module docstring). `ensure_test_database`/
+`ensure_schema` create that dedicated database and its schema on first use,
+in both a fresh CI Postgres service and an existing local one.
 
 Uses its own `ConnectionPool`, not `app.db.get_pool()` -- that function is
 `@lru_cache`'d and shared process-wide (see test_db.py, which closes the
@@ -15,12 +24,14 @@ isolation to whatever order test_db.py happens to run in.
 """
 
 from collections.abc import Iterator
+from urllib.parse import urlsplit
 
 import pytest
 from psycopg_pool import ConnectionPool
 
 from app.config import get_settings
 from app.repositories.postgres_race_context_repository import PostgresRaceContextRepository
+from tests.postgres_test_db import ensure_schema, ensure_test_database, resolve_test_database_url
 
 SESSION_ID = "2023_monza_race"
 
@@ -29,12 +40,32 @@ SESSION_ID = "2023_monza_race"
 def pool() -> Iterator[ConnectionPool]:
     get_settings.cache_clear()
     settings = get_settings()
-    test_pool = ConnectionPool(conninfo=settings.database_url, open=True)
+    test_url = resolve_test_database_url(settings.database_url)
+    ensure_test_database(settings.database_url, test_url)
+    ensure_schema(test_url)
+
+    test_pool = ConnectionPool(conninfo=test_url, open=True)
     with test_pool.connection() as conn, conn.cursor() as cur:
         cur.execute("TRUNCATE TABLE stints, pit_stops")
         conn.commit()
     yield test_pool
     test_pool.close()
+
+
+def test_pool_fixture_never_targets_the_real_app_database(pool: ConnectionPool) -> None:
+    """Regression test for the M12 Phase 6 finding: this fixture's
+    connection pool must never point at the same database
+    `get_settings().database_url` names, in any environment -- that is the
+    real ingestion database, and this fixture's own `TRUNCATE TABLE
+    stints, pit_stops` setup must never be able to reach it."""
+    get_settings.cache_clear()
+    real_database_url = get_settings().database_url
+    pool_conninfo = pool.conninfo
+    assert isinstance(pool_conninfo, str)
+
+    assert pool_conninfo != real_database_url
+    assert urlsplit(pool_conninfo).path != urlsplit(real_database_url).path
+    assert urlsplit(pool_conninfo).path.endswith("_test")
 
 
 @pytest.fixture

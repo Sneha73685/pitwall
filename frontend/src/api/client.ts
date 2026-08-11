@@ -31,6 +31,41 @@ export interface Session {
   country: string;
   session_type: SessionType;
   session_date: string | null;
+  /**
+   * M12 Phase 4 addition: (season, event slug) -- the identity Season/Event
+   * discovery groups by. The backend always sends this key (unlike
+   * Lap.compound's genuine nullability), so it's required here, not
+   * optional -- matching Session's own field-required convention rather
+   * than Lap's.
+   */
+  event_id: string;
+  /**
+   * M12 Phase 4 addition: whether this session's telemetry is actually
+   * available in PitWall's cache -- not always true even for a
+   * successfully ingested session (the real, verified 2018 finding).
+   */
+  has_telemetry: boolean;
+}
+
+/** M12 Phase 4: `GET /seasons` -- one entry per season with at least one
+ * locally ingested session. */
+export interface SeasonSummary {
+  season: number;
+  event_count: number;
+}
+
+/** M12 Phase 4: `GET /seasons/{season}/events` -- one entry per event
+ * PitWall actually has locally ingested sessions for, never an event
+ * FastF1's upstream schedule merely knows about. */
+export interface EventSummary {
+  event_id: string;
+  season: number;
+  event_name: string;
+  round_number: number;
+  location: string;
+  country: string;
+  session_types: SessionType[];
+  session_count: number;
 }
 
 export interface Driver {
@@ -196,6 +231,24 @@ export async function getHealth(): Promise<HealthResponse> {
 
 export async function listSessions(): Promise<Session[]> {
   return getJson<Session[]>("/sessions");
+}
+
+/**
+ * M12 Phase 4/5: Season -> Event -> Session discovery. Added here, sitting
+ * alongside listSessions/getSession, not a new features/season-select/api/
+ * module -- same precedent every prior milestone's client additions
+ * recorded (M8/M10/M11).
+ */
+export async function listSeasons(): Promise<SeasonSummary[]> {
+  return getJson<SeasonSummary[]>("/seasons");
+}
+
+export async function listEventsForSeason(season: number): Promise<EventSummary[]> {
+  return getJson<EventSummary[]>(`/seasons/${season}/events`);
+}
+
+export async function listSessionsForEvent(season: number, eventId: string): Promise<Session[]> {
+  return getJson<Session[]>(`/seasons/${season}/events/${encodeURIComponent(eventId)}/sessions`);
 }
 
 export async function getSession(sessionId: string): Promise<Session> {
