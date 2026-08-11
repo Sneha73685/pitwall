@@ -6,25 +6,61 @@ connection string) -- see docs/m10-implementation-plan.md Phase 2 "Testing
 required": write once, assert rows; write the identical input again,
 assert row count is unchanged (idempotency, the highest-value test in this
 phase, per docs/m10-design-review.md §9).
+
+Runs against a dedicated *test* database on that same server
+(`postgres_test_db.resolve_test_database_url`), never the real one that
+`PITWALL_DATABASE_URL` names -- this file's own `TRUNCATE TABLE stints,
+pit_stops` setup previously destroyed real ingested M12 season data by
+running directly against the real app database. `_clean_tables` below
+redirects `PITWALL_DATABASE_URL` (via `monkeypatch`) to the isolated
+database for the duration of every test in this file -- `get_connection()`
+reads that variable fresh on every call, so every `get_connection()` call
+in this file, not just this fixture's own, transparently targets the test
+database. See `postgres_test_db.py`'s module docstring for why no
+production code needed to change to make this possible.
 """
 
 from collections.abc import Iterator
+from urllib.parse import urlsplit
 
 import pytest
 
 from pitwall_pipeline.db import get_connection
 from pitwall_pipeline.models import PitStop, Stint
 from pitwall_pipeline.postgres_writer import write_pit_stops, write_stints
+from tests.postgres_test_db import (
+    app_database_url,
+    ensure_schema,
+    ensure_test_database,
+    resolve_test_database_url,
+)
 
 SESSION_ID = "2023_monza_race"
 
 
 @pytest.fixture(autouse=True)
-def _clean_tables() -> Iterator[None]:
+def _clean_tables(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    app_url = app_database_url()
+    test_url = resolve_test_database_url(app_url)
+    ensure_test_database(app_url, test_url)
+    ensure_schema(test_url)
+    monkeypatch.setenv("PITWALL_DATABASE_URL", test_url)
+
     with get_connection() as conn, conn.cursor() as cur:
         cur.execute("TRUNCATE TABLE stints, pit_stops")
         conn.commit()
     yield
+
+
+def test_clean_tables_fixture_never_targets_the_real_app_database() -> None:
+    """Regression test: by the time any test body in this file runs,
+    PITWALL_DATABASE_URL must already point at the dedicated `_test`
+    database, never the real one this file's TRUNCATE TABLE setup
+    previously reached."""
+    import os
+
+    active_url = os.environ["PITWALL_DATABASE_URL"]
+    assert urlsplit(active_url).path.endswith("_test")
 
 
 def _stint(**overrides: object) -> Stint:
