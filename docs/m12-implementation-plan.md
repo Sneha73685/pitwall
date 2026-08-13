@@ -4,17 +4,23 @@
 discovery/orchestration, the multi-event/season planning-and-execution control plane, the backend
 season/event/session discovery API, the frontend Season → Event → Session navigation UI, and a
 real, live, full-event multi-session ingestion run proving all of the above against genuinely new
-data). Phases 7–8 remain not started. See each phase section below for what actually shipped versus
-what was originally planned — Phase 3, in particular, was assigned its number by live
-implementation sequencing and covers different content than this document originally drafted for
-"Phase 3"; the original Backend APIs/Frontend/verification/backfill phases are preserved,
-renumbered to Phases 4–8, not rewritten. Companion to `docs/m12-design-review.md`, which this plan
-does not re-argue.
+data). **Phase 7 complete and verified for seasons 2021, 2022, and 2023** (2021: 110 planned
+sessions, 109 succeeded, one genuine, bounded, documented `LOAD_FAILED`; 2022: 110 planned sessions,
+all 110 succeeded; 2023: 110 planned sessions, 109 succeeded plus one genuine `SUCCESS_NO_TELEMETRY`,
+zero `LOAD_FAILED` — see Phase 7's own section, batch by batch, for the full real-execution record of
+each). Phase 8 remains not started. See each phase section below for what actually shipped versus
+what was originally planned — Phase 3, in particular, was assigned its number by live implementation
+sequencing and covers different content than this document originally drafted for "Phase 3"; the
+original Backend APIs/Frontend/verification/backfill phases are preserved, renumbered to Phases
+4–8, not rewritten. Companion to `docs/m12-design-review.md`, which this plan does not re-argue.
 
-**This document does not begin Phase 7 or any later phase.** It exists so that when a future
-session picks up Phase 7, the scope, sequencing, and evidence it depends on are already recorded —
-the same posture `docs/m10-implementation-plan.md`/`docs/m11-implementation-plan.md` established
-before their own build phases started.
+**This document runs Phase 7 one season at a time, as separate batches.** Phase 7's own goal (§
+below) scopes Tier D execution to "once, for one season, as an explicit, reviewed, opt-in
+operation" — each batch (2021, then 2022, then 2023) is exactly that, repeated under explicit
+approval each time, not a single multi-season sweep. Tier E (multi-season historical bulk backfill,
+i.e. an automatic sweep across seasons without a per-season approval gate) remains explicitly
+unscheduled; no season beyond what is recorded here was ingested, and no later season's real
+ingestion is implied or authorized by this record.
 
 ---
 
@@ -659,6 +665,403 @@ throughout every earlier phase already).
 individual session failures per design review §3.5/§10's expected-failure model — not a
 zero-failure requirement, since §3.5 already proved that's not realistic even for FastF1's own
 data); the actual resource cost (time, disk, request count) recorded for future planning.
+
+### Phase 7, Batch 2 — season 2021
+
+**Status: implemented and verified for season 2021.** Zero `pitwall_pipeline` source file changed —
+this phase's entire deliverable is a real execution and its recorded evidence, matching the exit
+criteria above exactly.
+
+**What was run:** the approved season plan (`build_ingestion_plan([2021], event_queries=None,
+session_types=None)` — the identical DISCOVER+PLAN call the dry-run review used, rebuilt fresh
+rather than trusted from memory) was executed for real, event-by-event, sequentially, via
+`ingest_event()` unchanged — 22 events, 110 planned sessions.
+
+Execution used a thin, resumable operator harness (`stage_b_2021.py`, kept entirely in the
+operator's scratchpad — never added to this repository) rather than calling
+`execute_ingestion_plan()` directly, for one reason: FastF1's own client-side rate limiter
+(`fastf1.req._CallsPerIntervalLimitRaise`, confirmed by reading `fastf1/req.py` directly — a hard
+500-calls/hour cap, in-process memory only, `RateLimitExceededError` raised the instant it trips)
+needed a clean stop-and-restart-in-a-fresh-process recovery strategy that `execute_ingestion_plan()`'s
+single blocking loop doesn't provide by itself. The harness calls nothing beyond
+`build_ingestion_plan()`/`ingest_event()`; at the start of every process invocation it recomputes
+the exact set of still-missing planned sessions directly from real Parquet presence on disk (all 5
+expected files per session — never from an in-memory or log-based memory of a prior attempt), then
+calls `ingest_event()` with an explicit allowlist of only those missing session types per event.
+This is the same "reconcile by session-ID set, then build an explicit allowlist of only what's
+missing" recovery procedure the operator specified, automated rather than done by hand.
+
+**Two real interruptions occurred during the run, both handled by this recovery design without any
+data loss or duplication:**
+
+1. The harness process was killed externally partway through the Austrian GP event (cause outside
+   this phase's scope — not a rate-limit, not an ingestion-architecture failure). Because
+   `ingest_session()` writes Parquet only after a session's FastF1 `.load()` fully succeeds, the
+   in-flight session (`practice_3`→`race` transition) had no partial/corrupt directory to clean up —
+   confirmed directly (`austrian_grand_prix/race` simply didn't exist yet) — and a fresh process
+   resumed exactly where the real, on-disk state left off.
+2. FastF1's 500-calls/hour limiter tripped once, during the Mexico City GP `race` session. The
+   harness detected the limiter's own error signature in that one session's `LOAD_FAILED` outcome
+   and stopped itself cleanly before attempting any further session — never letting a tripped
+   limiter cascade into dozens of spurious `LOAD_FAILED` entries for sessions that were simply never
+   attempted. A fresh process (a fresh in-memory counter) resumed immediately and completed the
+   remaining events without further incident.
+
+**Real outcome (109 of 110 planned sessions succeeded):**
+
+| Status | Count |
+|---|---|
+| SUCCESS | 109 |
+| SUCCESS_NO_TELEMETRY | 0 |
+| NOT_AVAILABLE (diagnostics) | 44 |
+| LOAD_FAILED | 1 |
+| Event-level failures | 0 |
+
+Session-type breakdown (successes / planned):
+
+| Type | Success | Planned |
+|---|---|---|
+| practice_1 | 22 | 22 |
+| practice_2 | 22 | 22 |
+| practice_3 | 18 | 19 |
+| qualifying | 22 | 22 |
+| sprint | 3 | 3 |
+| race | 22 | 22 |
+| sprint_qualifying | 0 (correctly diagnosed NOT_AVAILABLE for every 2021 event, per design review §3.2) | 0 |
+
+**The one `LOAD_FAILED`: 2021 Russian GP `practice_3`.** Reproduced identically three separate
+times (once during the main run, twice on isolated fresh-process retries) with the same real,
+unmocked traceback: FastF1's own `.load()` raises `fastf1.exceptions.NoLapDataError` ("Failed to
+load session because the API did not provide any usable data"), which FastF1 logs and swallows
+internally, leaving `session.laps` never populated; PitWall's `FastF1Provider.load_session()` then
+raises `DataNotLoadedError` on the first attempt to read it. This is the same class of real, genuine
+upstream data-availability gap the design review already documented for 2018 Monza (§3.5) — a real
+absence in FastF1's own upstream data for this specific session, not a PitWall defect and not a
+rate-limit artifact — recorded here as a bounded, logged failure per this phase's own exit
+criteria, not retried further.
+
+**All three 2021 sprint weekends verified**, matching the real historical structure the dry-run
+review predicted and the design review's era table (§3.2):
+
+| Event | Chronological order | `sprint_qualifying` | Sprint stints / pit stops |
+|---|---|---|---|
+| British GP | practice_1 → qualifying → practice_2 → sprint → race | NOT_AVAILABLE | 20 single-stint drivers, 1 pit stop |
+| Italian GP | practice_1 → qualifying → practice_2 → sprint → race | NOT_AVAILABLE | 21 stints (1 driver pitted), 1 pit stop |
+| São Paulo GP | practice_1 → qualifying → practice_2 → sprint → race | NOT_AVAILABLE | 20 single-stint drivers, **0** pit stops |
+
+São Paulo's zero-pit-stop sprint was independently corroborated, not just accepted at face value:
+every one of the 20 drivers' `stints` rows shows exactly 1 stint (no compound change recorded for
+anyone), consistent with 2021's sprint format having no mandatory tyre change and this particular
+sprint producing no strategic stops — a real, plausible historical fact (2021 was the first season
+sprints existed), not a data gap.
+
+**Reconciliation by session-ID SET (not counts alone):** the Parquet session-ID set (109, read
+directly from each `session.parquet`'s `session_id` column) and the PostgreSQL `stints`
+distinct-`session_id` set (109) are **exactly equal — zero orphans in either direction**. The
+`pit_stops` distinct-session set is 108 (one fewer): `2021_s_o_paulo_grand_prix_sprint` has stints
+but zero pit-stop rows, matching the real, corroborated zero-pit-stop finding above, not a
+reconciliation gap. Zero duplicate `(session_id, driver_id, stint_number)` or `(session_id,
+driver_id, stop_number)` rows exist in either table (`GROUP BY ... HAVING COUNT(*) > 1` returns
+empty for both) — the existing `ON CONFLICT ... DO UPDATE` upsert (unchanged, M10/ADR-0011) held
+throughout, including across the idempotency check below.
+
+**Representative sessions manually inspected** (real row counts, not estimated): Bahrain Practice 1
+(20 drivers, 361 laps, 621,426 telemetry samples), Bahrain Qualifying (251 laps, 437,929 samples),
+British GP Sprint — the first sprint session in F1 history (339 laps, 274,869 samples), Abu Dhabi
+Race — season finale (1,000 laps, 824,418 samples, 48 stints/32 pit stops, a normal multi-stop
+strategic race). **Historical edge case: the Belgian GP Race** — the real 2021 event abandoned after
+only a couple of laps behind the safety car — correctly captured as exactly that, not fabricated
+into a normal race: 60 total laps across all 20 drivers (~3 each), 112,049 telemetry samples, and
+20 `pit_stops` rows that are not an error but the real signature of what happened — every car's only
+recorded pit action was returning to the pits when the session was red-flagged and never resumed.
+
+**Idempotency, verified with a real second ingestion, not a mock:** the entire Bahrain event (5
+sessions) was re-ingested for real via `ingest_event()` a second time, entirely against
+already-cached FastF1 data (confirmed: every fetch logged "Using cached data for ..."). Every
+session's Parquet lap/telemetry row counts were byte-identical before and after
+(e.g. `race`: 1,027 laps / 895,953 telemetry samples, both times); every session's Postgres
+`stints`/`pit_stops` row counts were identical before and after, and the **whole database's** total
+row counts (24,030 `stints`, 22,652 `pit_stops` — every season combined) were unchanged by the
+second run. `session.parquet` mtimes did change (a genuine overwrite occurred, not a skip) —
+together these two facts are the real proof of idempotency: re-ingestion re-runs the full pipeline
+and produces the identical result, rather than merely detecting "already done" and no-op'ing.
+
+**2020 and 2024 datasets confirmed untouched throughout** (before ingestion, after ingestion, and
+again after the full validation pass below): `data/processed/2020` (17 events) and
+`data/processed/2024` (24 events) unchanged in directory count; PostgreSQL row counts for both
+seasons byte-identical throughout (`2020`: 6,728 `stints` / 6,407 `pit_stops`; `2024`: 8,904
+`stints` / 8,300 `pit_stops`).
+
+**Resource cost, recorded per this phase's exit criteria:** `data/fastf1_cache/2021/` grew from
+~77MB (a pre-existing partial cache left over from earlier design-review/Phase-1 audits) to 6.1GB;
+`data/fastf1_cache/` total grew from 14GB to 21GB (+7GB) across the whole run, including the one
+rate-limit-triggered restart and the one external-kill-triggered restart. `data/processed/` (not
+part of this repo's tracked diff) gained 109 new session directories under `2021/`. Wall-clock time
+was dominated by real data transfer/parsing, not by the artificial rate limit — restarting a fresh
+process resets FastF1's in-memory counter instantly, so the 500-calls/hour cap did not meaningfully
+throttle total throughput.
+
+**Validation** (run after the real ingestion, idempotency check, and reconciliation above, all
+against the real `pitwall` database; every PostgreSQL-touching test suite verified to use the
+isolated `_test` database, per the isolation fix landed just before this phase — `c0a7c22`):
+pipeline pytest 147/147, `mypy --strict` clean (17 source files), `ruff check`/`ruff format --check`
+clean (38 files). Backend pytest 266/266, `mypy --strict` clean (52 source files), `ruff
+check`/`ruff format --check` clean (90 files). Frontend vitest 314/314 (unchanged from M12 Phase 6),
+`tsc -b --noEmit` clean, `eslint` clean, `prettier --check` clean (90 files) — zero frontend files
+touched in this phase. The real `pitwall` database's `stints`/`pit_stops` row counts (24,030 /
+22,652) were confirmed identical immediately before and immediately after the full validation pass,
+and a separate `pitwall_test` database was confirmed to exist (created by the isolated-test-DB
+fixtures) — direct, not inferred, evidence that the isolation fix was actually exercised, not merely
+present.
+
+**No architectural concern found requiring a code change.** The one genuine session failure
+(Russian GP `practice_3`) is the design review's own §3.5 failure model working exactly as
+predicted, not a new finding. No Postgres schema change, no new dependency, no `pitwall_pipeline`
+source file touched.
+
+**Explicitly not started in this batch:** 2022 (or any season beyond 2021), Phase 8
+(documentation/release), CSV/export tooling, charts, and frontend work — none were touched, per this
+phase's own scope and the milestone's non-goals list above. (2022 was picked up as a second,
+separate batch immediately below — this statement is accurate as of the 2021 batch's own
+completion, not rewritten in hindsight.)
+
+### Phase 7, Batch 3 — season 2022
+
+**Status: implemented and verified for season 2022.** Same architecture, same resumable operator
+harness pattern as the 2021 batch (`stage_b_2022.py`, scratchpad-only, never added to this
+repository) — `build_ingestion_plan([2022], ...)` for DISCOVER+PLAN, `ingest_event()` unchanged for
+execution, per-event/per-session failure isolation inherited unchanged. One addition this batch,
+made in the harness only (not in `pitwall_pipeline`): every invocation asserted the freshly-rebuilt
+plan's event/session shape matched the approved Stage A dry-run exactly (22 events, 110 sessions,
+the same event-ID list, the same 3-event sprint set) before attempting anything, escalating
+immediately on any mismatch. It never fired — real discovery matched the approved plan on every one
+of the run's several restarts.
+
+**Stage A correction, confirmed by real discovery, not assumed:** the dry-run review's own stated
+expectation ("Britain" as a 2022 sprint weekend) was wrong and was corrected by real FastF1 schedule
+data before any ingestion began — 2022's three real sprint weekends are **Emilia Romagna (round 4),
+Austria (round 11), and São Paulo (round 21)**; Britain ran a conventional weekend that year (sprint
+racing didn't return to Silverstone until 2023). Execution confirmed this discovery was correct:
+Britain's real ingested session set is the 5-session conventional structure, and the three sprint
+events' real chronological order is `practice_1 → qualifying → practice_2 → sprint → race`, matching
+2021's `sprint` `EventFormat` (design review §3.2) — 2022 is the second and final season of that
+format before 2023's Sprint Shootout structure.
+
+**Real outcome: 110 of 110 planned sessions succeeded — no `LOAD_FAILED`, no
+`SUCCESS_NO_TELEMETRY`, zero event-level failures.** A cleaner result than the 2021 batch's 109/110:
+the one genuine, reproducible `DataNotLoadedError` encountered mid-run (Japanese GP `practice_3`)
+succeeded on its very next fresh-process retry, rather than reproducing a second time the way 2021's
+Russian GP `practice_3` did.
+
+| Status | Count |
+|---|---|
+| SUCCESS | 110 |
+| SUCCESS_NO_TELEMETRY | 0 |
+| NOT_AVAILABLE (diagnostics) | 44 |
+| LOAD_FAILED | 0 |
+| Event-level failures | 0 |
+
+Session-type breakdown (all planned sessions succeeded):
+
+| Type | Success | Planned |
+|---|---|---|
+| practice_1 | 22 | 22 |
+| practice_2 | 22 | 22 |
+| practice_3 | 19 | 19 |
+| qualifying | 22 | 22 |
+| sprint | 3 | 3 |
+| race | 22 | 22 |
+| sprint_qualifying | 0 (correctly diagnosed NOT_AVAILABLE for every 2022 event) | 0 |
+
+**Telemetry availability:** full telemetry on all 110 successful sessions — zero
+`SUCCESS_NO_TELEMETRY`, consistent with 2021's finding and the design review's 2018-only telemetry
+gap (§19.2).
+
+**Three real interruptions occurred during the run** (two external process kills, one FastF1
+rate-limit trip — a higher frequency than the 2021 batch's two), all absorbed without data loss or
+duplication by the same disk-truth-based resumable design: every kill was independently confirmed,
+before restarting, to have landed before any Parquet write began for the in-flight session (no
+partial/corrupt directory in any case — checked directly each time, not assumed); the one rate-limit
+trip (mid-Spanish GP, cascading across that event's 5 requested sessions, then again briefly
+mid-British-GP `race`, then mid-Singapore-GP) was detected via the limiter's own error signature and
+stopped cleanly before any further event was attempted, exactly as designed.
+
+**All three 2022 sprint weekends verified:**
+
+| Event | Chronological order | `sprint_qualifying` | Sprint stints / pit stops |
+|---|---|---|---|
+| Emilia Romagna GP | practice_1 → qualifying → practice_2 → sprint → race | NOT_AVAILABLE | 21 stints (1 driver pitted), 1 pit stop |
+| Austrian GP | practice_1 → qualifying → practice_2 → sprint → race | NOT_AVAILABLE | 20 single-stint drivers, 1 pit stop |
+| São Paulo GP | practice_1 → qualifying → practice_2 → sprint → race | NOT_AVAILABLE | 21 stints (1 driver pitted), 1 pit stop |
+
+**Reconciliation by session-ID SET:** Parquet (110), PostgreSQL `stints` (110), and PostgreSQL
+`pit_stops` (110) session-ID sets are **exactly equal — zero orphans in any direction** (an even
+cleaner result than 2021's, where São Paulo's zero-pit-stop sprint left `pit_stops` one session
+short; every 2022 session, including all three sprints, recorded at least one real pit-stop row).
+Zero duplicate `(session_id, driver_id, stint_number)` or `(session_id, driver_id, stop_number)`
+rows in either table.
+
+**Representative sessions manually inspected:** Bahrain Practice 1 (20 drivers, 387 laps, 465,465
+telemetry samples), Bahrain Qualifying (256 laps, 375,884 samples), all three sprint sessions above,
+Abu Dhabi Race — season finale (1,117 laps, 784,332 samples, 51 stints/34 pit stops), and Miami's
+inaugural Grand Prix — a new circuit added to the 2022 calendar (1,057 laps, 795,472 samples, 45
+stints/29 pit stops, a normal strategic race with no data anomalies from being a first-year event).
+
+**Idempotency, verified with a real second ingestion:** the Emilia Romagna sprint weekend (5
+sessions) was re-ingested for real via `ingest_event()` a second time, entirely against already-cached
+data. Every session's Parquet lap/telemetry row counts and every session's Postgres `stints`/
+`pit_stops` row counts were identical before and after (e.g. `sprint`: 400 laps / 272,920 telemetry
+samples / 21 stints / 1 pit stop, all four numbers unchanged); the whole database's total row counts
+(32,132 `stints`, 30,319 `pit_stops`) were unchanged by the second run. `session.parquet` mtimes
+changed (genuine overwrite), confirming true idempotency rather than a no-op skip.
+
+**2020, 2021, and 2024 confirmed untouched throughout:** directory counts unchanged (17 / 22 events
++ 109 sessions / 24); PostgreSQL row counts byte-identical throughout for all three seasons (`2020`:
+6,728 `stints` / 6,407 `pit_stops`; `2021`: 8,398 `stints` / 7,943 `pit_stops`; `2024`: 8,904
+`stints` / 8,300 `pit_stops`). The database's total row counts grew from this batch by exactly the
+new 2022 rows (24,030→32,132 `stints`, +8,102; 22,652→30,319 `pit_stops`, +7,667) — no
+cross-season contamination.
+
+**Resource cost:** `data/fastf1_cache/2022/` grew from 86MB (pre-existing, from earlier design-review
+probing) to 5.5GB; `data/fastf1_cache/` total grew from 21GB to 28GB (+7GB), consistent with the
+2021 batch's growth. `data/processed/2022/` gained all 110 new session directories.
+
+**Validation** (after the real ingestion, idempotency check, and reconciliation above, against the
+real `pitwall` database; PostgreSQL-touching tests verified to use the isolated `pitwall_test`
+database throughout): pipeline pytest 147/147, `mypy --strict` clean, `ruff check`/`ruff format
+--check` clean. Backend pytest 266/266, `mypy --strict` clean, `ruff check`/`ruff format --check`
+clean. Frontend vitest 314/314 (unchanged), `tsc -b --noEmit`/`eslint`/`prettier --check` all clean —
+zero frontend files touched. The real `pitwall` database's row counts (32,132 / 30,319) were
+confirmed identical immediately before and after the full validation pass.
+
+**No architectural concern found requiring a code change.** The one non-rate-limit session failure
+(Japanese GP `practice_3`) resolved on retry and needed no escalation. The three external
+interruptions were each independently confirmed safe by direct disk inspection before resuming — the
+resumable, disk-truth-based recovery design (established for the 2021 batch, unchanged here) held up
+under a higher interruption frequency than 2021 without any code change.
+
+**Explicitly not started in this batch:** 2023 (or any season beyond 2022), Phase 8, CSV/export
+tooling, charts, and frontend work. (2023 was picked up as a third batch immediately below.)
+
+### Phase 7, Batch 4 — season 2023
+
+**Status: implemented and verified for season 2023.** Same architecture and resumable harness
+pattern as the 2021/2022 batches (`stage_b_2023.py`, scratchpad-only). The discovery-drift guard
+(introduced in the 2022 batch) was defined fresh for 2023's own approved shape — 22 events, 110
+sessions, and, distinctly, a **6-event** sprint set (not 3, as in 2021/2022) — plus a new,
+2023-specific check added to the guard: every `sprint_qualifying` session's real FastF1 identifier
+had to equal `"Sprint Shootout"` exactly, or the run would escalate rather than silently ingest an
+unexpected identifier. Neither guard fired on either of this batch's two passes.
+
+**Stage A finding confirmed by real execution:** 2023's sprint weekends use a structurally
+different shape than 2021/2022's — `practice_1 → qualifying → sprint_qualifying → sprint → race`,
+with **both** `practice_2` and `practice_3` unavailable (2021/2022 sprint weekends only lost
+`practice_3`, keeping `practice_2`). Execution confirmed this for real on all six sprint events; no
+event silently reverted to the older 5-practice-slot shape.
+
+**Sprint Shootout → canonical `sprint_qualifying`, verified end-to-end on real ingested data, not
+just the plan:** Azerbaijan GP's real `PlannedSession.fastf1_identifier` was `"Sprint Shootout"`
+(confirmed at Stage A); after real ingestion, the same session's written `session.parquet` stores
+`session_type == "sprint_qualifying"` — the canonical resolver's alias table
+(`SessionType.SPRINT_QUALIFYING: frozenset({"Sprint Qualifying", "Sprint Shootout"})`) verified
+correct against real 2023 data end-to-end, from FastF1's own real display name through to what
+PitWall actually persists.
+
+**Real outcome: 110 of 110 planned sessions accounted for — 109 `SUCCESS`, 1
+`SUCCESS_NO_TELEMETRY`, 0 `LOAD_FAILED`, zero event-level failures.** The first `SUCCESS_NO_TELEMETRY`
+observed in any of the three real-ingestion batches so far, and the first observed for a modern
+(non-2018) season: **Austrian GP `practice_1`** — a completely normal, full-length session (604
+laps across all 20 drivers, no shortening) where `lap.get_telemetry()` failed for literally every
+lap of every driver, a real, upstream FastF1 data gap (per-lap `except Exception` already handles
+this, unmodified, per design review §19.2's precedent) rather than a truncated or corrupted session.
+Laps/stints/pit-stops for this session are fully populated; only telemetry/track-map views would be
+unavailable for it.
+
+| Status | Count |
+|---|---|
+| SUCCESS | 109 |
+| SUCCESS_NO_TELEMETRY | 1 |
+| NOT_AVAILABLE (diagnostics) | 44 |
+| LOAD_FAILED | 0 |
+| Event-level failures | 0 |
+
+Session-type breakdown:
+
+| Type | Success | Success (no telemetry) | Planned |
+|---|---|---|---|
+| practice_1 | 21 | 1 | 22 |
+| practice_2 | 16 | 0 | 16 |
+| practice_3 | 16 | 0 | 16 |
+| qualifying | 22 | 0 | 22 |
+| sprint_qualifying | 6 | 0 | 6 |
+| sprint | 6 | 0 | 6 |
+| race | 22 | 0 | 22 |
+
+**All six 2023 sprint weekends verified** — Azerbaijan (R4), Austria (R9), Belgium (R12), Qatar
+(R17), United States (R18), São Paulo (R20) — each with the real `practice_1 → qualifying →
+sprint_qualifying → sprint → race` order and both `practice_2`/`practice_3` correctly
+`NOT_AVAILABLE`.
+
+**Pre-existing `2023_monza_race` test-fixture contamination, explicitly accounted for, not
+mistaken for ingestion, not touched:** 2 `pit_stops` rows (`VER`, stops 1–2) predating this batch —
+the literal `SESSION_ID` fixture constant from `pipeline/tests/test_postgres_writer.py`, leaked into
+the real `pitwall` database by a test run that predates the isolation fix (`c0a7c22`). `2023_monza_race`
+is not a real PitWall session_id (the real Italian GP session is `2023_italian_grand_prix_race`) and
+was correctly excluded from every reconciliation count below. Confirmed byte-identical (same 2 rows,
+same values) before this batch began, immediately after ingestion, and again after the full test
+suite ran — never created, modified, or deleted by any step of this batch.
+
+**Reconciliation by session-ID SET:** Parquet (110) = PostgreSQL `stints` (110) — **exact match,
+zero orphans**. PostgreSQL `pit_stops` raw distinct-session count is 110, but that count includes
+the Monza contamination row; excluding it, real `pit_stops` = 109 — São Paulo's Sprint has zero real
+pit-stop rows, independently corroborated the same way as the 2021/2022 batches (all 20 drivers show
+exactly 1 stint, no compound change). Zero duplicate `(session_id, driver_id, stint_number)` or
+`(session_id, driver_id, stop_number)` rows in either table.
+
+**Representative sessions manually inspected:** Bahrain Practice 1/Qualifying/Race (conventional,
+403/254/1,056 laps respectively), Azerbaijan's sprint-weekend Practice 1 (the only practice session
+that weekend), Sprint Shootout, Sprint, and Race (all four with plausible lap/telemetry/stint/pit-stop
+counts for a short, high-attrition street circuit).
+
+**Idempotency, verified with a real second ingestion:** the Azerbaijan sprint weekend (5 sessions)
+was re-ingested for real via `ingest_event()` a second time, entirely against already-cached data.
+Every session's Parquet lap/telemetry counts and Postgres `stints`/`pit_stops` row counts were
+identical before and after; the whole database's total row counts (40,203 `stints`, 37,827
+`pit_stops`) were unchanged, and the Monza contamination row was independently re-verified unchanged
+in the same pass. `session.parquet` mtimes changed (genuine overwrite), confirming true idempotency.
+
+**2020, 2021, 2022, and 2024 confirmed untouched throughout:** directory counts unchanged (17 / 22
+events+109 sessions / 22 events+110 sessions / 24); PostgreSQL row counts byte-identical for all
+four seasons throughout (`2020`: 6,728/6,407; `2021`: 8,398/7,943; `2022`: 8,102/7,667; `2024`:
+8,904/8,300). Total database rows grew by exactly the new 2023 rows (32,132→40,203 `stints`,
++8,071; 30,319→37,827 `pit_stops`, +7,508 real new rows, contamination excluded) — no cross-season
+contamination.
+
+**One real interruption** (an external process kill, mid-Austrian-GP `race` resolution, before any
+Parquet write began) and **one FastF1 rate-limit trip** (mid-United-States-GP `race`, single session,
+smallest blast radius of any batch so far) — both confirmed safe and absorbed cleanly by the same
+disk-truth-based resumable design, zero data loss or duplication, matching the 2021/2022 batches'
+precedent.
+
+**Resource cost:** `data/fastf1_cache/2023/` grew from 81MB (pre-existing) to 5.4GB;
+`data/fastf1_cache/` total grew from 28GB to 34GB (+6GB).
+
+**Validation:** pipeline pytest 147/147, `mypy --strict` clean, `ruff check`/`ruff format --check`
+clean. Backend pytest 266/266, `mypy --strict` clean, `ruff check`/`ruff format --check` clean.
+Frontend vitest 314/314 (unchanged), `tsc -b --noEmit`/`eslint`/`prettier --check` all clean — zero
+frontend files touched. The real `pitwall` database's row counts (40,203 / 37,827) and the Monza
+contamination row were confirmed identical immediately before and after the full validation pass.
+
+**No architectural concern found requiring a code change.** The one `SUCCESS_NO_TELEMETRY` session
+is a real, already-handled case (per-lap telemetry `except Exception`, unmodified since M12 Phase 1)
+— evidence the design review's 2018 finding generalizes to "any session can have this," not "only
+pre-2019 seasons can," but not itself a defect. The pre-existing Monza contamination is a
+test-infrastructure finding predating this batch, correctly identified and excluded from every
+count, left untouched pending a separate cleanup decision.
+
+**Explicitly not started in this batch:** 2024 real re-ingestion (2024 data already existed from
+before M12 Phase 7), 2025/2026 (or any season beyond 2023), Phase 8, CSV/export tooling, charts, and
+frontend work.
 
 ---
 
