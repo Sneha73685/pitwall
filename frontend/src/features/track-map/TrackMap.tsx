@@ -29,6 +29,14 @@ interface TrackMapProps {
    * outline's fixed single color.
    */
   segmentColors?: string[];
+  /**
+   * The synchronized cursor's current position on track (M14,
+   * docs/m14-design-review.md §9), already resolved to data-space x/y by
+   * the caller (`nearestTrackPointAt`) -- `TrackMap` just plots it with its
+   * own already-computed `xScale`/`yScale`, the same way it already plots
+   * `startPoint`/`secondaryStartPoint`. `null`/omitted: no marker.
+   */
+  cursorPoint?: Point | null;
 }
 
 const WIDTH = 600;
@@ -44,13 +52,17 @@ const LAP_B_COLOR = "#ee6666";
  * Static track map (M4, ADR architecture.md §4): D3 only computes scales and
  * the path string, React renders the actual SVG elements -- D3 never
  * touches the DOM directly, avoiding the two libraries fighting over it.
- * No hover/cursor interactivity yet; that's V2 (docs/success-metrics.md).
+ * M14 (docs/m14-design-review.md §9) adds one display-only piece of
+ * interactivity: an optional `cursorPoint` marker, resolved by the caller
+ * from the page-scoped synchronized cursor -- TrackMap itself still has no
+ * mouse handlers; it is a cursor consumer, never a source.
  */
 export function TrackMap({
   trackPoints,
   lapPoints,
   secondaryLapPoints,
   segmentColors,
+  cursorPoint,
 }: TrackMapProps) {
   if (trackPoints.length === 0) {
     return <EmptyState>No track geometry available for this session.</EmptyState>;
@@ -145,6 +157,15 @@ export function TrackMap({
           r={5}
           fill={LAP_B_COLOR}
           data-testid="secondary-lap-start-marker"
+        />
+      )}
+      {cursorPoint && (
+        <circle
+          cx={xScale(cursorPoint.x)}
+          cy={yScale(cursorPoint.y)}
+          r={6}
+          className={styles.cursorMarker}
+          data-testid="cursor-marker"
         />
       )}
     </svg>

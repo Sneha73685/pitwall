@@ -2,6 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as echarts from "echarts/core";
 import type { LapComparisonResponse } from "../../../api/client";
+import { useComparisonStore, type ComparisonChannelKey } from "../comparisonStore";
 import { buildDeltaChartOption } from "./deltaChartOptions";
 import { DeltaChart } from "./DeltaChart";
 
@@ -49,14 +50,29 @@ function comparison(overrides: Partial<LapComparisonResponse> = {}): LapComparis
 }
 
 describe("DeltaChart", () => {
-  const fakeChart = { setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn() };
+  const fakeChart = {
+    setOption: vi.fn(),
+    resize: vi.fn(),
+    dispose: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    dispatchAction: vi.fn(),
+  };
 
   beforeEach(() => {
     vi.mocked(fakeChart.setOption).mockClear();
     vi.mocked(fakeChart.resize).mockClear();
     vi.mocked(fakeChart.dispose).mockClear();
+    vi.mocked(fakeChart.on).mockClear();
+    vi.mocked(fakeChart.off).mockClear();
+    vi.mocked(fakeChart.dispatchAction).mockClear();
     vi.mocked(echarts.init).mockClear();
     vi.mocked(echarts.init).mockReturnValue(fakeChart as unknown as echarts.ECharts);
+    useComparisonStore.setState({
+      distanceM: null,
+      source: null,
+      visibleChannels: new Set<ComparisonChannelKey>(["speed_kph"]),
+    });
   });
 
   afterEach(() => {
@@ -96,5 +112,41 @@ describe("DeltaChart", () => {
     render(<DeltaChart comparison={comparison()} />);
 
     expect(screen.getByText(/positive delta means lap a is ahead/i)).toBeInTheDocument();
+  });
+
+  // --- M14 cursor sync (docs/m14-design-review.md §8/§9/§12) ---
+
+  it("reports a hovered distance into comparisonStore, tagged as delta-chart", () => {
+    render(<DeltaChart comparison={comparison()} />);
+
+    const updateAxisPointer = vi
+      .mocked(fakeChart.on)
+      .mock.calls.find(([event]) => event === "updateAxisPointer")?.[1] as (
+      params: unknown,
+    ) => void;
+    updateAxisPointer({ axesInfo: [{ axisDim: "x", value: 50 }] });
+
+    expect(useComparisonStore.getState().distanceM).toBe(50);
+    expect(useComparisonStore.getState().source).toBe("delta-chart");
+  });
+
+  it("dispatches into its own instance when another chart set the cursor", () => {
+    useComparisonStore.setState({ distanceM: 30, source: "telemetry-charts" });
+
+    render(<DeltaChart comparison={comparison()} />);
+
+    expect(fakeChart.dispatchAction).toHaveBeenCalledWith({
+      type: "updateAxisPointer",
+      currTrigger: "mousemove",
+      axesInfo: [{ axisDim: "x", axisIndex: 0, value: 30 }],
+    });
+  });
+
+  it("does not dispatch into its own instance when it was the source that set the cursor", () => {
+    useComparisonStore.setState({ distanceM: 30, source: "delta-chart" });
+
+    render(<DeltaChart comparison={comparison()} />);
+
+    expect(fakeChart.dispatchAction).not.toHaveBeenCalled();
   });
 });

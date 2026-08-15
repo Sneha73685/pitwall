@@ -10,23 +10,26 @@
   max-width: 480px;
 }
 
-.cardLink {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  transition:
-    transform 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.cardLink:hover {
-  transform: translateY(-2px);
+.cardRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pw-space-3);
 }
 
 .cardBody {
   display: flex;
   align-items: center;
   gap: var(--pw-space-3);
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+}
+
+.compareLink {
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-sm);
+  white-space: nowrap;
 }
 
 .date {

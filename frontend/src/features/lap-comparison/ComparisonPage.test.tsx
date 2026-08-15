@@ -5,20 +5,43 @@ import * as client from "../../api/client";
 import { useComparisonStore, type ComparisonChannelKey } from "./comparisonStore";
 import { ComparisonPage } from "./ComparisonPage";
 
+// Used inside the vi.mock factories below -- referencing a normal
+// top-level import from a mock factory is safe in Vitest: the factory body
+// only runs when the mocked module is first resolved (after this file's
+// own imports have all evaluated), not at vi.mock's hoist time.
+
 // DeltaChart, ChannelOverlayPanel, and TrackMapDelta each own real
 // rendering/fetch behavior (covered by their own test suites, Phase 7/8 and
 // M13's TrackMapDelta.test.tsx circuit-mismatch cases); ComparisonPage only
 // needs to know they're wired up with the comparison data, same pattern
 // TrackMapPage.test.tsx uses for TelemetryCharts.
+// Each stub reads/writes comparisonStore directly (not mocked -- it's the
+// real store, same as the real components use) so M14 cross-chart cursor
+// sync (docs/m14-design-review.md §12's "ComparisonPage-level" case) is
+// testable at this level too: a "hover" button simulates the real
+// component's own hover-report, and the rendered text proves whether the
+// OTHER stubs' own read of the store reflects it.
 vi.mock("./components/DeltaChart", () => ({
-  DeltaChart: ({ comparison }: { comparison: client.LapComparisonResponse }) => (
-    <div data-testid="delta-chart-stub">delta for {comparison.lap_a.driver_id}</div>
-  ),
+  DeltaChart: ({ comparison }: { comparison: client.LapComparisonResponse }) => {
+    const distanceM = useComparisonStore((s) => s.distanceM);
+    const setCursor = useComparisonStore((s) => s.setCursor);
+    return (
+      <div data-testid="delta-chart-stub">
+        delta for {comparison.lap_a.driver_id}, cursor: {distanceM ?? "none"}
+        <button onClick={() => setCursor(75, "delta-chart")}>hover delta chart</button>
+      </div>
+    );
+  },
 }));
 vi.mock("./components/ChannelOverlayPanel", () => ({
-  ChannelOverlayPanel: ({ comparison }: { comparison: client.LapComparisonResponse }) => (
-    <div data-testid="channel-overlay-panel-stub">channels for {comparison.lap_b.driver_id}</div>
-  ),
+  ChannelOverlayPanel: ({ comparison }: { comparison: client.LapComparisonResponse }) => {
+    const distanceM = useComparisonStore((s) => s.distanceM);
+    return (
+      <div data-testid="channel-overlay-panel-stub">
+        channels for {comparison.lap_b.driver_id}, cursor: {distanceM ?? "none"}
+      </div>
+    );
+  },
 }));
 vi.mock("./components/TrackMapDelta", () => ({
   TrackMapDelta: ({
@@ -27,11 +50,15 @@ vi.mock("./components/TrackMapDelta", () => ({
   }: {
     sessionId: string;
     comparison: client.LapComparisonResponse;
-  }) => (
-    <div data-testid="track-map-delta-stub">
-      track map for {sessionId} ({comparison.lap_a.driver_id} vs {comparison.lap_b.driver_id})
-    </div>
-  ),
+  }) => {
+    const distanceM = useComparisonStore((s) => s.distanceM);
+    return (
+      <div data-testid="track-map-delta-stub">
+        track map for {sessionId} ({comparison.lap_a.driver_id} vs {comparison.lap_b.driver_id}),
+        cursor: {distanceM ?? "none"}
+      </div>
+    );
+  },
 }));
 
 function renderAt(path: string) {
@@ -116,7 +143,8 @@ describe("ComparisonPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useComparisonStore.setState({
-      hoverDistance: null,
+      distanceM: null,
+      source: null,
       visibleChannels: new Set<ComparisonChannelKey>(["speed_kph"]),
     });
     vi.spyOn(client, "listDrivers").mockResolvedValue(drivers);
@@ -158,6 +186,55 @@ describe("ComparisonPage", () => {
     expect(screen.getByTestId("delta-chart-stub")).toBeInTheDocument();
     expect(screen.getByTestId("channel-overlay-panel-stub")).toBeInTheDocument();
     expect(screen.getByTestId("track-map-delta-stub")).toBeInTheDocument();
+  });
+
+  // --- M14 synchronized cursor (docs/m14-design-review.md §6.1/§12) ---
+
+  it("propagates a hover from one chart to the others (ComparisonPage-level cross-chart sync)", async () => {
+    vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+    renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+    await waitFor(() =>
+      expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+    );
+    await selectDriverAndLap(0, "VER");
+    await selectDriverAndLap(1, "LEC");
+    await waitFor(() => expect(screen.getByTestId("delta-chart-stub")).toHaveTextContent("none"));
+
+    fireEvent.click(screen.getByRole("button", { name: /hover delta chart/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("channel-overlay-panel-stub")).toHaveTextContent("cursor: 75"),
+    );
+    expect(screen.getByTestId("track-map-delta-stub")).toHaveTextContent("cursor: 75");
+  });
+
+  it("clears the cursor when a new comparison is fetched (session/lap change)", async () => {
+    const compareLapsSpy = vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+    renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+    await waitFor(() =>
+      expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+    );
+    await selectDriverAndLap(0, "VER");
+    await selectDriverAndLap(1, "LEC");
+    await waitFor(() => expect(screen.getByTestId("delta-chart-stub")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /hover delta chart/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId("delta-chart-stub")).toHaveTextContent("cursor: 75"),
+    );
+
+    // A genuinely new comparison fetch (swap produces one via the same
+    // useLapComparison hook) must reset the stale cursor.
+    compareLapsSpy.mockResolvedValue({
+      ...sampleComparison,
+      lap_a: lecLaps[0],
+      lap_b: verLaps[0],
+    });
+    fireEvent.click(screen.getByRole("button", { name: /swap a\/b/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("delta-chart-stub")).toHaveTextContent("cursor: none"),
+    );
   });
 
   it("swaps A and B when the swap button is clicked, refetching with params flipped", async () => {

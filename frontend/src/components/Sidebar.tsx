@@ -53,7 +53,7 @@ export function Sidebar() {
             </NavLink>
           )}
           <NavLink to={`/laps/compare?sessionA=${sessionId}`} className={linkClass}>
-            Lap Comparison
+            Compare Sessions
           </NavLink>
           <NavLink to={`/sessions/${sessionId}/analytics`} className={linkClass}>
             Session Analytics

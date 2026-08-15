@@ -2,8 +2,15 @@ import * as echarts from "echarts/core";
 import { LineChart } from "echarts/charts";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { useCallback } from "react";
+import type { StoreApi, UseBoundStore } from "zustand";
 import type { TelemetrySample } from "../../api/client";
 import { EmptyState } from "../../components/EmptyState";
+import {
+  extractAxisPointerValue,
+  useCursorSync,
+  type CursorSlice,
+} from "../../components/useCursorSync";
 import { useEChartsInstance } from "../../components/useEChartsInstance";
 import { buildChartOption, type ChannelKey } from "./chartOptions";
 import styles from "./TelemetryCharts.module.css";
@@ -11,6 +18,7 @@ import styles from "./TelemetryCharts.module.css";
 echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 
 const CHART_HEIGHT = 720;
+const CURSOR_SOURCE = "telemetry-charts" as const;
 
 interface TelemetryChartsProps {
   /** One lap's distance-ordered telemetry samples (same data TrackMap already fetches). */
@@ -27,6 +35,14 @@ interface TelemetryChartsProps {
    * keeps showing every channel as before.
    */
   channels?: ChannelKey[];
+  /**
+   * The page-scoped cursor store to sync against (M14,
+   * docs/m14-design-review.md §5/§8) -- `comparisonStore` when rendered via
+   * `ChannelOverlayPanel`, `track-map/cursorStore` when rendered via
+   * `TrackMapPage`. Passed in rather than imported directly so this
+   * component stays agnostic of which page it's rendered on.
+   */
+  cursorStore: UseBoundStore<StoreApi<CursorSlice>>;
 }
 
 /**
@@ -36,13 +52,41 @@ interface TelemetryChartsProps {
  * `samples` so the chart instance survives lap-to-lap navigation
  * (TrackMapPage doesn't remount on a route-param change) -- only its
  * visibility toggles when there's no data.
+ *
+ * M14: hovering this instance reports the hovered `distance_m` into
+ * `cursorStore` (deduped against the store's current value to avoid
+ * re-entering the store from this component's own programmatic
+ * `dispatch`-driven axisPointer moves -- see `useCursorSync`'s docstring);
+ * `useCursorSync` moves this instance's own axisPointer to match whenever
+ * some other chart set the cursor instead.
  */
-export function TelemetryCharts({ samples, secondarySamples, channels }: TelemetryChartsProps) {
+export function TelemetryCharts({
+  samples,
+  secondarySamples,
+  channels,
+  cursorStore,
+}: TelemetryChartsProps) {
   const hasData = samples.length > 0;
-  const containerRef = useEChartsInstance(
+  const setCursor = cursorStore((state) => state.setCursor);
+
+  const handleAxisPointerUpdate = useCallback(
+    (params: unknown) => {
+      const value = extractAxisPointerValue(params);
+      if (value === null || value === cursorStore.getState().distanceM) {
+        return;
+      }
+      setCursor(value, CURSOR_SOURCE);
+    },
+    [cursorStore, setCursor],
+  );
+
+  const chart = useEChartsInstance(
     () => buildChartOption(samples, secondarySamples, channels),
     [samples, secondarySamples, channels],
+    { updateAxisPointer: handleAxisPointerUpdate },
   );
+  useCursorSync(chart.dispatch, CURSOR_SOURCE, cursorStore);
+  const containerRef = chart;
 
   return (
     <div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ErrorState } from "../../components/ErrorState";
 import { useLapComparison } from "./hooks/useLapComparison";
@@ -9,6 +9,7 @@ import { DeltaChart } from "./components/DeltaChart";
 import { SectorBreakdownTable } from "./components/SectorBreakdownTable";
 import { ChannelOverlayPanel } from "./components/ChannelOverlayPanel";
 import { TrackMapDelta } from "./components/TrackMapDelta";
+import { useComparisonStore } from "./comparisonStore";
 import type { DriverLapSelection } from "./components/DriverLapPicker";
 import styles from "./ComparisonPage.module.css";
 
@@ -49,6 +50,19 @@ export function ComparisonPage() {
     selectionB?.driverId,
     selectionB?.lapNumber,
   );
+  const clearCursor = useComparisonStore((state) => state.clearCursor);
+
+  // M14 (docs/m14-design-review.md §6.1): clear the synchronized cursor on
+  // every new successful comparison fetch (session A/B, driver/lap, and the
+  // swap button all produce a new `comparison` object through the same
+  // hook) so a stale cursor from the previous pair never bleeds into the
+  // next one. Not on every keystroke of picking a new driver/lap -- only
+  // once a full new comparison has actually resolved.
+  useEffect(() => {
+    if (comparison) {
+      clearCursor();
+    }
+  }, [comparison, clearCursor]);
 
   function handleSwap() {
     setSessionIdA(sessionIdB);

@@ -16,6 +16,12 @@ import styles from "./SessionListForEventPage.module.css";
  * `GET /seasons/{season}/events/{event_id}/sessions`), already ordered by
  * real weekend chronology -- rendered in that order, no client-side
  * re-sort. Links to the existing, unchanged `/sessions/:sessionId` route.
+ *
+ * M14 (docs/m14-design-review.md §11): each card also gets a small
+ * secondary "Compare" action linking to `/laps/compare?sessionA=<id>`,
+ * identical to what `Sidebar`'s own link already produces, just reachable
+ * one step earlier (before drilling into a specific driver). Reuses
+ * `ComparisonPage`'s existing `sessionA` query-param contract unchanged.
  */
 export function SessionListForEventPage() {
   const { season, eventId } = useParams<{ season: string; eventId: string }>();
@@ -51,9 +57,9 @@ export function SessionListForEventPage() {
       <ul className={styles.list}>
         {sessions.map((session) => (
           <li key={session.session_id}>
-            <Link to={`/sessions/${session.session_id}`} className={styles.cardLink}>
-              <Card>
-                <div className={styles.cardBody}>
+            <Card>
+              <div className={styles.cardRow}>
+                <Link to={`/sessions/${session.session_id}`} className={styles.cardBody}>
                   <StatusChip tone="neutral">
                     {SESSION_TYPE_LABELS[session.session_type]}
                   </StatusChip>
@@ -63,9 +69,15 @@ export function SessionListForEventPage() {
                   {!session.has_telemetry && (
                     <StatusChip tone="warning">no telemetry data</StatusChip>
                   )}
-                </div>
-              </Card>
-            </Link>
+                </Link>
+                <Link
+                  to={`/laps/compare?sessionA=${session.session_id}`}
+                  className={styles.compareLink}
+                >
+                  Compare
+                </Link>
+              </div>
+            </Card>
           </li>
         ))}
       </ul>

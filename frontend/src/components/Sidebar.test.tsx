@@ -52,6 +52,26 @@ describe("Sidebar", () => {
     );
   });
 
+  // M14 (docs/m14-design-review.md §11): relabeled from "Lap Comparison" so
+  // it reads as an invitation to pick a second session, since the
+  // destination page has supported cross-session comparison since M13.
+  it("labels the comparison link 'Compare Sessions' once a session is selected", () => {
+    useSelectionStore.setState({
+      ...DEFAULTS,
+      season: 2024,
+      eventId: "2024_bahrain_grand_prix",
+      sessionId: "2024_bahrain_grand_prix_race",
+    });
+
+    renderSidebar();
+
+    expect(screen.getByRole("link", { name: "Compare Sessions" })).toHaveAttribute(
+      "href",
+      "/laps/compare?sessionA=2024_bahrain_grand_prix_race",
+    );
+    expect(screen.queryByRole("link", { name: "Lap Comparison" })).not.toBeInTheDocument();
+  });
+
   it("still shows Drivers once a session is selected, alongside the season/event trail", () => {
     useSelectionStore.setState({
       ...DEFAULTS,

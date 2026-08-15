@@ -51,16 +51,27 @@ function comparison(): LapComparisonResponse {
 }
 
 describe("ChannelOverlayPanel", () => {
-  const fakeChart = { setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn() };
+  const fakeChart = {
+    setOption: vi.fn(),
+    resize: vi.fn(),
+    dispose: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    dispatchAction: vi.fn(),
+  };
 
   beforeEach(() => {
     useComparisonStore.setState({
-      hoverDistance: null,
+      distanceM: null,
+      source: null,
       visibleChannels: new Set<ComparisonChannelKey>(["speed_kph"]),
     });
     vi.mocked(fakeChart.setOption).mockClear();
     vi.mocked(fakeChart.resize).mockClear();
     vi.mocked(fakeChart.dispose).mockClear();
+    vi.mocked(fakeChart.on).mockClear();
+    vi.mocked(fakeChart.off).mockClear();
+    vi.mocked(fakeChart.dispatchAction).mockClear();
     vi.mocked(echarts.init).mockClear();
     vi.mocked(echarts.init).mockReturnValue(fakeChart as unknown as echarts.ECharts);
   });

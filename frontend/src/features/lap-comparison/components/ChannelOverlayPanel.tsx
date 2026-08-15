@@ -21,7 +21,9 @@ interface ChannelOverlayPanelProps {
  * built (Reuse Ledger, docs/m6-implementation-plan.md §3) rather than
  * reworking its architecture in this phase.
  *
- * Static, not cursor-synced -- see DeltaChart.tsx for why.
+ * M14 (docs/m14-design-review.md §8): passes `comparisonStore` down to
+ * TelemetryCharts as its cursor store, so hovering this overlay
+ * participates in the same synchronized cursor as DeltaChart/TrackMapDelta.
  */
 export function ChannelOverlayPanel({ comparison }: ChannelOverlayPanelProps) {
   const visibleChannels = useComparisonStore((state) => state.visibleChannels);
@@ -55,6 +57,7 @@ export function ChannelOverlayPanel({ comparison }: ChannelOverlayPanelProps) {
         samples={samplesA}
         secondarySamples={samplesB}
         channels={[...visibleChannels]}
+        cursorStore={useComparisonStore}
       />
     </Card>
   );

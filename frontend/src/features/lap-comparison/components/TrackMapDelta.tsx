@@ -3,7 +3,9 @@ import { getTrackPoints, type LapComparisonResponse, type TrackPoint } from "../
 import { Card } from "../../../components/Card";
 import { ErrorState } from "../../../components/ErrorState";
 import { LoadingState } from "../../../components/LoadingState";
+import { nearestTrackPointAt } from "../../track-map/nearestTrackPointAt";
 import { TrackMap } from "../../track-map/TrackMap";
+import { useComparisonStore } from "../comparisonStore";
 import { computeSegmentColors } from "./trackMapSegmentColors";
 
 interface TrackMapDeltaProps {
@@ -27,12 +29,13 @@ interface TrackMapDeltaProps {
  *
  * `segmentColors` is memoized on the fetched track geometry and the
  * comparison object so it isn't recomputed on unrelated re-renders (e.g. a
- * channel-visibility toggle elsewhere on the page) -- design §12's
- * performance note, applied without the cursor-sync machinery that note
- * also describes: `echarts.connect`/`useCursorSync` cross-chart sync is V2
- * scope per docs/success-metrics.md and ADR-0007/ADR-0008, already
- * deferred for DeltaChart/TelemetryCharts (Phase 7) -- this component
- * follows that same precedent, so there's no hover-driven marker here.
+ * channel-visibility toggle elsewhere on the page).
+ *
+ * M14 (docs/m14-design-review.md §9): the synchronized cursor's marker,
+ * resolved via `nearestTrackPointAt` against `trackPoints` (the outline --
+ * this component never has per-lap x/y, see above) rather than against
+ * either lap's own samples. Reads `comparisonStore` directly, same as
+ * `DeltaChart`, since this component only ever renders on `ComparisonPage`.
  *
  * M13 (docs/m13-design-review.md §9): `sessionId` is now the caller's
  * choice of *which* session's geometry to show -- always session A's,
@@ -48,6 +51,7 @@ export function TrackMapDelta({ sessionId, comparison }: TrackMapDeltaProps) {
   const [trackPoints, setTrackPoints] = useState<TrackPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const hasCircuitMismatch = comparison.warnings.some((w) => w.code === "different_circuit");
+  const cursorDistanceM = useComparisonStore((state) => state.distanceM);
 
   useEffect(() => {
     if (hasCircuitMismatch) {
@@ -62,6 +66,7 @@ export function TrackMapDelta({ sessionId, comparison }: TrackMapDeltaProps) {
     () => (trackPoints ? computeSegmentColors(trackPoints, comparison) : undefined),
     [trackPoints, comparison],
   );
+  const cursorPoint = trackPoints ? nearestTrackPointAt(trackPoints, cursorDistanceM) : null;
 
   if (hasCircuitMismatch) {
     return (
@@ -82,7 +87,12 @@ export function TrackMapDelta({ sessionId, comparison }: TrackMapDeltaProps) {
 
   return (
     <Card title="Track Map — Delta">
-      <TrackMap trackPoints={trackPoints} lapPoints={[]} segmentColors={segmentColors} />
+      <TrackMap
+        trackPoints={trackPoints}
+        lapPoints={[]}
+        segmentColors={segmentColors}
+        cursorPoint={cursorPoint}
+      />
     </Card>
   );
 }

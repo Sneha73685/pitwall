@@ -11,11 +11,18 @@
  * selectionStore.ts lives) since nothing outside lap-comparison reads
  * this store, unlike selectionStore's cross-page use.
  *
- * hoverDistance is only a state slot in Phase 6 -- nothing writes to it
- * yet. Phase 7 wires real chart hover events into setHoverDistance and
- * handles ECharts cross-instance synchronization; neither happens here.
+ * The cursor slot (M14, docs/m14-design-review.md §5/§6) implements the
+ * shared `CursorSlice` shape -- the same one `track-map/cursorStore.ts`
+ * implements for `TrackMapPage` -- wired up here, not replaced: this is
+ * the same store M6 Phase 6 declared and deliberately left unwired
+ * ("hoverDistance is only a state slot... Phase 7 wires real chart hover
+ * events... neither happens here"). Phase 7 never ran; M14 finishes it,
+ * renaming `hoverDistance`/`setHoverDistance` to the canonical
+ * `distanceM`/`setCursor`/`clearCursor` shape in the process (§6.1: "today's
+ * unused `setHoverDistance(null)` call site" becomes `clearCursor()`).
  */
 import { create } from "zustand";
+import { type CursorSlice } from "../../components/useCursorSync";
 
 export const COMPARISON_CHANNELS = [
   { key: "speed_kph", label: "Speed" },
@@ -30,16 +37,16 @@ export type ComparisonChannelKey = (typeof COMPARISON_CHANNELS)[number]["key"];
 
 const DEFAULT_VISIBLE_CHANNELS: ReadonlySet<ComparisonChannelKey> = new Set(["speed_kph"]);
 
-export interface ComparisonState {
-  hoverDistance: number | null;
-  setHoverDistance: (distance: number | null) => void;
+export interface ComparisonState extends CursorSlice {
   visibleChannels: ReadonlySet<ComparisonChannelKey>;
   toggleChannel: (channel: ComparisonChannelKey) => void;
 }
 
 export const useComparisonStore = create<ComparisonState>((set) => ({
-  hoverDistance: null,
-  setHoverDistance: (hoverDistance) => set({ hoverDistance }),
+  distanceM: null,
+  source: null,
+  setCursor: (distanceM, source) => set({ distanceM, source }),
+  clearCursor: () => set({ distanceM: null, source: null }),
   visibleChannels: DEFAULT_VISIBLE_CHANNELS,
   toggleChannel: (channel) =>
     set((state) => {

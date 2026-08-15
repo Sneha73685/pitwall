@@ -44,9 +44,12 @@ const LAP_B_COLOR = "#ee6666";
  * channel gets a second series for the comparison lap, suffixed "(A)"/"(B)"
  * and given a fixed, distinguishing color.
  *
- * Deliberately does not call echarts.connect()/axisPointer.link -- V1 is
- * static per-channel traces, not the synchronized cross-chart cursor that's
- * explicitly V2 scope (docs/success-metrics.md).
+ * `axisPointer.link` (M14, docs/m14-design-review.md §8) links every grid's
+ * xAxis *within this one instance* so hovering one channel shows the
+ * crosshair on every other channel too -- a static option, not a runtime
+ * sync mechanism, and orthogonal to the cross-*component* cursor sync that
+ * `useCursorSync`/the page-scoped Zustand stores handle (this design's
+ * "not C" decision, §8): echarts.connect() itself is still never called.
  *
  * `channels` (M6 Phase 7) restricts which channels get a grid/series at
  * all -- the comparison view's per-channel toggle (ChannelOverlayPanel)
@@ -135,6 +138,9 @@ export function buildChartOption(
       backgroundColor: "#1a2029",
       borderColor: "#3a4453",
       textStyle: { color: "#e8edf3" },
+    },
+    axisPointer: {
+      link: [{ xAxisIndex: "all" }],
     },
   };
 }

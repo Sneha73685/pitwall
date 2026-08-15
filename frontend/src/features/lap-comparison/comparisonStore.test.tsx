@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useComparisonStore, type ComparisonChannelKey } from "./comparisonStore";
 
 const DEFAULTS = {
-  hoverDistance: null,
+  distanceM: null,
+  source: null,
   visibleChannels: new Set<ComparisonChannelKey>(["speed_kph"]),
 };
 
@@ -12,10 +13,11 @@ describe("useComparisonStore", () => {
     useComparisonStore.setState({ ...DEFAULTS });
   });
 
-  it("defaults to only speed_kph visible and no hover distance", () => {
+  it("defaults to only speed_kph visible and no cursor", () => {
     const state = useComparisonStore.getState();
 
-    expect(state.hoverDistance).toBeNull();
+    expect(state.distanceM).toBeNull();
+    expect(state.source).toBeNull();
     expect([...state.visibleChannels]).toEqual(["speed_kph"]);
   });
 
@@ -33,15 +35,35 @@ describe("useComparisonStore", () => {
     expect(useComparisonStore.getState().visibleChannels.has("speed_kph")).toBe(false);
   });
 
-  it("setHoverDistance updates hoverDistance without touching visibleChannels", () => {
-    useComparisonStore.getState().setHoverDistance(123.4);
+  it("setCursor updates distanceM and records the source, without touching visibleChannels", () => {
+    useComparisonStore.getState().setCursor(123.4, "delta-chart");
 
     const state = useComparisonStore.getState();
-    expect(state.hoverDistance).toBe(123.4);
+    expect(state.distanceM).toBe(123.4);
+    expect(state.source).toBe("delta-chart");
     expect([...state.visibleChannels]).toEqual(["speed_kph"]);
   });
 
-  it("a component subscribed only to visibleChannels does not re-render when hoverDistance changes", () => {
+  it("a later setCursor call overwrites the previous distance and source cleanly", () => {
+    useComparisonStore.getState().setCursor(50, "telemetry-charts");
+    useComparisonStore.getState().setCursor(100, "delta-chart");
+
+    const state = useComparisonStore.getState();
+    expect(state.distanceM).toBe(100);
+    expect(state.source).toBe("delta-chart");
+  });
+
+  it("clearCursor resets distanceM and source to null", () => {
+    useComparisonStore.getState().setCursor(100, "delta-chart");
+
+    useComparisonStore.getState().clearCursor();
+
+    const state = useComparisonStore.getState();
+    expect(state.distanceM).toBeNull();
+    expect(state.source).toBeNull();
+  });
+
+  it("a component subscribed only to visibleChannels does not re-render when the cursor changes", () => {
     let renderCount = 0;
     function ChannelReader() {
       // Selector subscription (matches how ChannelOverlayPanel reads the
@@ -55,8 +77,8 @@ describe("useComparisonStore", () => {
     expect(renderCount).toBe(1);
 
     act(() => {
-      useComparisonStore.getState().setHoverDistance(50);
-      useComparisonStore.getState().setHoverDistance(100);
+      useComparisonStore.getState().setCursor(50, "telemetry-charts");
+      useComparisonStore.getState().setCursor(100, "delta-chart");
     });
 
     expect(renderCount).toBe(1);

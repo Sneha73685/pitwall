@@ -4,3 +4,9 @@
   max-height: 480px;
   color: var(--pw-text-secondary);
 }
+
+.cursorMarker {
+  fill: #ffd166;
+  stroke: #1a2029;
+  stroke-width: 2;
+}

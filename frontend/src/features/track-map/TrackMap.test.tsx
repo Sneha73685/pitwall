@@ -85,6 +85,30 @@ describe("TrackMap", () => {
     });
   });
 
+  describe("with cursorPoint (M14)", () => {
+    it("renders a marker at the given point's scaled position", () => {
+      render(<TrackMap trackPoints={trackPoints} lapPoints={[]} cursorPoint={{ x: 10, y: 10 }} />);
+
+      const marker = screen.getByTestId("cursor-marker");
+      // Same xScale/yScale TrackMap already computes from trackPoints
+      // (domain [0,10]x[0,10], range [20,580]x[380,20]).
+      expect(marker).toHaveAttribute("cx", "580");
+      expect(marker).toHaveAttribute("cy", "20");
+    });
+
+    it("omits the marker when cursorPoint is null", () => {
+      render(<TrackMap trackPoints={trackPoints} lapPoints={[]} cursorPoint={null} />);
+
+      expect(screen.queryByTestId("cursor-marker")).not.toBeInTheDocument();
+    });
+
+    it("omits the marker when cursorPoint is omitted entirely", () => {
+      render(<TrackMap trackPoints={trackPoints} lapPoints={[]} />);
+
+      expect(screen.queryByTestId("cursor-marker")).not.toBeInTheDocument();
+    });
+  });
+
   describe("with segmentColors (M6 Phase 8)", () => {
     it("renders one colored segment per consecutive trackPoints pair instead of a single outline", () => {
       render(

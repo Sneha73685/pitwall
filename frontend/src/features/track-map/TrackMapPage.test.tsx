@@ -1,15 +1,33 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../api/client";
+import type { CursorSlice } from "../../components/useCursorSync";
 import { useSelectionStore } from "../../state/selectionStore";
+import { useTrackMapCursorStore } from "./cursorStore";
 import { TrackMapPage } from "./TrackMapPage";
+import type { UseBoundStore, StoreApi } from "zustand";
 
 // TelemetryCharts owns a real ECharts instance (covered by its own test
-// suite); TrackMapPage only needs to know it's wired up with the right data.
+// suite); TrackMapPage only needs to know it's wired up with the right
+// data and cursor store. The stub's own button simulates a real hover by
+// calling the injected store's setCursor directly, the same way the real
+// component's onEvents handler would (M14, docs/m14-design-review.md §12's
+// "TrackMapPage-level integration test" case).
 vi.mock("../telemetry-charts/TelemetryCharts", () => ({
-  TelemetryCharts: ({ samples }: { samples: client.TelemetrySample[] }) => (
-    <div data-testid="telemetry-charts-stub">{samples.length} samples</div>
+  TelemetryCharts: ({
+    samples,
+    cursorStore,
+  }: {
+    samples: client.TelemetrySample[];
+    cursorStore: UseBoundStore<StoreApi<CursorSlice>>;
+  }) => (
+    <div data-testid="telemetry-charts-stub">
+      {samples.length} samples
+      <button onClick={() => cursorStore.getState().setCursor(50, "telemetry-charts")}>
+        simulate hover
+      </button>
+    </div>
   ),
 }));
 
@@ -71,6 +89,7 @@ describe("TrackMapPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     useSelectionStore.setState({ sessionId: null, driverId: null, lapId: null });
+    useTrackMapCursorStore.setState({ distanceM: null, source: null });
     vi.spyOn(client, "getSession").mockResolvedValue(sampleSession);
     vi.spyOn(client, "listLaps").mockResolvedValue([sampleLap]);
   });
@@ -117,5 +136,38 @@ describe("TrackMapPage", () => {
     renderAt("/sessions/2023_monza_race/drivers/VER/laps/1");
 
     await waitFor(() => expect(screen.getByText(/italian grand prix/i)).toBeInTheDocument());
+  });
+
+  // --- M14 synchronized cursor (docs/m14-design-review.md §6.1/§9/§12) ---
+
+  it("clears a stale cursor from a previous lap when the route's lap changes", async () => {
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue([]);
+    vi.spyOn(client, "getTelemetry").mockResolvedValue([sampleTelemetry]);
+    useTrackMapCursorStore.setState({ distanceM: 42, source: "telemetry-charts" });
+
+    renderAt("/sessions/2023_monza_race/drivers/VER/laps/1");
+
+    await waitFor(() => expect(useTrackMapCursorStore.getState().distanceM).toBeNull());
+  });
+
+  it("moves TrackMap's marker to the position TelemetryCharts hovered (TrackMapPage-level sync)", async () => {
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue([
+      { distance_m: 0, x: 0, y: 0 },
+      { distance_m: 100, x: 10, y: 10 },
+    ]);
+    vi.spyOn(client, "getTelemetry").mockResolvedValue([
+      { ...sampleTelemetry, distance_m: 0, x: 0, y: 0 },
+      { ...sampleTelemetry, distance_m: 100, x: 10, y: 10 },
+    ]);
+
+    renderAt("/sessions/2023_monza_race/drivers/VER/laps/1");
+    await waitFor(() => expect(screen.getByTestId("track-map")).toBeInTheDocument());
+    expect(screen.queryByTestId("cursor-marker")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /simulate hover/i }));
+
+    // distance 50 is exactly between the two samples' distances -- nearest
+    // (ties resolved to the first, i.e. the earlier sample) is (0, 0).
+    await waitFor(() => expect(screen.getByTestId("cursor-marker")).toBeInTheDocument());
   });
 });

@@ -2,22 +2,27 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../../api/client";
 import type { LapComparisonResponse, TrackPoint } from "../../../api/client";
+import { useComparisonStore, type ComparisonChannelKey } from "../comparisonStore";
 import * as trackMapSegmentColors from "./trackMapSegmentColors";
 import { TrackMapDelta } from "./TrackMapDelta";
 
 // TrackMap owns the actual SVG rendering (covered by its own test suite);
-// TrackMapDelta only needs to know it's wired up with the right geometry
-// and colors, same pattern TrackMapPage.test.tsx uses for TelemetryCharts.
+// TrackMapDelta only needs to know it's wired up with the right geometry,
+// colors, and (M14) cursor marker position -- same pattern
+// TrackMapPage.test.tsx uses for TelemetryCharts.
 vi.mock("../../track-map/TrackMap", () => ({
   TrackMap: ({
     trackPoints,
     segmentColors,
+    cursorPoint,
   }: {
     trackPoints: TrackPoint[];
     segmentColors?: string[];
+    cursorPoint?: { x: number; y: number } | null;
   }) => (
     <div data-testid="track-map-stub">
-      {trackPoints.length} points, {segmentColors?.length ?? 0} colors
+      {trackPoints.length} points, {segmentColors?.length ?? 0} colors,{" "}
+      {cursorPoint ? `cursor at (${cursorPoint.x}, ${cursorPoint.y})` : "no cursor"}
     </div>
   ),
 }));
@@ -64,6 +69,11 @@ function comparison(overrides: Partial<LapComparisonResponse> = {}): LapComparis
 describe("TrackMapDelta", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    useComparisonStore.setState({
+      distanceM: null,
+      source: null,
+      visibleChannels: new Set<ComparisonChannelKey>(["speed_kph"]),
+    });
   });
 
   it("fetches session track geometry and passes it, plus computed colors, to TrackMap", async () => {
@@ -72,7 +82,9 @@ describe("TrackMapDelta", () => {
     render(<TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />);
 
     await waitFor(() => expect(client.getTrackPoints).toHaveBeenCalledWith("2023_monza_race"));
-    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent("2 points, 2 colors");
+    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent(
+      "2 points, 2 colors, no cursor",
+    );
   });
 
   it("shows a loading message before track geometry has arrived", () => {
@@ -159,6 +171,28 @@ describe("TrackMapDelta", () => {
       />,
     );
 
-    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent("2 points, 2 colors");
+    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent(
+      "2 points, 2 colors, no cursor",
+    );
+  });
+
+  // --- M14 cursor marker (docs/m14-design-review.md §9/§12) ---
+
+  it("passes the nearest track-outline point as the cursor marker when comparisonStore.distanceM is set (same circuit)", async () => {
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
+    useComparisonStore.setState({ distanceM: 60, source: "delta-chart" });
+
+    render(<TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />);
+
+    // trackPoints: distance_m 0 -> (0,0), 100 -> (10,0); 60 is nearer 100.
+    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent("cursor at (10, 0)");
+  });
+
+  it("passes no cursor marker when comparisonStore.distanceM is null", async () => {
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
+
+    render(<TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />);
+
+    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent("no cursor");
   });
 });
