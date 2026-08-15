@@ -22,13 +22,19 @@ type BackendStatus = "checking" | "online" | "offline";
 /**
  * Routing for the session -> driver -> lap -> track map flow (ADR-0010),
  * plus the M6 comparison route, the M8 session-analytics route, and the
- * M10 strategy route. "/sessions/:sessionId/compare" and
- * "/sessions/:sessionId/analytics" (plural, matching every other route
- * here) render ComparisonPage and SessionAnalyticsPage respectively, each
- * owning its own state independently of driverId/lapNumber params.
+ * M10 strategy route. "/sessions/:sessionId/analytics" (plural, matching
+ * every other route here) renders SessionAnalyticsPage, owning its own
+ * state independently of driverId/lapNumber params.
  * "/sessions/:sessionId/drivers/:driverId/strategy" is driver-scoped, at
  * the same route depth as the track-map route, since stints are fetched
  * per driver (docs/m10-implementation-plan.md Phase 5).
+ *
+ * M13 (docs/m13-design-review.md §4/§6): ComparisonPage moves to the
+ * standalone "/laps/compare" -- no longer nested under
+ * "/sessions/:sessionId", since neither compared lap's session is
+ * privileged once both are independently selectable. ComparisonPage reads
+ * its session/driver/lap selections from query params and local state
+ * instead of a route param.
  *
  * M11 Phase 4 adds "/sessions/:sessionId/tyre-performance" (session-wide,
  * same depth as "/analytics") and
@@ -92,7 +98,7 @@ function App() {
           path="/sessions/:sessionId/drivers/:driverId/laps/:lapNumber"
           element={<TrackMapPage />}
         />
-        <Route path="/sessions/:sessionId/compare" element={<ComparisonPage />} />
+        <Route path="/laps/compare" element={<ComparisonPage />} />
         <Route path="/sessions/:sessionId/analytics" element={<SessionAnalyticsPage />} />
         <Route path="/sessions/:sessionId/drivers/:driverId/strategy" element={<StrategyPage />} />
         <Route path="/sessions/:sessionId/tyre-performance" element={<TyrePerformancePage />} />

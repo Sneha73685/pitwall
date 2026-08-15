@@ -1,0 +1,71 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--pw-z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  padding: var(--pw-space-4);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 32rem;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--pw-bg-surface);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-md);
+  box-shadow: var(--pw-shadow-elevated);
+  padding: var(--pw-space-4);
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--pw-space-3);
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: var(--pw-text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pw-text-secondary);
+}
+
+.closeButton,
+.backButton {
+  background: none;
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-md);
+  color: var(--pw-text-secondary);
+  cursor: pointer;
+  padding: var(--pw-space-1) var(--pw-space-2);
+}
+
+.backButton {
+  margin-bottom: var(--pw-space-3);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-2);
+}
+
+.optionButton {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}

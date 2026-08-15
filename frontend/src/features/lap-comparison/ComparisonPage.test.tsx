@@ -6,9 +6,10 @@ import { useComparisonStore, type ComparisonChannelKey } from "./comparisonStore
 import { ComparisonPage } from "./ComparisonPage";
 
 // DeltaChart, ChannelOverlayPanel, and TrackMapDelta each own real
-// rendering/fetch behavior (covered by their own test suites, Phase 7/8);
-// ComparisonPage only needs to know they're wired up with the comparison
-// data, same pattern TrackMapPage.test.tsx uses for TelemetryCharts.
+// rendering/fetch behavior (covered by their own test suites, Phase 7/8 and
+// M13's TrackMapDelta.test.tsx circuit-mismatch cases); ComparisonPage only
+// needs to know they're wired up with the comparison data, same pattern
+// TrackMapPage.test.tsx uses for TelemetryCharts.
 vi.mock("./components/DeltaChart", () => ({
   DeltaChart: ({ comparison }: { comparison: client.LapComparisonResponse }) => (
     <div data-testid="delta-chart-stub">delta for {comparison.lap_a.driver_id}</div>
@@ -40,7 +41,7 @@ function renderAt(path: string) {
       future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
     >
       <Routes>
-        <Route path="/sessions/:sessionId/compare" element={<ComparisonPage />} />
+        <Route path="/laps/compare" element={<ComparisonPage />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -78,7 +79,8 @@ const lecLaps: client.Lap[] = [
 ];
 
 const sampleComparison: client.LapComparisonResponse = {
-  session_id: "2023_monza_race",
+  session_id_a: "2023_monza_race",
+  session_id_b: "2023_monza_race",
   lap_a: verLaps[0],
   lap_b: lecLaps[0],
   compared_distance_m: 100,
@@ -124,7 +126,7 @@ describe("ComparisonPage", () => {
   });
 
   it("renders the lap pair selector and nothing else before both laps are chosen", async () => {
-    renderAt("/sessions/2023_monza_race/compare");
+    renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
 
     await waitFor(() =>
       expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
@@ -133,9 +135,16 @@ describe("ComparisonPage", () => {
     expect(screen.queryByText(/no sector data/i)).not.toBeInTheDocument();
   });
 
+  it("shows 'No session selected' and does not render the lap pickers when session params are absent", () => {
+    renderAt("/laps/compare");
+
+    expect(screen.getAllByText("No session selected")).toHaveLength(2);
+    expect(screen.queryByLabelText("Driver")).not.toBeInTheDocument();
+  });
+
   it("fetches and renders the comparison once both laps are selected", async () => {
     vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
-    renderAt("/sessions/2023_monza_race/compare");
+    renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
     await waitFor(() =>
       expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
     );
@@ -156,16 +165,14 @@ describe("ComparisonPage", () => {
     // a swap genuinely differs -- a static mock would return the same
     // lap_a/lap_b regardless of params and couldn't tell a real swap from
     // a no-op.
-    const compareLapsSpy = vi
-      .spyOn(client, "compareLaps")
-      .mockImplementation((_sessionId, params) =>
-        Promise.resolve({
-          ...sampleComparison,
-          lap_a: params.driverA === "LEC" ? lecLaps[0] : verLaps[0],
-          lap_b: params.driverB === "LEC" ? lecLaps[0] : verLaps[0],
-        }),
-      );
-    renderAt("/sessions/2023_monza_race/compare");
+    const compareLapsSpy = vi.spyOn(client, "compareLaps").mockImplementation((params) =>
+      Promise.resolve({
+        ...sampleComparison,
+        lap_a: params.driverA === "LEC" ? lecLaps[0] : verLaps[0],
+        lap_b: params.driverB === "LEC" ? lecLaps[0] : verLaps[0],
+      }),
+    );
+    renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
     await waitFor(() =>
       expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
     );
@@ -177,9 +184,11 @@ describe("ComparisonPage", () => {
     // first fetch's state update is fully settled -- and act()-wrapped --
     // before the swap click starts a second one.
     await waitFor(() => expect(screen.getByTestId("lap-a-summary")).toHaveTextContent("VER"));
-    expect(compareLapsSpy).toHaveBeenLastCalledWith("2023_monza_race", {
+    expect(compareLapsSpy).toHaveBeenLastCalledWith({
+      sessionIdA: "2023_monza_race",
       driverA: "VER",
       lapA: 1,
+      sessionIdB: "2023_monza_race",
       driverB: "LEC",
       lapB: 1,
       resolution: undefined,
@@ -188,9 +197,11 @@ describe("ComparisonPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /swap a\/b/i }));
 
     await waitFor(() => expect(screen.getByTestId("lap-a-summary")).toHaveTextContent("LEC"));
-    expect(compareLapsSpy).toHaveBeenLastCalledWith("2023_monza_race", {
+    expect(compareLapsSpy).toHaveBeenLastCalledWith({
+      sessionIdA: "2023_monza_race",
       driverA: "LEC",
       lapA: 1,
+      sessionIdB: "2023_monza_race",
       driverB: "VER",
       lapB: 1,
       resolution: undefined,
@@ -199,7 +210,7 @@ describe("ComparisonPage", () => {
 
   it("shows an error message when the comparison fetch fails", async () => {
     vi.spyOn(client, "compareLaps").mockRejectedValue(new Error("network error"));
-    renderAt("/sessions/2023_monza_race/compare");
+    renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
     await waitFor(() =>
       expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
     );
@@ -210,5 +221,102 @@ describe("ComparisonPage", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(/could not load lap comparison/i),
     );
+  });
+
+  // --- M13 cross-session picker tests (docs/m13-design-review.md §6/§7/§8) ---
+
+  describe("cross-session Session B picker", () => {
+    beforeEach(() => {
+      vi.spyOn(client, "listSeasons").mockResolvedValue([{ season: 2024, event_count: 1 }]);
+      vi.spyOn(client, "listEventsForSeason").mockResolvedValue([
+        {
+          event_id: "2024_spa_grand_prix",
+          season: 2024,
+          event_name: "Belgian Grand Prix",
+          round_number: 12,
+          location: "Spa",
+          country: "Belgium",
+          session_types: ["race"],
+          session_count: 1,
+        },
+      ]);
+      vi.spyOn(client, "listSessionsForEvent").mockResolvedValue([
+        {
+          session_id: "2024_spa_grand_prix_race",
+          season: 2024,
+          event_name: "Belgian Grand Prix",
+          round_number: 12,
+          location: "Spa",
+          country: "Belgium",
+          session_type: "race",
+          session_date: null,
+          event_id: "2024_spa_grand_prix",
+          has_telemetry: true,
+        },
+      ]);
+    });
+
+    it("opens the Session B picker when its Select/Change button is clicked", async () => {
+      renderAt("/laps/compare?sessionA=2023_monza_race");
+
+      fireEvent.click(screen.getByRole("button", { name: /select session/i }));
+
+      expect(await screen.findByRole("dialog", { name: /select session b/i })).toBeInTheDocument();
+    });
+
+    it("selecting a different season/event/session for B updates Session B and closes the picker", async () => {
+      renderAt("/laps/compare?sessionA=2023_monza_race");
+
+      fireEvent.click(screen.getByRole("button", { name: /select session/i }));
+      const dialog = await screen.findByRole("dialog", { name: /select session b/i });
+
+      fireEvent.click(await within(dialog).findByText(/2024 — 1 event/i));
+      fireEvent.click(await within(dialog).findByText("Belgian Grand Prix"));
+      fireEvent.click(await screen.findByText("Race"));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(screen.getByText("2024_spa_grand_prix_race")).toBeInTheDocument();
+    });
+
+    it("independently selects Driver/Lap B once Session B is chosen, without disturbing Session A", async () => {
+      // Both sessions start present (the common "compare within this
+      // session, same as before" entry) so LapPairSelector already renders
+      // -- it only mounts once sessionIdA AND sessionIdB are both set.
+      renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+      await waitFor(() =>
+        expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+      );
+
+      // Select driver/lap for both sides first, same as the existing
+      // same-session flow.
+      await selectDriverAndLap(0, "VER");
+      await selectDriverAndLap(1, "LEC");
+      const driverSelects = screen.getAllByLabelText("Driver");
+      expect(driverSelects[0]).toHaveValue("VER");
+      expect(driverSelects[1]).toHaveValue("LEC");
+
+      // Now change Session B to a genuinely different session.
+      // Both A and B now show "Change" -- index 1 is Session B's slot.
+      fireEvent.click(screen.getAllByRole("button", { name: /change/i })[1]);
+      const dialog = await screen.findByRole("dialog", { name: /select session b/i });
+      fireEvent.click(await within(dialog).findByText(/2024 — 1 event/i));
+      fireEvent.click(await within(dialog).findByText("Belgian Grand Prix"));
+      fireEvent.click(await screen.findByText("Race"));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+      // Session A's own driver select still shows VER selected -- picking
+      // a new Session B never touched it (docs/m13-design-review.md §6).
+      const driverSelectsAfter = screen.getAllByLabelText("Driver");
+      expect(driverSelectsAfter[0]).toHaveValue("VER");
+      // Session B's driver/lap selection was reset by the new session pick
+      // (its old driver/lap choice no longer applies to a different
+      // session's roster).
+      expect(driverSelectsAfter[1]).toHaveValue("");
+
+      // Independently select driver/lap B for the new session.
+      await selectDriverAndLap(1, "LEC");
+
+      expect(client.listLaps).toHaveBeenLastCalledWith("2024_spa_grand_prix_race", "LEC");
+    });
   });
 });

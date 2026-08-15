@@ -130,7 +130,7 @@ export interface SectorDelta {
   faster: "a" | "b";
 }
 
-export type WarningCode = "invalid_lap_a" | "invalid_lap_b";
+export type WarningCode = "invalid_lap_a" | "invalid_lap_b" | "different_circuit";
 
 export interface ComparisonWarning {
   code: WarningCode;
@@ -138,7 +138,13 @@ export interface ComparisonWarning {
 }
 
 export interface LapComparisonResponse {
-  session_id: string;
+  /**
+   * M13: each lap resolves from its own independently-selected session --
+   * may be the same session on both sides (the M6-era case) or two
+   * different ones. Replaces the old single `session_id` field.
+   */
+  session_id_a: string;
+  session_id_b: string;
   lap_a: Lap;
   lap_b: Lap;
   compared_distance_m: number;
@@ -151,8 +157,10 @@ export interface LapComparisonResponse {
 }
 
 export interface CompareLapsParams {
+  sessionIdA: string;
   driverA: string;
   lapA: number;
+  sessionIdB: string;
   driverB: string;
   lapB: number;
   resolution?: number;
@@ -277,17 +285,21 @@ export async function getTrackPoints(sessionId: string): Promise<TrackPoint[]> {
   return getJson<TrackPoint[]>(`/sessions/${encodeURIComponent(sessionId)}/track`);
 }
 
-export async function compareLaps(
-  sessionId: string,
-  params: CompareLapsParams,
-): Promise<LapComparisonResponse> {
+/**
+ * M13: `session_id_a`/`session_id_b` are now independent query params, not
+ * one shared URL path segment -- see docs/m13-design-review.md §4. The
+ * route itself moved from `/sessions/{session_id}/laps/compare` to the
+ * top-level `/laps/compare`, retired outright (not kept as a wrapper) per
+ * that design's §4/§10.
+ */
+export async function compareLaps(params: CompareLapsParams): Promise<LapComparisonResponse> {
   const query =
-    `?driver_a=${encodeURIComponent(params.driverA)}&lap_a=${params.lapA}` +
+    `?session_id_a=${encodeURIComponent(params.sessionIdA)}` +
+    `&driver_a=${encodeURIComponent(params.driverA)}&lap_a=${params.lapA}` +
+    `&session_id_b=${encodeURIComponent(params.sessionIdB)}` +
     `&driver_b=${encodeURIComponent(params.driverB)}&lap_b=${params.lapB}` +
     (params.resolution !== undefined ? `&resolution=${params.resolution}` : "");
-  return getJson<LapComparisonResponse>(
-    `/sessions/${encodeURIComponent(sessionId)}/laps/compare${query}`,
-  );
+  return getJson<LapComparisonResponse>(`/laps/compare${query}`);
 }
 
 /**

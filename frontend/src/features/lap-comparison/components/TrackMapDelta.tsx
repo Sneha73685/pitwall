@@ -33,22 +33,46 @@ interface TrackMapDeltaProps {
  * scope per docs/success-metrics.md and ADR-0007/ADR-0008, already
  * deferred for DeltaChart/TelemetryCharts (Phase 7) -- this component
  * follows that same precedent, so there's no hover-driven marker here.
+ *
+ * M13 (docs/m13-design-review.md §9): `sessionId` is now the caller's
+ * choice of *which* session's geometry to show -- always session A's,
+ * matching the same "lap A is the reference" convention
+ * app/services/lap_comparison/sectors.py already uses. When the backend's
+ * `different_circuit` warning is present (session A and session B are at
+ * different real-world locations), session A's track outline would
+ * misrepresent lap B, which never drove it -- this component hides the
+ * map entirely and explains why, rather than rendering a shape that
+ * doesn't belong to one of the two compared laps.
  */
 export function TrackMapDelta({ sessionId, comparison }: TrackMapDeltaProps) {
   const [trackPoints, setTrackPoints] = useState<TrackPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasCircuitMismatch = comparison.warnings.some((w) => w.code === "different_circuit");
 
   useEffect(() => {
+    if (hasCircuitMismatch) {
+      return;
+    }
     getTrackPoints(sessionId)
       .then(setTrackPoints)
       .catch(() => setError("Could not load track geometry."));
-  }, [sessionId]);
+  }, [sessionId, hasCircuitMismatch]);
 
   const segmentColors = useMemo(
     () => (trackPoints ? computeSegmentColors(trackPoints, comparison) : undefined),
     [trackPoints, comparison],
   );
 
+  if (hasCircuitMismatch) {
+    return (
+      <Card title="Track Map — Delta">
+        <p>
+          Track visualization is unavailable: Session A and Session B are at different circuits, so
+          there is no single track outline both laps actually drove.
+        </p>
+      </Card>
+    );
+  }
   if (error) {
     return <ErrorState>{error}</ErrorState>;
   }

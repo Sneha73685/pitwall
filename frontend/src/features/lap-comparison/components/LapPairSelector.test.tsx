@@ -28,7 +28,14 @@ describe("LapPairSelector", () => {
   });
 
   it("renders two labeled pickers, Lap A and Lap B", async () => {
-    render(<LapPairSelector sessionId="2023_monza_race" onSelectA={vi.fn()} onSelectB={vi.fn()} />);
+    render(
+      <LapPairSelector
+        sessionIdA="2023_monza_race"
+        sessionIdB="2023_monza_race"
+        onSelectA={vi.fn()}
+        onSelectB={vi.fn()}
+      />,
+    );
 
     await waitFor(() =>
       expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
@@ -41,7 +48,12 @@ describe("LapPairSelector", () => {
     const onSelectA = vi.fn();
     const onSelectB = vi.fn();
     render(
-      <LapPairSelector sessionId="2023_monza_race" onSelectA={onSelectA} onSelectB={onSelectB} />,
+      <LapPairSelector
+        sessionIdA="2023_monza_race"
+        sessionIdB="2023_monza_race"
+        onSelectA={onSelectA}
+        onSelectB={onSelectB}
+      />,
     );
     await waitFor(() =>
       expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
@@ -61,7 +73,12 @@ describe("LapPairSelector", () => {
     const onSelectA = vi.fn();
     const onSelectB = vi.fn();
     render(
-      <LapPairSelector sessionId="2023_monza_race" onSelectA={onSelectA} onSelectB={onSelectB} />,
+      <LapPairSelector
+        sessionIdA="2023_monza_race"
+        sessionIdB="2023_monza_race"
+        onSelectA={onSelectA}
+        onSelectB={onSelectB}
+      />,
     );
     await waitFor(() =>
       expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),

@@ -86,11 +86,11 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByTestId("backend-status")).toHaveTextContent("online"));
   });
 
-  it("renders the comparison page at /sessions/:sessionId/compare without error", async () => {
+  it("renders the comparison page at /laps/compare without error (M13)", async () => {
     vi.spyOn(client, "getHealth").mockResolvedValue({ status: "ok", service: "pitwall-backend" });
     vi.spyOn(client, "listDrivers").mockResolvedValue([]);
 
-    renderAppAt("/sessions/2023_monza_race/compare");
+    renderAppAt("/laps/compare?sessionA=2023_monza_race");
 
     expect(screen.getByRole("heading", { name: "Compare laps" })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("backend-status")).toHaveTextContent("online"));

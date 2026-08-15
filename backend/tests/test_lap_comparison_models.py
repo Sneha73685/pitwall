@@ -38,7 +38,8 @@ def _lap(**overrides: object) -> Lap:
 
 def _valid_payload() -> dict[str, object]:
     return {
-        "session_id": "2023_monza_race",
+        "session_id_a": "2023_monza_race",
+        "session_id_b": "2023_monza_race",
         "lap_a": _lap(driver_id="VER"),
         "lap_b": _lap(driver_id="LEC", is_personal_best=False),
         "compared_distance_m": 5793.0,
@@ -55,7 +56,8 @@ def _valid_payload() -> dict[str, object]:
 def test_valid_payload_parses() -> None:
     response = LapComparisonResponse(**_valid_payload())  # type: ignore[arg-type]
 
-    assert response.session_id == "2023_monza_race"
+    assert response.session_id_a == "2023_monza_race"
+    assert response.session_id_b == "2023_monza_race"
     assert response.lap_a.driver_id == "VER"
     assert response.lap_b.driver_id == "LEC"
     assert response.delta_ms == [0.0, 12.5, -4.0]
@@ -89,6 +91,16 @@ def test_comparison_warning_requires_a_known_code() -> None:
 
     with pytest.raises(ValidationError):
         ComparisonWarning(code="not_a_real_code")  # type: ignore[arg-type]
+
+
+def test_warning_code_includes_different_circuit() -> None:
+    """M13 (docs/m13-design-review.md §9): a warning code the comparison
+    engine itself never emits (that logic lives in app/api/laps_compare.py,
+    not app/services/lap_comparison/), but the schema must accept.
+    """
+    warning = ComparisonWarning(code=WarningCode.DIFFERENT_CIRCUIT, detail="Monza vs Spa")
+
+    assert warning.code == WarningCode.DIFFERENT_CIRCUIT
 
 
 def test_delta_ms_field_description_states_the_sign_convention() -> None:

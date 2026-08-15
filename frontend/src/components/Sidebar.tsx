@@ -52,7 +52,7 @@ export function Sidebar() {
               Track Map
             </NavLink>
           )}
-          <NavLink to={`/sessions/${sessionId}/compare`} className={linkClass}>
+          <NavLink to={`/laps/compare?sessionA=${sessionId}`} className={linkClass}>
             Lap Comparison
           </NavLink>
           <NavLink to={`/sessions/${sessionId}/analytics`} className={linkClass}>

@@ -4,7 +4,8 @@ import { buildDeltaChartOption } from "./deltaChartOptions";
 
 function comparison(overrides: Partial<LapComparisonResponse> = {}): LapComparisonResponse {
   return {
-    session_id: "2023_monza_race",
+    session_id_a: "2023_monza_race",
+    session_id_b: "2023_monza_race",
     lap_a: {
       driver_id: "VER",
       lap_number: 1,

@@ -4,7 +4,8 @@ import * as client from "../../../api/client";
 import { useLapComparison } from "./useLapComparison";
 
 const sampleResponse: client.LapComparisonResponse = {
-  session_id: "2023_monza_race",
+  session_id_a: "2023_monza_race",
+  session_id_b: "2023_monza_race",
   lap_a: {
     driver_id: "VER",
     lap_number: 1,
@@ -44,7 +45,7 @@ describe("useLapComparison", () => {
     const spy = vi.spyOn(client, "compareLaps");
 
     const { result } = renderHook(() =>
-      useLapComparison("2023_monza_race", undefined, undefined, "LEC", 1),
+      useLapComparison("2023_monza_race", undefined, undefined, "2023_monza_race", "LEC", 1),
     );
 
     expect(spy).not.toHaveBeenCalled();
@@ -55,21 +56,25 @@ describe("useLapComparison", () => {
   it("fetches and returns the comparison once every param is provided", async () => {
     vi.spyOn(client, "compareLaps").mockResolvedValue(sampleResponse);
 
-    const { result } = renderHook(() => useLapComparison("2023_monza_race", "VER", 1, "LEC", 1));
+    const { result } = renderHook(() =>
+      useLapComparison("2023_monza_race", "VER", 1, "2023_monza_race", "LEC", 1),
+    );
 
     await waitFor(() => expect(result.current.comparison).toEqual(sampleResponse));
     expect(result.current.error).toBeNull();
   });
 
-  it("calls compareLaps with the given session and params, including resolution", async () => {
+  it("calls compareLaps with the given sessions and params, including resolution", async () => {
     const spy = vi.spyOn(client, "compareLaps").mockResolvedValue(sampleResponse);
 
-    renderHook(() => useLapComparison("2023_monza_race", "VER", 1, "LEC", 1, 500));
+    renderHook(() => useLapComparison("2023_monza_race", "VER", 1, "2024_spa_race", "LEC", 1, 500));
 
     await waitFor(() =>
-      expect(spy).toHaveBeenCalledWith("2023_monza_race", {
+      expect(spy).toHaveBeenCalledWith({
+        sessionIdA: "2023_monza_race",
         driverA: "VER",
         lapA: 1,
+        sessionIdB: "2024_spa_race",
         driverB: "LEC",
         lapB: 1,
         resolution: 500,
@@ -80,7 +85,9 @@ describe("useLapComparison", () => {
   it("surfaces an error message when the request fails", async () => {
     vi.spyOn(client, "compareLaps").mockRejectedValue(new Error("network error"));
 
-    const { result } = renderHook(() => useLapComparison("2023_monza_race", "VER", 1, "LEC", 1));
+    const { result } = renderHook(() =>
+      useLapComparison("2023_monza_race", "VER", 1, "2023_monza_race", "LEC", 1),
+    );
 
     await waitFor(() => expect(result.current.error).toBe("Could not load lap comparison."));
     expect(result.current.comparison).toBeNull();
@@ -90,7 +97,8 @@ describe("useLapComparison", () => {
     const spy = vi.spyOn(client, "compareLaps").mockResolvedValue(sampleResponse);
 
     const { rerender } = renderHook(
-      ({ lapB }: { lapB: number }) => useLapComparison("2023_monza_race", "VER", 1, "LEC", lapB),
+      ({ lapB }: { lapB: number }) =>
+        useLapComparison("2023_monza_race", "VER", 1, "2023_monza_race", "LEC", lapB),
       { initialProps: { lapB: 1 } },
     );
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
@@ -98,9 +106,11 @@ describe("useLapComparison", () => {
     rerender({ lapB: 2 });
     await waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
 
-    expect(spy).toHaveBeenLastCalledWith("2023_monza_race", {
+    expect(spy).toHaveBeenLastCalledWith({
+      sessionIdA: "2023_monza_race",
       driverA: "VER",
       lapA: 1,
+      sessionIdB: "2023_monza_race",
       driverB: "LEC",
       lapB: 2,
       resolution: undefined,

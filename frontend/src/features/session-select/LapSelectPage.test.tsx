@@ -26,7 +26,7 @@ function renderAt(path: string) {
             </>
           }
         />
-        <Route path="/sessions/:sessionId/compare" element={<LocationProbe />} />
+        <Route path="/laps/compare" element={<LocationProbe />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -144,7 +144,7 @@ describe("LapSelectPage", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("location-probe")).toHaveTextContent(
-        "/sessions/2023_monza_race/compare?driverA=VER&lapA=1&driverB=VER&lapB=3",
+        "/laps/compare?sessionA=2023_monza_race&driverA=VER&lapA=1&sessionB=2023_monza_race&driverB=VER&lapB=3",
       ),
     );
   });

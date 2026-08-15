@@ -21,11 +21,14 @@ function formatSector(seconds: number | null): string {
  *
  * M6 Phase 9 adds a lap-comparison entry point alongside the existing
  * per-lap links (docs/m6-design-review.md §1.1 path 1): checking exactly
- * two laps reveals "Compare Selected", which navigates to
- * ComparisonPage with driverA/lapA/driverB/lapB query params. Since this
+ * two laps reveals "Compare Selected", which navigates to ComparisonPage
+ * with sessionA/driverA/lapA/sessionB/driverB/lapB query params (M13:
+ * session params added alongside the original driver/lap ones -- both
+ * sides start as this session, docs/m13-design-review.md §6). Since this
  * table is scoped to one driver, both compared laps share driverId --
- * cross-driver comparison stays available via the dedicated /compare
- * route's pickers (§1.1 path 2), which this page doesn't replace.
+ * cross-driver and cross-session comparison stays available via the
+ * dedicated /laps/compare route's pickers (§1.1 path 2), which this page
+ * doesn't replace.
  *
  * M10 adds a "View Strategy" entry point (this page is already
  * driver-scoped, matching where the strategy route needs a driverId) and
@@ -70,8 +73,12 @@ export function LapSelectPage() {
       return;
     }
     const [lapA, lapB] = selectedForCompare;
+    // M13: ComparisonPage now needs a session per side -- both sides start
+    // as this session, matching the same same-session comparison this
+    // entry point has always produced (docs/m13-design-review.md §6).
     navigate(
-      `/sessions/${sessionId}/compare?driverA=${driverId}&lapA=${lapA}&driverB=${driverId}&lapB=${lapB}`,
+      `/laps/compare?sessionA=${sessionId}&driverA=${driverId}&lapA=${lapA}` +
+        `&sessionB=${sessionId}&driverB=${driverId}&lapB=${lapB}`,
     );
   }
 

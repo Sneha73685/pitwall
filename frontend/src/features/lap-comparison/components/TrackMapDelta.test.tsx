@@ -29,7 +29,8 @@ const trackPoints: TrackPoint[] = [
 
 function comparison(overrides: Partial<LapComparisonResponse> = {}): LapComparisonResponse {
   return {
-    session_id: "2023_monza_race",
+    session_id_a: "2023_monza_race",
+    session_id_b: "2023_monza_race",
     lap_a: {
       driver_id: "VER",
       lap_number: 1,
@@ -122,5 +123,42 @@ describe("TrackMapDelta", () => {
     );
 
     expect(computeSpy.mock.calls.length).toBeGreaterThan(callsAfterFirstRender);
+  });
+
+  // M13 (docs/m13-design-review.md §9): session A and session B at
+  // different circuits -- session A's track outline would misrepresent
+  // lap B, which never drove it, so the map is hidden and explained
+  // rather than rendered.
+  it("hides the track map and explains why when sessions are at different circuits", () => {
+    const getTrackPointsSpy = vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
+
+    render(
+      <TrackMapDelta
+        sessionId="2023_monza_race"
+        comparison={comparison({
+          warnings: [{ code: "different_circuit", detail: "Monza vs Spa" }],
+        })}
+      />,
+    );
+
+    expect(screen.queryByTestId("track-map-stub")).not.toBeInTheDocument();
+    expect(screen.getByText(/different circuits/i)).toBeInTheDocument();
+    // Never even fetches geometry it won't use.
+    expect(getTrackPointsSpy).not.toHaveBeenCalled();
+  });
+
+  it("renders the track map normally when sessions share a circuit (no different_circuit warning)", async () => {
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
+
+    render(
+      <TrackMapDelta
+        sessionId="2023_monza_race"
+        comparison={comparison({
+          warnings: [{ code: "invalid_lap_a", detail: "Lap A is not marked accurate." }],
+        })}
+      />,
+    );
+
+    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent("2 points, 2 colors");
   });
 });

@@ -21,11 +21,17 @@ interface UseLapComparisonResult {
  * independently stable across renders for the effect's dependency array,
  * matching getTelemetry's own (sessionId, driverId, lapNumber) shape
  * rather than introducing an object the caller would need to memoize.
+ *
+ * M13: `sessionId` widened to independent `sessionIdA`/`sessionIdB` --
+ * same session on both sides (equal strings) is still the normal
+ * same-session comparison path, unchanged in behavior
+ * (docs/m13-design-review.md §4/§10).
  */
 export function useLapComparison(
-  sessionId: string | undefined,
+  sessionIdA: string | undefined,
   driverA: string | undefined,
   lapA: number | undefined,
+  sessionIdB: string | undefined,
   driverB: string | undefined,
   lapB: number | undefined,
   resolution?: number,
@@ -34,15 +40,22 @@ export function useLapComparison(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!sessionId || !driverA || lapA === undefined || !driverB || lapB === undefined) {
+    if (
+      !sessionIdA ||
+      !driverA ||
+      lapA === undefined ||
+      !sessionIdB ||
+      !driverB ||
+      lapB === undefined
+    ) {
       return;
     }
     setComparison(null);
     setError(null);
-    compareLaps(sessionId, { driverA, lapA, driverB, lapB, resolution })
+    compareLaps({ sessionIdA, driverA, lapA, sessionIdB, driverB, lapB, resolution })
       .then(setComparison)
       .catch(() => setError("Could not load lap comparison."));
-  }, [sessionId, driverA, lapA, driverB, lapB, resolution]);
+  }, [sessionIdA, driverA, lapA, sessionIdB, driverB, lapB, resolution]);
 
   return { comparison, error };
 }
