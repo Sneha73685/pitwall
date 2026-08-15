@@ -172,6 +172,22 @@ same fields for the subset M2 exposes:
   `end_lap`, `tyre_life_at_start`.
 - **`PitStop`** (M10, `app/models/race_context.py`) — `driver_id`, `stop_number`, `lap_number`,
   `pit_lane_time_seconds`.
+- **`Session`** gains two additive fields (M12, `app/models/telemetry.py`): `event_id: str` —
+  `(season, event slug)`, computed via `app/utils/ids.py`'s `make_event_id()` (formula-identical to,
+  but independently defined from, the pipeline's own copy — ADR-0009; never persisted) — and
+  `has_telemetry: bool` — whether this session's telemetry is actually present in the Parquet cache,
+  not always true even for a successfully ingested session (the verified 2018 finding,
+  `docs/m12-design-review.md` §19.2). Every other pre-existing `Session` field is unchanged.
+- **`SeasonSummary`** (M12, `app/models/discovery.py`) — `season`, `event_count`.
+- **`EventSummary`** (M12, `app/models/discovery.py`) — `event_id`, `season`, `event_name`,
+  `round_number`, `location`, `country`, `session_types: list[SessionType]` (the canonical types
+  this event has at least one locally ingested session for, in `SessionType`'s own declaration
+  order — not real weekend chronology, see below), `session_count`.
+
+Neither `SeasonSummary` nor `EventSummary` is backed by a database row or a Parquet file of its
+own — both are computed on every request from `TelemetryRepository.list_sessions()`, grouped in
+`app/services/session_discovery/` (see `docs/data-model.md`'s M12 addition for why `Season`/`Event`
+are discovery-time-only concepts, never persisted).
 
 `session_id`/`driver_id`/`lap_number` are dropped from the nested `Lap`/`TelemetrySample`/
 `TrackPoint` payloads where they're already implied by the URL path, to avoid repeating the same
@@ -191,10 +207,34 @@ value on every list item for no reason — a plain response-shaping choice, not 
 | GET | `/sessions/{session_id}/pit-stops?driver_id=` (M10) | `list[PitStop]` | 404 if session doesn't exist; empty list if there's no matching pit-stop data yet |
 | GET | `/sessions/{session_id}/drivers/{driver_id}/stint-pace` (M11) | `DriverStintPaceResponse` | 404 if session doesn't exist; empty `laps`/`stints` if the driver has no stint data yet |
 | GET | `/sessions/{session_id}/tyre-performance` (M11) | `TyrePerformanceResponse` | 404 if session doesn't exist; empty/zero-valued collections if the session has no strategy data yet |
+| GET | `/seasons` (M12, `app/api/seasons.py`) | `list[SeasonSummary]` | `200 []` if nothing is ingested yet — see below |
+| GET | `/seasons/{season}/events` (M12) | `list[EventSummary]` | `200 []` if that season has no ingested sessions |
+| GET | `/seasons/{season}/events/{event_id}/sessions` (M12) | `list[Session]` | `200 []` if that `(season, event_id)` has no ingested sessions |
 
 `driver_id` and `lap_number` are both required query parameters on `/telemetry` — fetching a whole
 session's telemetry in one response isn't a V1 read pattern (PRD's success criteria and
 `docs/success-metrics.md` both describe "a lap's" traces, not a session's).
+
+**Why the `/seasons` routes return `200 []`, never `404`, for an unknown `season`/`event_id`
+(M12):** neither `season` nor `event_id` is a persisted, independently checkable resource — both
+are aggregation keys computed over `TelemetryRepository.list_sessions()`, not rows in a catalogue
+(design review §7's decision not to persist an `Event` table). There is no way to distinguish "this
+season/event doesn't exist" from "it exists but nothing is ingested for it yet" without such a
+catalogue, so both cases return an empty list — the same "absence is data, not failure" posture
+ADR-0011 already established for `stints`/`pit_stops`. `404` stays reserved for `session_id`, the
+one identity in this API a repository can actually check against a real, individually-stored
+Parquet directory.
+
+**Ordering (M12, `app/services/session_discovery/`):** seasons descending (newest first); events
+within a season by `(round_number, event_id)` ascending — the identical rule the pipeline's own
+`IngestionPlan` (M12 Phase 3) already applies; sessions within one event by `session_date`
+ascending — the real timestamp already on every `Session` — falling back to `SessionType`'s
+declaration order for the rare session with no recorded date. This backend-side ordering
+deliberately differs from the pipeline's own `IngestionPlan` chronology, which orders by each
+event's real `Session1..5` schedule-slot position instead: the backend has no access to that
+schedule data (and must not call FastF1 to get it), so `session_date` — the only chronological
+signal an already-ingested `Session` actually carries — is the closest available proxy, not an
+attempt to reproduce the pipeline's own ordering exactly.
 
 OpenAPI/Swagger docs are FastAPI's built-in `/docs` and `/openapi.json` (auto-generated from these
 route/response-model definitions) — no separate hand-maintained API reference is written, since that

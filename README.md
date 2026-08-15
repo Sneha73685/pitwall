@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M11 — Tyre & stint performance analytics (descriptive) — complete.**
+**Current milestone: M12 — Multi-season / multi-event / multi-session architecture — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -45,9 +45,10 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M9 | Professional telemetry UI (frontend redesign) | ✅ Done |
 | M10 | Hybrid Parquet + PostgreSQL storage (stints, pit stops) | ✅ Done |
 | M11 | Tyre & stint performance analytics (descriptive) | ✅ Done |
+| M12 | Multi-season / multi-event / multi-session architecture | ✅ Done |
 
-M8–M11 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7); each has its own
-design review under `docs/` (`m8-design-review.md` onward). No milestone beyond M11 is scheduled
+M8–M12 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7); each has its own
+design review under `docs/` (`m8-design-review.md` onward). No milestone beyond M12 is scheduled
 yet. See `docs/releases/` for per-milestone summaries (currently covering M1–M5; later milestones'
 records are their own design-review/implementation-plan docs plus `CHANGELOG.md`).
 
@@ -81,9 +82,11 @@ cd frontend
 npm run dev
 ```
 
-Open `http://localhost:5173` and navigate `/` → `/sessions/:sessionId` →
-`/sessions/:sessionId/drivers/:driverId` → pick a lap. Charts are static, distance-aligned traces —
-**no hover-driven cursor sync yet** (that's V2); lap/sector comparison and the delta graph are M6.
+Open `http://localhost:5173` and navigate `/` → `/seasons/:season` →
+`/seasons/:season/events/:eventId` → `/sessions/:sessionId` → `/sessions/:sessionId/drivers/:driverId`
+→ pick a lap (the `Season → Event → Session` hierarchy is M12 — see below; before it, `/` went
+straight to a flat session list). Charts are static, distance-aligned traces — **no hover-driven
+cursor sync yet** (that's V2); lap/sector comparison and the delta graph are M6.
 
 M10 adds tyre-strategy viewing, backed by a second store (PostgreSQL, alongside Parquet — see
 [ADR-0011](docs/adr/0011-hybrid-storage-architecture.md)): each lap in the driver's lap list shows
@@ -100,6 +103,13 @@ out-lap markers, per-stint consistency, and a full lap table), reachable from th
 selectors, the sidebar, and the existing Strategy page. These are raw values, medians, and quartiles
 only — never a fitted degradation curve, ranking, or performance verdict; see
 [`docs/m11-design-review.md`](docs/m11-design-review.md) for the audit behind that boundary.
+
+M12 adds the `Season → Event → Session` navigation above: pick a season, then an event (race
+weekend), then a session — reflecting only what PitWall actually has ingested, never a session
+FastF1's schedule merely lists. No new store: seasons/events are grouped on read from the existing
+Parquet-backed session data. Also included: a controlled, real, historical ingestion backfill
+(2020–2026 to date) — see [`docs/m12-implementation-plan.md`](docs/m12-implementation-plan.md) for
+the full batch-by-batch record.
 
 ## Roadmap
 

@@ -8,7 +8,60 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Work in progress toward M6 — Lap/sector comparison + delta graph.
+Nothing in progress — M12 is the most recently completed milestone; no later milestone is scheduled
+yet (see `README.md`'s Project status).
+
+## M12 — Multi-Season / Multi-Event / Multi-Session Architecture — 2026-08-15
+
+See `docs/m12-design-review.md` and `docs/m12-implementation-plan.md` for the full design and
+phased implementation record (Phases 0–8, batch-by-batch real-execution evidence for the historical
+backfill).
+
+### Added
+
+- Pipeline: `Event`/`EventDiscovery` (`pitwall_pipeline/models.py`) — a `(season, event slug)`
+  grouping identity above `Session`, computed at discovery time only, never persisted to Parquet or
+  Postgres. `FastF1Provider.discover_event()`/`discover_season()` (Tier A: schedule-only, no
+  `.load()`), replacing the prior static, empirically-unsafe session-identifier mapping with
+  real per-event schedule resolution.
+- Pipeline: `ingest_event.py` (event-level ingestion, looping the existing, unchanged
+  `ingest_session()` over one event's real sessions with per-session failure isolation) and
+  `ingest_plan.py` (`build_ingestion_plan()`/`execute_ingestion_plan()` — a `DISCOVER → PLAN →
+  REVIEWABLE PLAN → EXECUTE` control plane for event- and season-level ingestion, with CLI safety
+  gates requiring explicit opt-in for a whole season or more than one season at once).
+- Backend: three new read routes under `app/api/seasons.py` — `GET /seasons`, `GET
+  /seasons/{season}/events`, `GET /seasons/{season}/events/{event_id}/sessions` — backed by
+  `app/services/session_discovery/` (pure grouping over the existing
+  `TelemetryRepository.list_sessions()`, no new repository method beyond `has_telemetry` below, no
+  FastF1 call at request time). New response models `SeasonSummary`/`EventSummary`
+  (`app/models/discovery.py`).
+- Backend: `Session` gains two additive fields — `event_id` (computed via `app/utils/ids.py`,
+  independently defined from but formula-identical to the pipeline's own `make_event_id`, parity-
+  tested) and `has_telemetry` (Parquet-metadata-only check, motivated by the real, verified 2018
+  finding that telemetry access can fail even when lap/stint data loads cleanly). New
+  `TelemetryRepository.has_telemetry(session_id)` method, `ParquetRepository`'s implementation.
+- Frontend: the old flat, all-sessions `SessionListPage` is replaced by a `Season → Event → Session`
+  navigation hierarchy — `SeasonListPage` (`/`), `EventListPage` (`/seasons/:season`),
+  `SessionListForEventPage` (`/seasons/:season/events/:eventId`) — consuming the new `/seasons`
+  routes; `selectionStore` gains `season`/`eventId` fields with the same cascading-clear pattern its
+  existing fields already use; the Sidebar gains matching trail links. Everything from the existing
+  `/sessions/:sessionId` route onward is unchanged.
+- Controlled historical ingestion/backfill: 2020–2026 (through round 11 of 2026's in-progress
+  season) real-ingested and reconciled — 704 sessions total. Parquet and PostgreSQL `stints`
+  session-ID sets are an exact match, zero orphans; `pit_stops` differs from that by exactly 5 real,
+  individually-corroborated zero-pit-stop sessions (no data gap) plus one pre-existing test-fixture
+  contamination row, unrelated to this milestone. Zero duplicate stint/pit-stop identities anywhere.
+  Explicitly **not** a bulk/automatic sweep: every season was its own separate, explicitly-approved
+  batch (see `docs/m12-implementation-plan.md` Phase 7). Multi-season historical bulk backfill
+  (Tier E) remains unscheduled by design.
+- Documentation closeout (this entry, plus `docs/architecture.md`, `docs/data-model.md`,
+  `docs/api-model.md`, `docs/m12-implementation-plan.md`'s own Phase 8 record) — no code change.
+
+### Changed
+
+- None to any existing endpoint contract beyond the two additive `Session` fields above — every
+  pre-existing route, `TelemetryRepository`, and `RaceContextRepository` method is otherwise
+  untouched. No Postgres schema change, no migration, no new dependency.
 
 ## M11 — Tyre & Stint Performance Analytics (Descriptive) — 2026-08-10
 

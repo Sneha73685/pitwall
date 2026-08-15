@@ -21,6 +21,9 @@ milestone's data source (Jolpica-f1/Postgres), not a free extra field.
 **Update (M10):** compound, `Stint`, and `PitStop` are now modeled — see "M10 additions" below.
 Weather and position/gaps remain deferred (`docs/m10-design-review.md` §1.2).
 
+**Update (M12):** `Event`/`EventDiscovery` (discovery-time only, no new persisted schema) — see
+"M12 additions" below.
+
 ## Entities (`pitwall_pipeline/models.py`)
 
 All are frozen Pydantic models (validation matters here: PRD §4 flags telemetry completeness as a
@@ -149,3 +152,54 @@ derives descriptive statistics (stint-scoped lap joins, in/out-lap flags, per-co
 entirely in backend application code (`app/services/tyre_performance/`) — nothing new is written to
 either store. See `docs/api-model.md`'s M11 addition for the derived API response shapes this
 produces.
+
+## M12 additions: `Event`/`EventDiscovery` (discovery-time only — no new persisted schema)
+
+M12 (multi-season/event/session architecture) introduces a grouping identity *above* `Session` —
+but, like M11, adds **no new Parquet column, no new PostgreSQL table or column, and no migration**.
+`Event`/`EventDiscovery` are real Pydantic models in `pitwall_pipeline/models.py`, but neither is
+ever written to Parquet or Postgres; both are computed at discovery time, from a single
+schedule-only FastF1 call, and used only to plan and validate ingestion before it runs.
+
+- **`Event`** (`pitwall_pipeline/models.py`) — `event_id` (derived, `{season}_{slugify(event_name)}`
+  — see `make_event_id`), `season`, `round_number`, `event_name`, `event_format` (FastF1's own
+  vocabulary — `conventional`/`sprint`/`sprint_shootout`/`sprint_qualifying`/`testing`, kept as metadata, not
+  re-canonicalized), `location`, `country`, `event_date` (optional). The grouping identity
+  Season → Event → Session discovery uses; **not** a new identity for `Session` itself — every
+  already-existing `session_id` is completely unchanged by this.
+- **`EventDiscovery`** (`pitwall_pipeline/models.py`) — one event's real, discovered session
+  structure: the `Event` above, `session_names` (that event's real `Session1..5` display-name
+  strings, in schedule order — `None` for a slot the event doesn't have), and `available_sessions`
+  (`dict[SessionType, str]`, the canonical `SessionType` → literal FastF1 identifier map — an
+  absent key means "not available for this event," never a misresolved or substituted session).
+  Produced by `FastF1Provider.discover_event()`/`discover_season()` (one `fastf1.get_event_schedule()`
+  call per season; no `.load()`, no lap/telemetry fetch).
+
+### Relationship between discovered Season → Event → Session and persisted session data
+
+Discovery and persistence are two genuinely separate concerns here, deliberately kept that way:
+
+- **`Season`/`Event` are never persisted.** There is no `events` table and no `season`/`event_id`
+  column added to any Parquet or PostgreSQL schema by M12. Both are computed on read — on the
+  pipeline side, from a live (or FastF1-cached) schedule call at *discovery* time, before any
+  ingestion happens; on the backend side, from the already-persisted `Session` rows' own
+  `season`/`event_name` fields, grouped in `app/services/session_discovery/` (see
+  `docs/api-model.md`'s M12 addition) — never from a fresh FastF1 call at request time.
+  `app/utils/ids.py`'s `make_event_id()` independently reproduces the exact same `event_id` formula
+  as the pipeline's own `make_event_id()` (parity-tested, `backend/tests/test_ids.py`), so both
+  sides agree on one event's identity without either importing the other (ADR-0009).
+- **The backend's independent API `Session` model gains one new, additive, computed field because
+  of this: `event_id`** (`app/models/telemetry.py`, see `docs/api-model.md`'s M12 addition) —
+  computed from that same session's `season`/`event_name`, not stored as a separate persisted
+  column. This is a backend-only, response-model addition: `pitwall_pipeline.models.Session` (the
+  entity this document defines above) is **not** changed — it gains no `event_id` field, since the
+  pipeline's own `Event`/`EventDiscovery` already carry that identity at discovery time and have no
+  need to duplicate it onto every ingested `Session` row. `session_id` itself (the identity this
+  document already defines above) is completely unchanged on either side — M12 groups sessions by a
+  computed event identity, it does not restructure or re-key them.
+- **What discovery is actually used for:** `EventDiscovery` (and the multi-event/season planning
+  built on it, `pitwall_pipeline/ingest_plan.py`'s `build_ingestion_plan()`/`execute_ingestion_plan()`)
+  exists purely to decide, safely and reviewably, *what to ingest* — it has no runtime role once a
+  session is already ingested. Once `ingest_session()` has written a session's Parquet (and, for
+  stints/pit stops, Postgres) rows, that session is indistinguishable in storage from one ingested
+  before M12 ever existed.

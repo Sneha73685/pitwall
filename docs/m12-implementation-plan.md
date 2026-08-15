@@ -1422,6 +1422,69 @@ scheduled or assumed here.
   were resolved incidentally by Phases 1–7's real work, and record which remain genuinely open for
   a future milestone.
 
+**Status: implemented and verified. Documentation-only, as scoped — zero application code, zero
+schema, zero test files, zero ingestion.** All five planned deliverables above were completed,
+plus this closing record itself:
+
+- `docs/architecture.md` — §1's data-flow diagram extended with one new node/edge
+  (`Repo → session_discovery → Boundary`, matching what `app/api/seasons.py` actually does — not a
+  redrawn diagram); a new paragraph documenting the M12 discovery layer (`Event`/`EventDiscovery`,
+  `discover_event()`/`discover_season()`, `build_ingestion_plan()`/`execute_ingestion_plan()`); §3's
+  Provider/Repository-abstractions section extended (not rewritten) for the same; §5's repository-
+  structure listing gains the real M12 files (`ingest_event.py`, `ingest_plan.py`,
+  `app/api/seasons.py`, `app/models/discovery.py`, `app/services/session_discovery/`,
+  `app/utils/ids.py`, `features/session-select/`'s Season/Event pages) and its stale "as of M1"
+  framing is corrected to "extended in place by each later milestone." The original V1 diagram,
+  layering principle, and tech-stack table are otherwise untouched.
+- `docs/data-model.md` — new "M12 additions" section, mirroring the existing "M10 additions"/"M11:
+  no new persisted schema" precedent exactly: `Event`/`EventDiscovery`'s real fields (verified
+  directly against `pitwall_pipeline/models.py`), an explicit "no new Parquet column, no new
+  PostgreSQL table or column, no migration" statement, and a dedicated subsection on the
+  relationship between discovered Season → Event → Session and the already-persisted `Session` data
+  (the one additive, *computed* field this milestone actually adds: `Session.event_id`).
+- `docs/api-model.md` — the three real `/seasons` routes, `SeasonSummary`/`EventSummary` (fields
+  verified directly against `app/models/discovery.py`), and `Session`'s two additive fields
+  (`event_id`, `has_telemetry`, verified directly against `app/models/telemetry.py`) — added to the
+  existing entities list and endpoint table, not a separate parallel section. The `200 []` vs. `404`
+  reasoning and the backend's own session-ordering rule (verified directly against
+  `app/services/session_discovery/grouping.py`) are documented explicitly, since both are
+  non-obvious, deliberate decisions rather than defaults.
+- `CHANGELOG.md` — new `## M12` entry above `## M11`, identical `### Added`/`### Changed` structure
+  to every prior milestone entry, describing the real shipped scope: discovery layer, ingestion
+  control plane, the three `/seasons` routes and their two additive `Session` fields, the
+  `Season → Event → Session` frontend replacement, and the real 2020–2026 historical backfill
+  (704 sessions, exact Parquet/Postgres reconciliation). The stale `[Unreleased]` line (still
+  reading "toward M6," long since shipped) was corrected while the file was open, per the M11
+  Phase 6 precedent of fixing staleness found along the way.
+- `README.md` — milestone table gains an `M12 | ✅ Done` row; "Current milestone" line updated;
+  the now-inaccurate "No milestone beyond M11 is scheduled yet" sentence corrected to M12; the
+  quickstart's route-navigation description corrected (it still described the pre-M12 flat
+  `/` → `/sessions/:sessionId` flow, which M12 Phase 5 replaced) to the real
+  `/` → `/seasons/:season` → `/seasons/:season/events/:eventId` → `/sessions/:sessionId` flow; one
+  concise, non-technical paragraph added describing the `Season → Event → Session` navigation and
+  pointing at this document for the batch-by-batch backfill record — deliberately brief, matching
+  every other per-milestone README paragraph's length, not a technical deep-dive.
+- This document — the record you're reading now.
+
+**§18 open-questions disposition** (design review, all 7 — see design review §18 for the original
+question text):
+
+| # | Question | Disposition | Evidence |
+|---|---|---|---|
+| 1 | Postgres season/event columns on `stints`/`pit_stops` | **REMAINS OPEN / FUTURE MILESTONE** | Deliberately not implemented — an explicit non-goal throughout this plan (see "Explicit Non-Goals" below). No current read pattern needs it; still undecided by design, not by oversight. |
+| 2 | Event-name uniqueness within a season, beyond the two originally-checked testing-event cases | **RESOLVED BY M12** (for the 5 seasons Phase 7 actually ran through this matching path; unverified for 2020/2024, which predate M12 Phase 7, and for pre-2020 seasons) | `select_events()`/`find_event_row()`'s non-fuzzy exact/substring matching ran against 101 real events across the 5 seasons Phase 7 Batches 2–6 actually executed (2021, 2022, 2023, 2025, 2026) — zero `AmbiguousEventError` or unexpected collision was ever raised. Real, incidental corroboration, but scoped to what those batches actually exercised — 2020 and 2024 were ingested by an earlier, pre-M12 mechanism and never ran through this matching path; pre-2020 seasons remain unverified. |
+| 3 | Round-number stability across a season for already-ingested data (e.g. a mid-season cancellation retroactively shifting `round_number`) | **REMAINS OPEN / FUTURE MILESTONE** | No Phase 7 batch re-fetched an old season's schedule and diffed it against already-ingested `round_number` values — this would require a dedicated check this plan never ran. Genuinely untested, not merely undocumented. |
+| 4 | `Deleted`-lap-flag availability | **RESOLVED BY M12** (Phase 1) | Resolved outright during Phase 1's real-data verification (design review §19.1/§19.3, predating Phase 7) — not reopened or touched by any later phase. |
+| 5 | Telemetry-channel availability by session type | **RESOLVED BY M12** (for 2019+; the pre-existing 2018 gap stands, not reopened) | Resolved for modern seasons by Phase 1 (§19.2/§19.4); re-corroborated by real Phase 7 execution — 504 real sessions across the 5 seasons Phase 7 Batches 2–6 actually ingested (2021, 2022, 2023, 2025, 2026), with exactly one genuine `SUCCESS_NO_TELEMETRY` (2023 Austrian GP `practice_1`, Batch 4) and zero others. The 2018-specific gap Phase 1 found is unchanged by this — not newly discovered, not disproven. |
+| 6 | FastF1's earliest reliably-supported season | **REMAINS OPEN / FUTURE MILESTONE** | Phase 7's real historical coverage starts at 2020 — it never extended the design review's own 2018 probe backward or re-tested 2018–2019. This document still takes no position on pre-2018 support, exactly as design review §18 originally stated. |
+| 7 | Testing-event exclusion: hard filter or configurable opt-in | **RESOLVED BY M12** (Phase 2) | Implemented as a hard filter by default: `discover_season()`/`discover_event()` call `fastf1.get_event_schedule(season, include_testing=False)` — the design review's own recommended default, decided and shipped in Phase 2, not left open. |
+
+**Final M12 state as of this Phase 8 record:** Phases 0–8 all complete. 704 real sessions ingested
+and reconciled across 2020–2026 (2026 through round 11 of 23; rounds 12–23 intentionally not yet
+ingested, per Phase 7 Batch 6's own future-event safety scope). Zero Postgres schema change, zero
+new persisted `Event`/`Season` entity, zero new dependency, across every phase of this milestone.
+No ADR was required (confirmed again here, unchanged from the original assessment below).
+
 ---
 
 ## Explicit Non-Goals (carried forward from the design review, restated for implementers)

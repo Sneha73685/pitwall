@@ -1,6 +1,6 @@
 # PitWall — System Architecture
 
-Companion to `docs/prd.md` (vision, scope, roadmap) and `docs/adr/` (why each decision below was made over its alternatives). This document describes the system as currently frozen for V1 implementation.
+Companion to `docs/prd.md` (vision, scope, roadmap) and `docs/adr/` (why each decision below was made over its alternatives). This document described the system as frozen for V1 implementation; it has since been extended, milestone by milestone (M8–M12), rather than rewritten — each addition below is called out by milestone, and the original V1 material is left in place as the foundation those additions build on.
 
 ## 1. System Overview & Data Flow
 
@@ -24,6 +24,7 @@ flowchart LR
     subgraph Backend["Backend API (FastAPI)"]
         Repo --> Boundary[["Anti-corruption layer:\nPitWall Pydantic schemas"]]
         RCRepo["RaceContextRepository\n(PostgresRaceContextRepository impl)"] --> Boundary
+        Repo --> Discovery["session_discovery\n(Season/Event grouping)"] --> Boundary
         Boundary --> API["Typed REST API"]
     end
 
@@ -43,6 +44,27 @@ replacement for it — for the two genuinely relational entities Parquet can't s
 pit stops. Everything else (sessions, drivers, laps including the new `compound` column, telemetry,
 track geometry) stays on Parquet, unchanged.
 
+M12 adds a **discovery layer**, both offline (pipeline) and at request time (backend) — no new
+store, no new node type in the diagram above beyond the `session_discovery` grouping step just
+added. On the pipeline side, `FastF1Provider.discover_event()`/`discover_season()` (Tier A: one
+schedule-only FastF1 call, no `.load()`) resolve an `Event` — the `(season, event slug)` grouping
+identity above `Session`, defined in `pitwall_pipeline/models.py` but **never written to Parquet or
+Postgres** — and feed `pitwall_pipeline/ingest_plan.py`'s `build_ingestion_plan()`/
+`execute_ingestion_plan()`, a `DISCOVER → PLAN → REVIEWABLE PLAN → EXECUTE` control plane for
+ingesting more than one session at a time (event- and season-level), built entirely on the
+already-existing, unchanged `ingest_session()`/`ingest_event()`. This is the machinery M12 Phase 7
+used to backfill 2020–2026 (704 sessions as of the last real ingestion batch) — a controlled,
+explicitly-approved, one-season-at-a-time operation, never an automatic bulk sweep (see
+`docs/m12-implementation-plan.md`'s own non-goals). On the backend side, `Session.event_id` is an
+additive, *computed* field (`app/utils/ids.py`, independent of but formula-identical to the
+pipeline's own `make_event_id`) — grouped by `app/services/session_discovery/` (the `Discovery` node
+above) into `GET /seasons`/`GET /seasons/{season}/events`/`GET
+/seasons/{season}/events/{event_id}/sessions`, reflecting only what PitWall has actually ingested,
+never FastF1's upstream schedule. No Event table exists in Postgres; both the pipeline's `Event` and
+the backend's season/event grouping are computed on read, not persisted, by explicit design (design
+review §7). See `docs/data-model.md`'s M12 addition and `docs/api-model.md`'s M12 addition for the
+full field/route-level detail.
+
 Why pre-process instead of calling FastF1 live on each request: FastF1 pulls from F1's live-timing archive and parses it, which is slow (seconds to tens of seconds per session) and rate-limit sensitive. An offline/batch ingestion step fetches a session once, normalizes it, and the API only ever reads from the resulting cache — the app also keeps working if the upstream source has a bad day.
 
 ## 2. Layering Principle
@@ -57,7 +79,7 @@ This rule exists specifically so that changing a data provider or a storage engi
 
 ## 3. Provider & Repository Abstractions
 
-**`TelemetryProvider`** (pipeline layer, ADR-0005): an interface shaped around PitWall's normalized internal schema, not around FastF1's API. `FastF1Provider` is the sole V1 implementation. Future sources (OpenF1 for live data, file imports, simulator telemetry) become new implementations of this interface rather than changes to ingestion logic.
+**`TelemetryProvider`** (pipeline layer, ADR-0005): an interface shaped around PitWall's normalized internal schema, not around FastF1's API. `FastF1Provider` is the sole V1 implementation. Future sources (OpenF1 for live data, file imports, simulator telemetry) become new implementations of this interface rather than changes to ingestion logic. M12 adds `discover_event()`/`discover_season()` to this same provider (Tier A: schedule-only, no `.load()`) — discovery is a capability of the existing provider, not a new interface.
 
 **`TelemetryRepository`** (backend layer, ADR-0006): an interface defined by the API's actual read patterns (fetch a session/driver/lap's telemetry, list sessions), injected into route handlers via FastAPI's `Depends()`. `ParquetRepository` remains its sole implementation. M10 (ADR-0011) resolved the Postgres migration this ADR anticipated differently than originally predicted here: relational race-strategy data is served through a second, separate interface instead of extending this one (below) — `TelemetryRepository` itself was never touched.
 
@@ -65,7 +87,7 @@ This rule exists specifically so that changing a data provider or a storage engi
 
 Both interfaces are intentionally minimal today — they grow when a second real implementation forces them to, not in anticipation of one.
 
-**Domain-logic services** (backend layer, `app/services/`): business logic beyond a simple repository read. `app/services/session_analytics/` (M8) computes descriptive per-driver/session statistics from `TelemetryRepository` data alone. `app/services/tyre_performance/` (M11) is the first such package to read from **both** repositories in the same request — it joins `Lap`/`TelemetrySample` (Parquet, via `TelemetryRepository`) against `Stint`/`PitStop` (PostgreSQL, via `RaceContextRepository`) entirely in application code, over already-typed Pydantic objects. This is not a database-level join and does not introduce a cross-engine foreign key — ADR-0011's "no FK from Postgres to a Parquet file" constraint is about the storage layer, and remains untouched; the two repositories are still queried independently, each ignorant of the other. It backs two endpoints: `GET /sessions/{session_id}/drivers/{driver_id}/stint-pace` (one driver's per-stint raw lap-time series) and `GET /sessions/{session_id}/tyre-performance` (session-wide compound/strategy aggregates) — descriptive statistics only, see `docs/api-model.md` for response shapes and `docs/m11-design-review.md` for why no fitted/predictive metric is in scope.
+**Domain-logic services** (backend layer, `app/services/`): business logic beyond a simple repository read. `app/services/session_analytics/` (M8) computes descriptive per-driver/session statistics from `TelemetryRepository` data alone. `app/services/tyre_performance/` (M11) is the first such package to read from **both** repositories in the same request — it joins `Lap`/`TelemetrySample` (Parquet, via `TelemetryRepository`) against `Stint`/`PitStop` (PostgreSQL, via `RaceContextRepository`) entirely in application code, over already-typed Pydantic objects. This is not a database-level join and does not introduce a cross-engine foreign key — ADR-0011's "no FK from Postgres to a Parquet file" constraint is about the storage layer, and remains untouched; the two repositories are still queried independently, each ignorant of the other. It backs two endpoints: `GET /sessions/{session_id}/drivers/{driver_id}/stint-pace` (one driver's per-stint raw lap-time series) and `GET /sessions/{session_id}/tyre-performance` (session-wide compound/strategy aggregates) — descriptive statistics only, see `docs/api-model.md` for response shapes and `docs/m11-design-review.md` for why no fitted/predictive metric is in scope. `app/services/session_discovery/` (M12) is the simplest of the three: pure grouping/ordering functions over `TelemetryRepository.list_sessions()` alone (no second repository, no join) — it backs the three `/seasons` routes described above.
 
 The concrete normalized schema `TelemetryProvider` implementations produce — `Session`, `Driver`, `Lap`, `TelemetrySample`, `TrackPoint` — is defined in `docs/data-model.md`, along with the Parquet cache layout `TelemetryRepository` will read in M2.
 
@@ -90,9 +112,9 @@ Full rationale and rejected alternatives for each row live in the linked ADR —
 
 ## 5. Repository Structure
 
-This reflects the structure as of M1; some directories (`frontend/src/features/`, a second
-`TelemetryRepository` implementation, etc.) are still empty or don't exist yet and will be filled
-in by the milestones that need them (see `docs/prd.md` §3).
+This reflects the structure as of M1, extended in place by each later milestone (M8–M12) rather
+than restated from scratch; a second `TelemetryRepository` implementation still doesn't exist (see
+`docs/prd.md` §3 for what remains unscheduled).
 
 ```
 pitwall/
@@ -113,24 +135,28 @@ pitwall/
 │   │   ├── normalize.py
 │   │   ├── track.py             # TrackPoint derivation
 │   │   ├── cache_writer.py
-│   │   ├── ingest.py            # CLI entrypoint
+│   │   ├── postgres_writer.py   # stints/pit_stops upsert (M10)
+│   │   ├── ingest.py            # CLI entrypoint (single session)
+│   │   ├── ingest_event.py      # event-level ingestion (M12)
+│   │   ├── ingest_plan.py       # multi-event/season DISCOVER→PLAN→EXECUTE (M12)
 │   │   └── utils/
 │   └── tests/
 ├── backend/                   # FastAPI service
 │   ├── pyproject.toml
 │   ├── app/
 │   │   ├── main.py
-│   │   ├── api/                 # route modules per resource
-│   │   ├── models/              # Pydantic schemas (the anti-corruption boundary)
-│   │   ├── repositories/        # TelemetryRepository interface + ParquetRepository
-│   │   └── services/            # domain logic (session_analytics/, tyre_performance/)
+│   │   ├── api/                 # route modules per resource, incl. seasons.py (M12)
+│   │   ├── models/              # Pydantic schemas (the anti-corruption boundary), incl. discovery.py (M12)
+│   │   ├── repositories/        # TelemetryRepository interface + ParquetRepository; RaceContextRepository (M10)
+│   │   ├── utils/ids.py         # event_id derivation (M12)
+│   │   └── services/            # domain logic (session_analytics/, tyre_performance/, session_discovery/ (M12))
 │   └── tests/
 ├── frontend/                  # React + TypeScript app
 │   ├── package.json
 │   ├── src/
 │   │   ├── api/                  # typed API client
 │   │   ├── state/                # Zustand stores (selectionStore, later cursorStore)
-│   │   └── features/             # session-select, track-map, telemetry-charts, delta-graph (from M3)
+│   │   └── features/             # session-select (Season/Event/Session pages, M12), track-map, telemetry-charts, delta-graph (from M3)
 │   └── tests/
 ├── data/                       # gitignored — local processed cache
 ├── docker-compose.yml
