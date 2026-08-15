@@ -4,14 +4,17 @@
 discovery/orchestration, the multi-event/season planning-and-execution control plane, the backend
 season/event/session discovery API, the frontend Season → Event → Session navigation UI, and a
 real, live, full-event multi-session ingestion run proving all of the above against genuinely new
-data). **Phase 7 complete and verified for seasons 2021, 2022, 2023, and 2025** (2021: 110 planned
-sessions, 109 succeeded, one genuine, bounded, documented `LOAD_FAILED`; 2022: 110 planned sessions,
-all 110 succeeded; 2023: 110 planned sessions, 109 succeeded plus one genuine `SUCCESS_NO_TELEMETRY`,
-zero `LOAD_FAILED`; 2025: 120 planned sessions, all 120 succeeded, recovered across two real passes
-after an initial, separately-run full-season pass reached 102/120 — see Phase 7's own section, batch
-by batch, for the full real-execution record of each). 2024 was not run as its own M12 Phase 7
-batch (its data already existed before M12 Phase 7 began) and 2026 has not been started. Phase 8
-remains not started. See each phase section below for what actually shipped versus
+data). **Phase 7 complete and verified for seasons 2021, 2022, and 2023; complete for the 11
+real, already-completed rounds of 2025 and 2026 to date** (2021: 110 planned sessions, 109
+succeeded, one genuine, bounded, documented `LOAD_FAILED`; 2022: 110 planned sessions, all 110
+succeeded; 2023: 110 planned sessions, 109 succeeded plus one genuine `SUCCESS_NO_TELEMETRY`, zero
+`LOAD_FAILED`; 2025: 120 planned sessions, all 120 succeeded, recovered across two real passes after
+an initial, separately-run full-season pass reached 102/120; 2026: 55 of 55 planned sessions
+succeeded for the 11 of 23 rounds actually completed as of 2026-08-15, with rounds 12–23
+deliberately excluded as not-yet-occurred — see Phase 7's own section, batch by batch, for the full
+real-execution record of each). 2024 was not run as its own M12 Phase 7 batch (its data already
+existed before M12 Phase 7 began). 2026's remaining 12 rounds will be picked up as later batches as
+they occur. Phase 8 remains not started. See each phase section below for what actually shipped versus
 what was originally planned — Phase 3, in particular, was assigned its number by live implementation
 sequencing and covers different content than this document originally drafted for "Phase 3"; the
 original Backend APIs/Frontend/verification/backfill phases are preserved, renumbered to Phases
@@ -1214,6 +1217,187 @@ present since Phase 2) was sufficient, used exactly as designed.
 tooling, charts, and frontend work. This batch's completion brings every season from 2020–2025 to a
 fully-reconciled, zero-known-gap state — the first point in this plan's real-execution history where
 that is true simultaneously across all six seasons.
+
+### Phase 7, Batch 6 — season 2026 (partial: 11 of 23 real, completed events)
+
+**Status: implemented and verified for the 11 real, already-completed 2026 rounds as of
+2026-08-15 — 55 of 55 planned sessions succeeded.** Unlike every prior batch, 2026 is a season
+still in progress: `discover_season(2026)` reports 23 non-testing events on the real FastF1
+schedule, but only 11 had actually happened by real-world clock time when this batch ran. This
+batch deliberately covers only those 11 — rounds 12–23 (Dutch onward) were never planned, never
+queried, and never ingested, per an explicit Stage A/Stage B safety review the operator required
+before any ingestion began.
+
+**Stage A (dry-run, zero writes) established the eligible set by real per-session UTC dates, not
+by schedule presence alone:** for each of the 23 discovered events, every real `SessionN DateUtc`
+column (not just the event's own summary `event_date`) was read from the raw FastF1 schedule, and
+an event counted as eligible only if its **last** session's real UTC timestamp was already in the
+past relative to real UTC now (2026-08-15T14:16 UTC at Stage A, re-verified unchanged at Stage B
+start). This produced **11 eligible completed events** (Australian, Chinese, Japanese, Miami,
+Canadian, Monaco, Barcelona, Austrian, British, Belgian, Hungarian — rounds 1–11) and **12 excluded
+future events** (Dutch through Abu Dhabi — rounds 12–23), including one near-miss flagged
+explicitly at Stage A: Dutch GP's last session was only 8 days away from real "now," the closest
+any future-exclusion has come to the boundary in this plan's history, and it was still correctly
+excluded. `select_events()`/`build_ingestion_plan()` resolved this exact 11-event set to 55 planned
+sessions / 22 diagnostics, independently re-verified immediately before Stage B execution began (no
+drift between Stage A and Stage B).
+
+**Hard safety gate, in addition to the plan itself:** the executing harness (`stage_b_2026.py`,
+scratchpad-only, same precedent as every prior batch) hard-codes the exact 11 approved event names
+and asserts, before attempting any ingestion, that a freshly-rebuilt `build_ingestion_plan()` call
+resolves to exactly 11 events / 55 sessions / 22 diagnostics with an identical event-name list —
+aborting loudly rather than ingesting anything if real discovery ever disagreed with the approved
+Stage A shape. It never fired; real discovery matched on every invocation.
+
+**Real outcome: 55 of 55 planned sessions succeeded — 0 genuine `LOAD_FAILED`, 0
+`SUCCESS_NO_TELEMETRY`, 0 event-level failures.** The cleanest full-season-scope result of any batch
+in this plan so far (matching 2022's 110/110, at a smaller scope).
+
+| Status | Count |
+|---|---|
+| SUCCESS | 55 |
+| SUCCESS_NO_TELEMETRY | 0 |
+| NOT_AVAILABLE (diagnostics) | 22 |
+| LOAD_FAILED (genuine) | 0 |
+| Event-level failures | 0 |
+
+Session-type breakdown (11 events — 7 conventional, 4 sprint):
+
+| Type | Success | Planned |
+|---|---|---|
+| practice_1 | 11 | 11 |
+| practice_2 | 7 | 7 |
+| practice_3 | 7 | 7 |
+| qualifying | 11 | 11 |
+| sprint_qualifying | 4 | 4 |
+| sprint | 4 | 4 |
+| race | 11 | 11 |
+
+**One real interruption: a genuine FastF1 500-calls/hour rate-limit trip, mid-Belgian-GP (event 10
+of 11), the smallest-blast-radius and cleanest-handled trip of any batch so far.** All 5 of
+Belgian's requested sessions reported `load_failed` with the rate limiter's own error signature in
+the same instant (the limiter, once tripped, rejects every subsequent call for the rest of that
+process's lifetime); the harness detected this immediately via `_is_rate_limit()`, logged
+`STOPPING CLEANLY`, wrote its incremental result, and exited — **never attempting Hungarian GP
+(event 11), never retrying Belgian within the same process.** Disk truth was confirmed
+(`belgian_grand_prix` directory absent, no partial write) before a fresh process was launched. The
+fresh process's own in-memory counter reset instantly (same finding as every prior batch): Belgian
+succeeded in full on the very next invocation (all 5 sessions), and the same process continued
+straight through to Hungarian without further incident, ending with `stopped_early=False`. The 5
+rate-limit `load_failed` entries from the first attempt do not appear in any final count above —
+they were transient artifacts of the trip itself, superseded by the real, successful retry, exactly
+as this plan's `_is_rate_limit()`-based design intends.
+
+**All 4 sprint weekends in scope verified** (China, Miami, Canada, British — the fifth and sixth
+2026 sprint weekends, Dutch and Singapore, are outside this batch's eligible set and were not
+touched): each with the real `practice_1 → sprint_qualifying → sprint → qualifying → race` order,
+both `practice_2`/`practice_3` correctly `NOT_AVAILABLE`. **2026's sprint format verified from real
+discovery, not assumed to match 2025:** identical structural shape to 2023/2025 (`"Sprint
+Qualifying"` FastF1 identifier, not `"Sprint Shootout"`) — end-to-end confirmed on real ingested
+data, not just the plan: Canadian GP's real written `stints`/`pit_stops` rows carry
+`2026_canadian_grand_prix_sprint_qualifying` as the canonical, persisted `session_id`.
+
+**New finding, not seen in any prior season this plan has ingested: a 22-driver grid, not 20.**
+Every 2026 session's `drivers.parquet` and FastF1's own "Finished loading data for N drivers" log
+line report 22 drivers (e.g. Australian GP Practice 1/Qualifying/Race and Hungarian GP Race all
+show 22), consistent across every one of the 11 events — a real, structural change to the 2026
+season (a grid expansion), not a data anomaly. `normalize_stints`/`normalize_pit_stops` and every
+downstream count in this record already reflect the real 22-driver grid; no code change was needed,
+since neither function hard-codes a driver count anywhere.
+
+**Reconciliation by session-ID SET:** Parquet (55) = PostgreSQL `stints` distinct-session-ID set
+(55) = PostgreSQL `pit_stops` distinct-session-ID set (55) — **exact three-way match, zero orphans
+in any direction.** Zero duplicate `(session_id, driver_id, stint_number)` rows in `stints` and zero
+duplicate `(session_id, driver_id, stop_number)` rows in `pit_stops` for any 2026 session. Every one
+of the 55 session directories contains all 5 expected files (`drivers`, `laps`, `session`,
+`telemetry`, `track`), all non-zero-byte — no partial or corrupt-looking session found. `ls
+data/processed/2026/` shows exactly the 11 approved event directories — none of the 12 excluded
+future rounds (Dutch through Abu Dhabi) exist anywhere on disk.
+
+**Representative sessions manually inspected** (real row counts): Australian GP Practice 1 (22
+drivers, 487 laps, 548,734 telemetry samples), Australian GP Qualifying (353 laps, 501,978
+samples), Australian GP Race (1,006 laps, 684,379 samples) — one conventional practice, qualifying,
+and race, as required; the full Canadian GP sprint weekend (`practice_1`: 619 laps/746,031 samples,
+`sprint_qualifying`: 300 laps/451,673 samples, `sprint`: 491 laps/287,258 samples, `qualifying`: 456
+laps/429,329 samples, `race`: 1,211 laps/731,866 samples) — all five sessions present, plausible,
+and correctly typed.
+
+**Telemetry availability:** full telemetry on all 55 sessions — zero `SUCCESS_NO_TELEMETRY`. Real,
+individual per-lap telemetry gaps occurred repeatedly across multiple sessions (e.g. Australian GP
+Practice 1 `LEC` lap 33, China GP Practice 1 `ALB` lap 31, a notable burst in Monaco GP Race for
+`HAM` across several consecutive laps) — all caught and skipped by the existing, unmodified per-lap
+`except Exception` boundary (Phase 1/Batch 4 precedent), never escalating to a session-level
+failure or a `SUCCESS_NO_TELEMETRY` outcome. Two distinct real underlying causes were observed this
+batch (both already-generic, requiring no new handling): the previously-documented
+`ValueError: attempt to get argmin of an empty sequence` (FastF1's own `calculate_driver_ahead()`)
+and a new variant, `KeyError: "None of ['Date'] are in the columns"` (FastF1's own
+`merge_channels()`, when position data for that lap is missing entirely) — both are FastF1-internal
+per-lap failure modes, not PitWall defects, and both were already covered by the same broad
+per-lap boundary without any code change. Separately, several sessions logged benign,
+already-self-explained FastF1-internal `DEBUG`-level Ergast (historical-results) lookup failures
+("No result data for this session available on Ergast! (This is expected for recent sessions)") —
+FastF1's own third-party-API fallback for standings data, unrelated to PitWall's own
+laps/telemetry/stints/pit-stops pipeline, and not counted as a finding.
+
+**Idempotency, verified with a real single-session re-ingestion** (a narrower, more conservative
+check than prior batches' full-event re-ingestion, chosen deliberately given this batch's own real
+rate-limit trip earlier in the run): Hungarian GP Race was re-ingested for real via `ingest_event()`
+a second time, entirely against already-cached FastF1 data. Laps (1,431), telemetry samples
+(938,587), `stints` rows (67), and `pit_stops` rows (47) were all identical before and after; the
+whole database's total row counts (54,148 `stints`, 50,844 `pit_stops`) were unchanged by the
+second run. `session.parquet`'s mtime changed (a genuine overwrite occurred, not a skip) — the same
+two-fact proof of true idempotency every prior batch has established.
+
+**2020–2025 confirmed untouched throughout:** Parquet directory counts unchanged (2020: 17, 2021:
+22, 2022: 22, 2023: 22, 2024: 24, 2025: 24). PostgreSQL row counts byte-identical to Batch 5's own
+recorded figures for every season (`2020`: 6,728/6,407; `2021`: 8,398/7,943; `2022`: 8,102/7,667;
+`2023`: 8,071/7,510, Monza contamination still present and still correctly excluded; `2024`:
+8,904/8,300; `2025`: 9,495/8,874). **2026's own totals:** 4,450 `stints`, 4,143 `pit_stops`.
+Database grand total after this batch: 54,148 `stints`, 50,844 `pit_stops` — arithmetic confirmed
+directly (49,698 + 4,450 = 54,148; 46,701 + 4,143 = 50,844), not taken on faith.
+
+**Resource cost:** `data/fastf1_cache/2026/` grew from a single pre-existing schedule-probe
+directory (~0 session data) to 2.8GB, containing exactly the 11 approved event-date-named
+directories and no others; `data/fastf1_cache/` total grew from 42GB to 45GB (+3GB) — consistent
+with Stage A's own labeled rough estimate (2.5–3GB), now a real, measured figure rather than a
+scaled guess. Wall-clock time: roughly 65 minutes across both passes (a ~52-minute first pass
+covering 9 of 11 events before the rate-limit stop, plus a ~7-minute second pass covering the
+remaining 2), dominated by real data transfer/parsing per session (each session took 40–90s), not
+by the rate limit itself — consistent with every prior batch's finding that a fresh-process restart
+resets the limiter instantly and does not meaningfully throttle total throughput.
+
+**Resource/environment check performed before Stage B launched, per the operator's explicit
+instruction:** no training or other memory-intensive Python workload was found running (`ps aux`
+showed no `train_baseline.py` or similar process); CPU was ~77% idle, load average 2.10–3.17 — the
+run proceeded sequentially, one event at a time, never launching a second concurrent ingestion
+process.
+
+**Validation** (run after the real ingestion, idempotency check, and reconciliation above, against
+the real `pitwall` database; PostgreSQL-touching tests confirmed to use the isolated `pitwall_test`
+database via the Batch 2 isolation fix, `c0a7c22` — the full pipeline suite required no exclusions,
+as expected): pipeline pytest 147/147, `mypy --strict` clean (17 source files), `ruff check`/`ruff
+format --check` clean (38 files). Backend pytest 266/266, `mypy --strict` clean (52 source files),
+`ruff check`/`ruff format --check` clean (90 files). Frontend vitest 314/314, `tsc -b --noEmit`
+clean, `eslint` clean, `prettier --check` clean — zero frontend files touched, zero backend/pipeline
+source files touched in this batch. The real `pitwall` database's row counts (54,148 / 50,844) were
+confirmed identical immediately before and immediately after the full validation pass, and
+`pitwall_test` was confirmed to exist — direct evidence the isolation fix was exercised, not merely
+present.
+
+**No architectural concern found requiring a code change.** The one real rate-limit trip is the
+same class of expected, already-designed-for event this plan's harnesses have handled since the
+2021 batch — handled correctly, with the smallest blast radius yet. The two per-lap telemetry
+failure modes (one previously seen, one new this batch) are both already covered by the existing,
+generic per-lap exception boundary. The new 22-driver grid finding required no change anywhere in
+`pitwall_pipeline`, `normalize_stints`, or `normalize_pit_stops` — further evidence these functions
+are genuinely driver-count-agnostic, not merely untested against a different count until now.
+
+**Explicitly not started in this batch:** rounds 12–23 (Dutch, Italian, Spanish, Azerbaijan,
+Bahrain, Singapore, United States, Mexico City, São Paulo, Las Vegas, Qatar, Abu Dhabi) — none were
+planned, queried, or ingested, per this batch's own explicit future-event safety scope. Also not
+started: Phase 8, CSV/export tooling, charts, and frontend work. The remaining 12 rounds of 2026
+will be picked up as later, separate, explicitly-approved batches as they actually occur — not
+scheduled or assumed here.
 
 ---
 
