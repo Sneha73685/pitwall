@@ -4,11 +4,14 @@
 discovery/orchestration, the multi-event/season planning-and-execution control plane, the backend
 season/event/session discovery API, the frontend Season → Event → Session navigation UI, and a
 real, live, full-event multi-session ingestion run proving all of the above against genuinely new
-data). **Phase 7 complete and verified for seasons 2021, 2022, and 2023** (2021: 110 planned
+data). **Phase 7 complete and verified for seasons 2021, 2022, 2023, and 2025** (2021: 110 planned
 sessions, 109 succeeded, one genuine, bounded, documented `LOAD_FAILED`; 2022: 110 planned sessions,
 all 110 succeeded; 2023: 110 planned sessions, 109 succeeded plus one genuine `SUCCESS_NO_TELEMETRY`,
-zero `LOAD_FAILED` — see Phase 7's own section, batch by batch, for the full real-execution record of
-each). Phase 8 remains not started. See each phase section below for what actually shipped versus
+zero `LOAD_FAILED`; 2025: 120 planned sessions, all 120 succeeded, recovered across two real passes
+after an initial, separately-run full-season pass reached 102/120 — see Phase 7's own section, batch
+by batch, for the full real-execution record of each). 2024 was not run as its own M12 Phase 7
+batch (its data already existed before M12 Phase 7 began) and 2026 has not been started. Phase 8
+remains not started. See each phase section below for what actually shipped versus
 what was originally planned — Phase 3, in particular, was assigned its number by live implementation
 sequencing and covers different content than this document originally drafted for "Phase 3"; the
 original Backend APIs/Frontend/verification/backfill phases are preserved, renumbered to Phases
@@ -1062,6 +1065,155 @@ count, left untouched pending a separate cleanup decision.
 **Explicitly not started in this batch:** 2024 real re-ingestion (2024 data already existed from
 before M12 Phase 7), 2025/2026 (or any season beyond 2023), Phase 8, CSV/export tooling, charts, and
 frontend work.
+
+### Phase 7, Batch 5 — season 2025
+
+**Status: implemented and verified for season 2025 — 120 of 120 planned sessions now present.**
+Same architecture as the 2021/2022/2023 batches (`build_ingestion_plan()`/`ingest_event()`
+unchanged, per-event/per-session failure isolation inherited unchanged), but this batch's own
+operational record is split across two distinct real executions rather than one continuous
+harness run, because the season's initial full-season ingestion pass (the one that reached the
+102/120 baseline this batch started from) predates this record and its own operator harness/log
+is not present in this session's scratchpad — its resource-cost figures are therefore **not**
+recorded below, per this document's own "record only what is directly evidenced, never invent
+numbers" convention (unlike Batches 2–4, where the full season's single run was directly observed
+start to finish).
+
+**Starting state (established by a prior read-only reconciliation, not re-derived here): 102 of
+120 planned 2025 sessions present**, 18 missing — São Paulo GP (`sprint`, `qualifying`, `race`),
+Las Vegas GP (all 5), Qatar GP (all 5), Abu Dhabi GP (all 5).
+
+**Targeted recovery, run as two real, evidenced passes against the existing `ingest_event()`
+allowlist mechanism (a scratch driver script, `recover_18.py`, kept out of this repository, same
+precedent as every prior batch's harness):**
+
+- **Pass 1** (`recover_18_pass1.log`, started 2026-08-15 11:42:53): requested São Paulo
+  (`sprint`, `qualifying`, `race`), Las Vegas (all 5), and Qatar (all 5), in that order. São Paulo
+  and Las Vegas completed in full (8 sessions). Qatar's `practice_1`, `sprint_qualifying`, and
+  `sprint` completed in full (3 sessions). Qatar `qualifying` began loading, hit a real, reproducible
+  per-lap telemetry gap for `RUS` lap 26 (`ValueError: attempt to get argmin of an empty sequence`
+  inside FastF1's own `calculate_driver_ahead()`) — correctly caught and logged by the existing
+  per-lap `except Exception` handler (Batch 3/4 precedent), **not** a crash — but the log ends
+  abruptly one line after that warning, with no further output and no "Ingested" confirmation for
+  that session. The process was manually stopped (external `kill`) at this point, confirmed by disk
+  truth: `qatar_grand_prix/qualifying` did not exist on disk when Pass 1 ended. **11 of the 18
+  originally-missing sessions were genuinely, successfully ingested by Pass 1** before the stop —
+  reconciled directly against disk/Postgres (113 = 102 + 11, matching Parquet, `stints`, and
+  `pit_stops` session-ID sets exactly, zero orphans) before Pass 2 was ever built, not assumed from
+  the log alone.
+- **Pass 2** (`recover_18.log`, `recover_18_result.json`, started 2026-08-15 11:57:13): built with
+  an explicit per-event session-type allowlist covering only the 7 sessions still genuinely missing
+  — Qatar (`qualifying`, `race`) and Abu Dhabi (all 5) — so the 113 already-present sessions were
+  never re-requested. Qatar `qualifying` re-encountered the identical `RUS` lap 26 telemetry gap
+  (same warning, same traceback, same caught-and-skipped handling) but this time the session's
+  ingestion continued to completion and its Parquet write succeeded — a `SUCCESS` outcome (only one
+  lap's telemetry skipped, not a `SUCCESS_NO_TELEMETRY`). All 7 targeted sessions succeeded; the run
+  completed and the log ends with **`=== DONE. stopped_early=False stop_reason=None ===`** at
+  2026-08-15 12:06:46 — a full, uninterrupted completion, not a second interruption.
+
+**This resolves the ambiguity this batch's own read-only reconciliation flagged: the recovery
+process that was manually stopped was Pass 1, not Pass 2.** Pass 2 (the run whose log this document
+and the prior reconciliation both cite as `stopped_early=False`) genuinely ran to completion under
+its own explicit, narrower 7-session scope; it was not itself interrupted. No claim is made here
+that the *original* full-season ingestion pass (the one reaching 102/120) was interrupted — no log
+for that run exists in this session's scratchpad to support or refute that either way.
+
+**Real outcome: 120 of 120 planned sessions succeeded — 0 `LOAD_FAILED`, 0
+`SUCCESS_NO_TELEMETRY`, zero event-level failures.** (The one real per-lap telemetry gap, `RUS` lap
+26 in Qatar Qualifying, is a single skipped lap within an otherwise-`SUCCESS` session — the existing
+per-lap exception boundary handled it exactly as designed, the same pattern already documented for
+Austrian GP `practice_1` in Batch 4, just at finer granularity here.)
+
+| Status | Count |
+|---|---|
+| SUCCESS | 120 |
+| SUCCESS_NO_TELEMETRY | 0 |
+| NOT_AVAILABLE (diagnostics) | 48 |
+| LOAD_FAILED | 0 |
+| Event-level failures | 0 |
+
+Session-type breakdown (24 events; verified directly against real, on-disk Parquet session
+directories, not from a log alone):
+
+| Type | Success | Planned |
+|---|---|---|
+| practice_1 | 24 | 24 |
+| practice_2 | 18 | 18 |
+| practice_3 | 18 | 18 |
+| qualifying | 24 | 24 |
+| sprint_qualifying | 6 | 6 |
+| sprint | 6 | 6 |
+| race | 24 | 24 |
+
+(24 events × 7 possible session types = 168 combinations; 120 succeeded, 48 correctly diagnosed
+`NOT_AVAILABLE` — the 18 conventional-format events each lack `sprint_qualifying`/`sprint` (36), the
+6 sprint-format events each lack `practice_2`/`practice_3` (12); 36 + 12 = 48, matching the table
+above exactly.)
+
+**All six 2025 sprint weekends verified** (the largest sprint-weekend count of any season in this
+plan so far — one more than 2023's six, but note 2023's set and 2025's set are different events, not
+a repeat): **China, Miami, Belgium, United States, São Paulo, and Qatar** — each confirmed by the
+real presence of a `sprint_qualifying` directory under its event, matching 2023's `practice_1 →
+qualifying → sprint_qualifying → sprint → race` structural era (both `practice_2`/`practice_3`
+absent), not the older 2021/2022 shape.
+
+**Reconciliation by session-ID SET (re-confirmed after Pass 2, not just after Pass 1's partial
+state):** Parquet (120) = PostgreSQL `stints` distinct-session-ID set (120) = PostgreSQL `pit_stops`
+distinct-session-ID set (120) — **exact three-way match, zero orphans in any direction.** Zero
+duplicate `(session_id, driver_id, stint_number)` rows in `stints` and zero duplicate `(session_id,
+driver_id, stop_number)` rows in `pit_stops` for any 2025 session (`GROUP BY ... HAVING COUNT(*) >
+1` returns empty for both). Every one of the 18 recovered sessions' Parquet directories contains all
+5 expected files (`drivers`, `laps`, `session`, `telemetry`, `track`), all non-zero-byte — no
+partial or corrupt-looking session found among them.
+
+**2020–2024 confirmed untouched throughout** (re-verified directly against the live database after
+this batch, cross-checked against Batch 4's own recorded per-season totals — an even stronger check
+than prior batches' own precedent, since it catches drift across two batches' worth of intervening
+time, not just one): `stints`/`pit_stops` row counts are byte-identical to Batch 4's own recorded
+figures for every prior season — `2020`: 6,728 / 6,407; `2021`: 8,398 / 7,943; `2022`: 8,102 / 7,667;
+`2023`: 8,071 / 7,510 (the 2-row `2023_monza_race` test-fixture contamination Batch 4 identified and
+excluded is still present, still unchanged, still correctly excluded from every 2023 count);
+`2024`: 8,904 / 8,300. Parquet directory counts for those seasons are unchanged in shape (not
+re-counted from scratch here, since the read-only reconciliation immediately preceding this batch's
+documentation already confirmed this directly).
+
+**2025's own final totals:** 9,495 `stints` rows, 8,874 `pit_stops` rows. Database grand total after
+this batch: 49,698 `stints`, 46,701 `pit_stops` (all seasons combined, including the 2 pre-existing
+Monza contamination rows) — arithmetic confirmed directly against the sum of every season's
+individually-queried count above, not taken on faith from a single aggregate query.
+
+**Resource cost — partially evidenced, not invented:** `data/fastf1_cache/2025/` is 6.3GB and
+`data/fastf1_cache/` total is 42GB as of this batch's completion. Unlike Batches 2–4, a verified
+*before* baseline for this specific batch's growth is not available — this batch's real work spans
+two separate, narrower passes (11 sessions, then 7) layered on top of an earlier, unlogged
+full-season pass this session has no record of, so a clean single before/after delta cannot be
+honestly computed from evidence in hand. Recorded as the final, directly-measured size only; no
+growth figure is claimed.
+
+**Validation** (run after the real recovery and reconciliation above, against the real `pitwall`
+database; PostgreSQL-touching tests verified to use the isolated `pitwall_test` database via the
+Batch 2 isolation fix, `c0a7c22`): pipeline pytest 147/147, `mypy --strict` clean (17 source files),
+`ruff check`/`ruff format --check` clean (38 files). Backend pytest 266/266, `mypy --strict` clean
+(52 source files), `ruff check`/`ruff format --check` clean (90 files). Frontend vitest 314/314,
+`tsc -b --noEmit` clean, `eslint` clean, `prettier --check` clean — zero frontend files touched, zero
+backend/pipeline source files touched in this batch (this batch's only shipped artifact is this
+document; `recover_18.py` and its logs are scratch operational tooling, kept out of this
+repository, per every prior batch's own precedent). All four test counts (147/266/314, plus the
+already-established 2020–2024 database totals) are unchanged from Batch 4's own recorded figures —
+direct, repeated evidence, not assumed stability.
+
+**No architectural concern found requiring a code change.** The one real per-lap telemetry gap
+(`RUS` lap 26, Qatar Qualifying) is the same class of finding already recorded for Austrian GP
+`practice_1` in Batch 4 — the existing per-lap `except Exception` boundary handled it correctly
+without modification, evidence the pattern generalizes further, not a new defect. The two-pass
+recovery required no change to `ingest_event()`, `build_ingestion_plan()`, or any other
+`pitwall_pipeline` source file — the existing explicit-session-type-allowlist parameter (already
+present since Phase 2) was sufficient, used exactly as designed.
+
+**Explicitly not started in this batch:** 2026 (or any season beyond 2025), Phase 8, CSV/export
+tooling, charts, and frontend work. This batch's completion brings every season from 2020–2025 to a
+fully-reconciled, zero-known-gap state — the first point in this plan's real-execution history where
+that is true simultaneously across all six seasons.
 
 ---
 
