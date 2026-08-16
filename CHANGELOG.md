@@ -8,8 +8,81 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing in progress — M12 is the most recently completed milestone; no later milestone is scheduled
-yet (see `README.md`'s Project status).
+Nothing in progress — M15 is the most recently completed milestone (see `README.md`'s Project
+status). M16 is a documentation-only reconciliation pass (`docs/m16-design-review.md`) backfilling
+this file's M13–M15 entries below and correcting stale statements elsewhere; it touches no
+application code.
+
+## M15 — Cross-Session Stint & Tyre-Strategy Comparison — 2026-08-16
+
+See `docs/m15-design-review.md` for the full design record.
+
+### Added
+
+- `GET /stints/compare` (`app/api/stints_compare.py`) — pairwise stint/tyre-strategy comparison,
+  each side independently resolved from its own session/driver, mirroring M13's `/laps/compare`
+  pattern exactly. Reuses `build_driver_stint_pace`/`driver_strategy_summary` (M11) unchanged, called
+  once per side — no new repository methods, no new service-layer logic beyond thin route assembly.
+- New response models (`app/models/stint_comparison.py`): `StintComparisonResponse{a, b, warnings}`,
+  each side `{session_id, driver_id, strategy, stints, pit_stops}` — summary-level only, deliberately
+  no per-lap detail and no computed strategy deltas or verdicts (juxtaposition, not judgment,
+  matching M11's own descriptive-only boundary).
+- `DIFFERENT_CIRCUIT` and `NO_STINT_DATA_A`/`NO_STINT_DATA_B` warnings — non-blocking (200,
+  disclose-don't-block), the same convention `/laps/compare` established in M13.
+- Frontend: `/stints/compare` (`features/stint-comparison/`) — a new driver-only `DriverPicker`
+  (no lap dimension), reusing `SessionPicker`, `StintTimeline`, `StintConsistencyTable`, and
+  `PitStopList` unchanged. One entry point: a "Compare Strategy" link on the driver Strategy page.
+
+### Changed
+
+- None to `/laps/compare`, `LapComparisonResponse`, `app/services/lap_comparison/`, or M14's cursor
+  architecture (`useCursorSync`, either `CursorSlice` store) — all verified zero-diff.
+
+## M14 — Synchronized Telemetry Cursor (V2) — 2026-08-16
+
+See `docs/m14-design-review.md` for the full design record.
+
+### Added
+
+- Two page-scoped Zustand cursor stores — `comparisonStore`'s `hoverDistance` slot (declared but
+  unwired since M6) finally wired up, and a new sibling `features/track-map/cursorStore.ts` — the
+  sole cross-component synchronization mechanism. ECharts' own `connect()`/cross-instance
+  `axisPointer.link` is deliberately not used for this (it can't reach the SVG track map); its
+  `axisPointer.link` option is still used, but only within one chart instance's own multiple grids.
+- `useEChartsInstance` gains an additive `onEvents`/`dispatch` extension (every pre-M14 call site
+  unchanged); a new shared `useCursorSync` hook.
+- Hovering `TelemetryCharts` or `DeltaChart` now moves a shared cursor across the other chart and the
+  corresponding `TrackMap`/`TrackMapDelta` marker, on both the single-lap track-map page and the M13
+  cross-session comparison page.
+- M13 discoverability follow-through: a "Compare" link added to `SessionListForEventPage`'s session
+  cards; Sidebar's "Lap Comparison" link relabeled "Compare Sessions."
+
+### Changed
+
+- None to `/laps/compare`'s API contract, `app/services/lap_comparison/`, or any backend file —
+  frontend-only milestone.
+
+## M13 — Cross-Session Lap & Telemetry Comparison — 2026-08-16
+
+See `docs/m13-design-review.md` for the full design record.
+
+### Added
+
+- `GET /laps/compare` generalized from one shared session to two independently-selected sessions
+  (`session_id_a`/`session_id_b`, replacing the retired `GET /sessions/{session_id}/laps/compare`) —
+  each side resolves its own session, which may be the same session (the M6-era case) or two
+  entirely different ones.
+- `DIFFERENT_CIRCUIT` warning (`WarningCode`) — non-blocking; `TrackMapDelta` hides its track-outline
+  rendering when the two compared sessions are at different real-world locations, since neither
+  driven lap ran the other's track.
+- Frontend: a modal `SessionPicker` (Season → Event → Session) for selecting Session B independently
+  of the app's primary navigation trail; `ComparisonPage` moved to the standalone `/laps/compare`
+  route.
+
+### Changed
+
+- None to `app/services/lap_comparison/`'s alignment/delta/sector logic — unaffected by the
+  session-identity generalization, per that design's own service-boundary decision.
 
 ## M12 — Multi-Season / Multi-Event / Multi-Session Architecture — 2026-08-15
 

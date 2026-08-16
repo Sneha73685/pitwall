@@ -85,6 +85,29 @@ Sequencing note: M1 and M2 can't be meaningfully parallelized (API needs real ca
 
 ---
 
+## 3a. Milestone History Beyond V1 (M8–M15)
+
+The table above (§3) is the original, dated V1 schedule and is not edited by later milestones.
+Everything from M8 onward was added after V1 shipped, each with its own design review under `docs/`
+(`m8-design-review.md` onward) — none of it was part of the original V1–V5 schedule as written when
+this document's milestone table was drafted. Recorded here for what it actually shipped and how it
+relates to the themes §5 already named, not as a retroactive edit to §3:
+
+| Milestone | What shipped | Relationship to the original roadmap |
+|---|---|---|
+| M8 | Session-wide driver performance analytics | Not itself named in the original roadmap |
+| M9 | Professional telemetry UI (frontend redesign) | Presentational; not V-scoped |
+| M10 | Postgres + Parquet hybrid storage; stints/pit-stops (single-session, per-driver) | Begins V3's "tire strategy, stints, pit stops" deliverable (§5) |
+| M11 | Descriptive tyre & stint performance analytics (single-session) | Continues V3's stint/pit-stop deliverable |
+| M12 | Multi-season/event/session discovery; historical ingestion backfill (2020–2026, 704 sessions) | Infrastructure; not itself V-scoped |
+| M13 | Cross-session lap/telemetry comparison (`/laps/compare` generalized to two independently-selected sessions) | Extends V1's two-lap comparison (§2.1) beyond what V1 originally specified (single-session only) |
+| M14 | Synchronized telemetry cursor, Zustand-based (`docs/m14-design-review.md`) | Delivers V2's synchronized-cursor criterion (§5) — via a different mechanism than originally specified |
+| M15 | Cross-session stint/tyre-strategy comparison (`/stints/compare`) | Completes V3's stint/pit-stop deliverable's cross-session case — not originally specified in V3's text at all |
+
+See `docs/m16-design-review.md` for the reconciliation pass this table is part of.
+
+---
+
 ## 4. Engineering Risks
 
 **Data quality and coverage gaps.** FastF1's telemetry completeness varies by session/year/team — some laps have missing or inconsistent samples across channels. The pipeline should validate and flag incomplete data rather than assume every session is clean.
@@ -105,15 +128,22 @@ Sequencing note: M1 and M2 can't be meaningfully parallelized (API needs real ca
 
 ## 5. Intentionally Deferred (with rationale)
 
-| Feature | Deferred to | Why not now |
-|---|---|---|
-| Synchronized hover, cursor-follows-car, corner highlighting | V2 | Needs a shared time-cursor architecture across every chart; doing it half-built in V1 undermines the "small but professional" goal |
-| Tire strategy, stints, pit stops, weather, position history, gaps | V3 | Needs relational data (a real reason to introduce Postgres) and different source data (Ergast/Jolpica, weather feeds) |
-| Engineering-insight generation (the "gains 0.12s because..." analysis) | V4 | Needs V2's synchronized data model and V3's race context to attribute *why*, not just *what* |
-| Natural-language / AI querying | V5 | Depends on all prior layers existing as clean, queryable data — an LLM layer on top of a shaky foundation would just produce confident-sounding nonsense |
-| Live/real-time session data | Post-V1, opportunistic | FastF1 is archive-based; real-time needs OpenF1's paid tier or a different sourcing strategy — not worth solving before the archive-based product even exists |
-| User accounts, saved views, sharing | Not currently planned | Adds auth, a real database of user state, and privacy/security surface for a portfolio project that doesn't need multi-user support to demonstrate engineering skill |
-| Mobile app / responsive mobile layout | Not currently planned | Telemetry comparison is inherently a wide-screen, multi-chart experience; a cut-down mobile version is a distraction from V1's core proof points |
+Status column added by the M16 documentation reconciliation (`docs/m16-design-review.md`) — records
+what has since shipped, verified against current source; the "Why not now" column is preserved as
+originally written, describing the reasoning at V1 design time.
+
+| Feature | Deferred to | Why not now (at V1 design time) | Status |
+|---|---|---|---|
+| Synchronized hover / cursor-follows-car | V2 | Needs a shared time-cursor architecture across every chart; doing it half-built in V1 undermines the "small but professional" goal | **Shipped — M14**, via page-scoped Zustand cursor stores (not `echarts.connect()`/cross-instance `axisPointer.link` as ADR-0008 originally anticipated — that mechanism can't reach the SVG track map). Covers the single-lap track-map and M13 cross-session comparison pages; session-analytics and tyre-performance charts are not yet part of this synchronized surface. |
+| Corner highlighting (via `markArea`) | V2 | Same as above | Not yet built — explicit M14 non-goal. |
+| Tire strategy, stints, pit stops (single-session) | V3 | Needs relational data (a real reason to introduce Postgres) | **Shipped — M10/M11**, sourced from FastF1 session data via a second, independent repository (`RaceContextRepository`, ADR-0011). |
+| Cross-session stint/tyre-strategy comparison | V3 | Not specified in the original V1 text | **Shipped — M15**, generalizing M13's cross-session comparison pattern to stints/pit-stops. |
+| Weather, position history, gaps | V3 | Needs different source data (Ergast/Jolpica, weather feeds) | Not yet built — no ingestion, provider method, or schema exists for any of these. |
+| Engineering-insight generation (the "gains 0.12s because..." analysis) | V4 | Needs V2's synchronized data model and V3's race context to attribute *why*, not just *what* | Not yet built. |
+| Natural-language / AI querying | V5 | Depends on all prior layers existing as clean, queryable data — an LLM layer on top of a shaky foundation would just produce confident-sounding nonsense | Not yet built. |
+| Live/real-time session data | Post-V1, opportunistic | FastF1 is archive-based; real-time needs OpenF1's paid tier or a different sourcing strategy — not worth solving before the archive-based product even exists | Not yet built. |
+| User accounts, saved views, sharing | Not currently planned | Adds auth, a real database of user state, and privacy/security surface for a portfolio project that doesn't need multi-user support to demonstrate engineering skill | Not planned. |
+| Mobile app / responsive mobile layout | Not currently planned | Telemetry comparison is inherently a wide-screen, multi-chart experience; a cut-down mobile version is a distraction from V1's core proof points | Not planned. |
 
 ---
 
@@ -121,3 +151,4 @@ Sequencing note: M1 and M2 can't be meaningfully parallelized (API needs real ca
 
 - v1: initial PRD, architecture, and tech stack in one document.
 - v2: architecture, tech stack, and repository structure extracted to `docs/architecture.md` following the design freeze at the end of the architecture discussion phase; tech stack updated to reflect ADR-0007 (Zustand) and ADR-0008 (ECharts), which superseded this document's original Context/uPlot recommendations.
+- v3 (M16, `docs/m16-design-review.md`): added §3a recording M8–M15's shipped milestone history, distinct from the original V1 table; updated §5's deferred-features table with current shipped/unshipped status for V2/V3. No scope or architecture change — documentation reconciliation only.

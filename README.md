@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M12 — Multi-season / multi-event / multi-session architecture — complete.**
+**Current milestone: M15 — Cross-session stint & tyre-strategy comparison — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -46,11 +46,15 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M10 | Hybrid Parquet + PostgreSQL storage (stints, pit stops) | ✅ Done |
 | M11 | Tyre & stint performance analytics (descriptive) | ✅ Done |
 | M12 | Multi-season / multi-event / multi-session architecture | ✅ Done |
+| M13 | Cross-session lap & telemetry comparison | ✅ Done |
+| M14 | Synchronized telemetry cursor (V2) | ✅ Done |
+| M15 | Cross-session stint & tyre-strategy comparison | ✅ Done |
 
-M8–M12 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7); each has its own
-design review under `docs/` (`m8-design-review.md` onward). No milestone beyond M12 is scheduled
-yet. See `docs/releases/` for per-milestone summaries (currently covering M1–M5; later milestones'
-records are their own design-review/implementation-plan docs plus `CHANGELOG.md`).
+M8–M15 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M15
+without implying they were part of the original V1–V5 schedule); each has its own design review
+under `docs/` (`m8-design-review.md` onward). See `docs/releases/` for per-milestone summaries
+(currently covering M1–M5; later milestones' records are their own design-review/implementation-plan
+docs plus `CHANGELOG.md`).
 
 ## Current capabilities
 
@@ -85,8 +89,9 @@ npm run dev
 Open `http://localhost:5173` and navigate `/` → `/seasons/:season` →
 `/seasons/:season/events/:eventId` → `/sessions/:sessionId` → `/sessions/:sessionId/drivers/:driverId`
 → pick a lap (the `Season → Event → Session` hierarchy is M12 — see below; before it, `/` went
-straight to a flat session list). Charts are static, distance-aligned traces — **no hover-driven
-cursor sync yet** (that's V2); lap/sector comparison and the delta graph are M6.
+straight to a flat session list). Charts are distance-aligned traces; hovering the telemetry charts
+or the track map now moves a synchronized cursor across both (M14 — see below). Lap/sector
+comparison and the delta graph are M6, generalized to independently-selected sessions in M13.
 
 M10 adds tyre-strategy viewing, backed by a second store (PostgreSQL, alongside Parquet — see
 [ADR-0011](docs/adr/0011-hybrid-storage-architecture.md)): each lap in the driver's lap list shows
@@ -111,6 +116,27 @@ Parquet-backed session data. Also included: a controlled, real, historical inges
 (2020–2026 to date) — see [`docs/m12-implementation-plan.md`](docs/m12-implementation-plan.md) for
 the full batch-by-batch record.
 
+M13 generalizes lap/telemetry comparison (M6) from two drivers within one session to two
+**independently-selected sessions**: `/laps/compare` reads `sessionA`/`driverA`/`lapA`/`sessionB`/
+`driverB`/`lapB` query params, each side resolved via a modal `SessionPicker` (Season → Event →
+Session), and discloses — without blocking — when the two sessions are at different circuits. See
+[`docs/m13-design-review.md`](docs/m13-design-review.md).
+
+M14 adds the synchronized telemetry cursor V2 named as its next milestone since M1: hovering the
+telemetry channel traces or the delta chart moves a shared cursor — backed by page-scoped Zustand
+stores, not ECharts' own `connect()`/cross-instance `axisPointer.link` (see
+[ADR-0008](docs/adr/0008-echarts-over-uplot.md) and
+[`docs/m14-design-review.md`](docs/m14-design-review.md) §8 for why) — across the track-map and
+lap-comparison pages; the track map's marker follows the cursor. Session-analytics and
+tyre-performance charts are not yet part of this synchronized surface.
+
+M15 extends M13's cross-session pattern to stint/tyre strategy: `/stints/compare` compares two
+drivers' (each from an independently-selected session) stint sequence, per-stint pace consistency,
+and pit-stop timing side by side — juxtaposed only, no computed strategy verdicts — reusing
+`SessionPicker` unchanged and the same disclose-don't-block warning convention `/laps/compare`
+established. Reachable from a driver's Strategy page ("Compare Strategy"). See
+[`docs/m15-design-review.md`](docs/m15-design-review.md).
+
 ## Roadmap
 
 Beyond V1 (M0–M7 above), PitWall is planned to grow through further versions:
@@ -123,7 +149,11 @@ Beyond V1 (M0–M7 above), PitWall is planned to grow through further versions:
 | V4 | Deterministic engineering insights (why time was gained or lost) |
 | V5 | Natural-language querying over the above |
 
-Full rationale for what's deferred and why lives in `docs/prd.md` §5.
+Full rationale for what's deferred and why lives in `docs/prd.md` §5, which also records current
+shipped/unshipped status per feature (updated through M15 — e.g. V2's synchronized cursor shipped in
+M14, corner highlighting is still deferred; V3's stint/pit-stop comparison shipped in M10/M11/M15,
+weather and position/gap history are still unbuilt). `docs/success-metrics.md` mirrors the same
+per-version status.
 
 ## Architecture
 

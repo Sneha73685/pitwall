@@ -15,20 +15,47 @@ Explicitly not required for V1: hover-driven synchronization, cursor-follows-car
 
 ## V2 — Interactive Engineering Dashboard
 
+**Status (M16 reconciliation, `docs/m16-design-review.md`): mostly shipped, in M14.** The criteria
+below are the original success definition; each is annotated with what actually shipped, verified
+against current source rather than restated from memory.
+
 Success looks like:
-- Hovering any telemetry chart moves a synchronized cursor across all other charts for the same lap(s), via ECharts' `connect`/`axisPointer` linking (ADR-0008).
-- The car marker on the track map moves to match the hovered point.
-- Corners can be highlighted (via `markArea`) with the corresponding chart region highlighting in sync.
+- Hovering any telemetry chart moves a synchronized cursor across all other charts for the same
+  lap(s). **Shipped in M14** — via page-scoped Zustand cursor stores (`comparisonStore`'s
+  `hoverDistance` slot and a sibling `track-map/cursorStore.ts`), *not* ECharts' `connect()`/
+  cross-instance `axisPointer.link` as originally specified here and in ADR-0008: M14's design
+  review found that mechanism can't reach the SVG track map, so it isn't the cross-component
+  mechanism at all. ECharts' own `axisPointer.link` is still used, but only *within* one chart
+  instance's own multiple grids — a static option, not the sync mechanism. See
+  `docs/m14-design-review.md` §8.
+  - Coverage: the single-lap track-map page and the M13 cross-session lap-comparison page. Session
+    analytics and tyre-performance charts are not yet part of this synchronized surface.
+- The car marker on the track map moves to match the hovered point. **Shipped in M14.**
+- Corners can be highlighted (via `markArea`) with the corresponding chart region highlighting in
+  sync. **Not yet built** — explicit M14 non-goal.
 - The delta graph updates live as the cursor moves, not just as a static end-of-lap number.
+  **Shipped in M14** — `DeltaChart` participates in the same cursor-sync mechanism.
 
 Explicitly not required for V2: tire strategy, stints, pit stops, weather, or any generated explanation of *why* a gain happened — V2 makes the data feel alive, it doesn't yet interpret it.
 
 ## V3 — Race Analysis
 
+**Status (M16 reconciliation, `docs/m16-design-review.md`): partially shipped.** The stint/pit-stop
+half shipped (M10/M11/M15); weather and position/gap have no code anywhere.
+
 Success looks like:
-- Stint and pit-stop data is visualized across a full race, sourced from relational race data (Jolpica-f1 and/or FastF1 session results) backed by Postgres, per the planned migration in ADR-0004.
-- Weather and position/gap history are viewable alongside lap data.
-- The `TelemetryRepository` interface absorbs this change without altering the public contract shape of existing V1/V2 endpoints.
+- Stint and pit-stop data is visualized across a full race, sourced from relational race data
+  (Jolpica-f1 and/or FastF1 session results) backed by Postgres. **Shipped in M10/M11**, sourced from
+  FastF1 session data (not Jolpica-f1), single-session and per-driver.
+- **Cross-session stint/tyre-strategy comparison** (not specified in this criterion as originally
+  written): **shipped in M15** — `GET /stints/compare` generalizes M13's cross-session pattern to
+  stints/pit-stops; juxtaposition only, no computed strategy deltas or verdicts.
+- Weather and position/gap history are viewable alongside lap data. **Not yet built** — no ingestion,
+  provider method, or schema exists for either.
+- A second, independent repository (`RaceContextRepository`, not an extension of
+  `TelemetryRepository` — see ADR-0011) absorbs this without altering the public contract shape of
+  existing V1/V2 endpoints. **Shipped in M10**, via that separate-repository design rather than the
+  `TelemetryRepository` extension originally anticipated here.
 
 Explicitly not required for V3: any automated interpretation of *why* a strategy worked or didn't — that's V4.
 
