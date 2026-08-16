@@ -511,3 +511,48 @@ export async function compareStints(params: CompareStintsParams): Promise<StintC
     `&driver_b=${encodeURIComponent(params.driverB)}`;
   return getJson<StintComparisonResponse>(`/stints/compare${query}`);
 }
+
+/**
+ * M17 (docs/m17-design-review.md §5): one driver's race-pace trend across
+ * one season. Deliberately a subset of `DriverSummary`'s fields --
+ * `full_throttle_pct` is omitted entirely, not just unused, since the
+ * backend never fetches telemetry to compute it (§2). `points` is already
+ * ordered by the backend (§6); the frontend does not re-sort.
+ */
+export interface SeasonPaceTrendPoint {
+  session_id: string;
+  event_id: string;
+  event_name: string;
+  round_number: number;
+  session_date: string | null;
+  valid_lap_count: number;
+  best_lap_ms: number | null;
+  median_lap_ms: number | null;
+  theoretical_best_lap_ms: number | null;
+  consistency_ms: number | null;
+  consistency_cv: number | null;
+}
+
+export interface SeasonPaceTrendResponse {
+  driver_id: string;
+  season: number;
+  session_type: SessionType;
+  points: SeasonPaceTrendPoint[];
+}
+
+/**
+ * M17: cross-season driver pace trend. `sessionType` defaults to `"race"`
+ * server-side when omitted -- mirrored here by simply not sending the
+ * query param at all rather than hardcoding `"race"` on the client, so the
+ * backend's own default stays the single source of truth.
+ */
+export async function getDriverSeasonPaceTrend(
+  driverId: string,
+  season: number,
+  sessionType?: SessionType,
+): Promise<SeasonPaceTrendResponse> {
+  const query = sessionType ? `?session_type=${encodeURIComponent(sessionType)}` : "";
+  return getJson<SeasonPaceTrendResponse>(
+    `/drivers/${encodeURIComponent(driverId)}/seasons/${season}/pace-trend${query}`,
+  );
+}

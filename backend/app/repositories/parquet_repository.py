@@ -108,10 +108,28 @@ def _track_point_from_row(row: Mapping[Hashable, Any]) -> TrackPoint:
 
 
 class ParquetRepository(TelemetryRepository):
-    """Reads ingested sessions from `{base_dir}/{season}/{event_slug}/{session_type}/`."""
+    """Reads ingested sessions from `{base_dir}/{season}/{event_slug}/{session_type}/`.
+
+    `_index()` (M17, docs/m17-design-review.md §3) memoizes `_iter_session_dirs()`'s
+    scan into a `session_id -> (session_dir, Session)` dict, built lazily on first
+    use and cached for this instance's lifetime -- not eagerly in `__init__`, so a
+    request that only ever looks up one session still pays exactly the same cost it
+    always did. Every session_id-keyed method already funneled through the single
+    `_find_session` choke point, so all of them benefit uniformly with no
+    per-method change beyond `_find_session`/`list_sessions` themselves.
+
+    No invalidation, no locking: `app/dependencies.py`'s `get_telemetry_repository`
+    constructs a fresh `ParquetRepository` per request (no `@lru_cache`, no
+    singleton) and every route is a plain `def` (its own threadpool worker) -- no
+    instance is ever shared across requests or threads, so a stale or
+    concurrently-mutated index can't occur under the current dependency-injection
+    model. This is a documented dependency on that model continuing to hold, not an
+    assumption made silently (docs/m17-design-review.md §3).
+    """
 
     def __init__(self, base_dir: Path) -> None:
         self._base_dir = base_dir
+        self._session_index: dict[str, tuple[Path, Session]] | None = None
 
     def _iter_session_dirs(self) -> Iterator[tuple[Path, Session]]:
         for session_file in sorted(self._base_dir.glob("*/*/*/session.parquet")):
@@ -122,14 +140,23 @@ class ParquetRepository(TelemetryRepository):
             has_telemetry = _telemetry_row_count(session_dir) > 0
             yield session_dir, _session_from_row(df.iloc[0].to_dict(), has_telemetry=has_telemetry)
 
+    def _index(self) -> dict[str, tuple[Path, Session]]:
+        if self._session_index is None:
+            self._session_index = {
+                session.session_id: (session_dir, session)
+                for session_dir, session in self._iter_session_dirs()
+            }
+        return self._session_index
+
     def _find_session(self, session_id: str) -> tuple[Path, Session] | None:
-        for session_dir, session in self._iter_session_dirs():
-            if session.session_id == session_id:
-                return session_dir, session
-        return None
+        return self._index().get(session_id)
 
     def list_sessions(self) -> list[Session]:
-        return [session for _, session in self._iter_session_dirs()]
+        # dict preserves insertion order (3.7+), and the index is built by
+        # materializing _iter_session_dirs() once in its own sorted-glob
+        # order -- .values() therefore yields sessions in exactly the same
+        # order list_sessions() always has, indexed or not.
+        return [session for _, session in self._index().values()]
 
     def get_session(self, session_id: str) -> Session | None:
         found = self._find_session(session_id)
@@ -139,8 +166,10 @@ class ParquetRepository(TelemetryRepository):
         found = self._find_session(session_id)
         if found is None:
             return False
-        session_dir, _ = found
-        return _telemetry_row_count(session_dir) > 0
+        # found[1].has_telemetry was already computed once while building
+        # the index (the same _telemetry_row_count check below) -- reuse it
+        # instead of re-reading telemetry.parquet's footer a second time.
+        return found[1].has_telemetry
 
     def list_drivers(self, session_id: str) -> list[Driver]:
         found = self._find_session(session_id)

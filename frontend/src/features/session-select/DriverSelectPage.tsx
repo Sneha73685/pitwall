@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { listDrivers, type Driver } from "../../api/client";
+import { getSession, listDrivers, type Driver } from "../../api/client";
 import { Card } from "../../components/Card";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
@@ -16,11 +16,19 @@ import styles from "./DriverSelectPage.module.css";
  * entry points, same navigational tier as driver selection rather than
  * nested under it (docs/m8-design-review.md §1.1,
  * docs/m11-frontend-design-note.md §4/§22).
+ *
+ * M17 adds one entry point per driver card: a "Pace Trend" link to
+ * /drivers/:driverId/seasons/:season/pace-trend (docs/m17-design-review.md
+ * §7) -- the single, minimal entry point that design approved, reusing
+ * this page's already-fetched session context rather than adding a new
+ * navigation surface. Fetches the session's own `season` (one additional
+ * call this page didn't make before) since the trend route needs it.
  */
 export function DriverSelectPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const setSession = useSelectionStore((state) => state.setSession);
   const [drivers, setDrivers] = useState<Driver[] | null>(null);
+  const [season, setSeason] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +39,12 @@ export function DriverSelectPage() {
     listDrivers(sessionId)
       .then(setDrivers)
       .catch(() => setError("Could not load drivers."));
+    getSession(sessionId)
+      .then((session) => setSeason(session.season))
+      .catch(() => {
+        // Non-fatal: the driver list still works without a Pace Trend
+        // link, so a failed season lookup doesn't block the page.
+      });
   }, [sessionId, setSession]);
 
   if (error) {
@@ -61,20 +75,28 @@ export function DriverSelectPage() {
       <ul className={styles.grid}>
         {drivers.map((driver) => (
           <li key={driver.driver_id}>
-            <Link
-              to={`/sessions/${sessionId}/drivers/${driver.driver_id}`}
-              className={styles.cardLink}
-            >
-              <Card accent={teamAccent(driver.team_name)}>
-                <div className={styles.cardBody}>
+            <Card accent={teamAccent(driver.team_name)}>
+              <div className={styles.cardRow}>
+                <Link
+                  to={`/sessions/${sessionId}/drivers/${driver.driver_id}`}
+                  className={styles.cardBody}
+                >
                   <span className={styles.driverNumber}>#{driver.driver_number}</span>
                   <span className={styles.driverCode}>{driver.driver_id}</span>
                   <span className={styles.driverName}>
                     {driver.full_name} ({driver.team_name})
                   </span>
-                </div>
-              </Card>
-            </Link>
+                </Link>
+                {season !== null && (
+                  <Link
+                    to={`/drivers/${driver.driver_id}/seasons/${season}/pace-trend?fromSession=${sessionId}`}
+                    className={styles.paceTrendLink}
+                  >
+                    Pace Trend
+                  </Link>
+                )}
+              </div>
+            </Card>
           </li>
         ))}
       </ul>

@@ -10,7 +10,13 @@ FastAPI route handlers.
 from app.services.session_discovery.grouping import (
     list_events_for_season,
     list_seasons,
+    list_sessions_for_driver_season,
     list_sessions_for_event,
 )
 
-__all__ = ["list_seasons", "list_events_for_season", "list_sessions_for_event"]
+__all__ = [
+    "list_seasons",
+    "list_events_for_season",
+    "list_sessions_for_event",
+    "list_sessions_for_driver_season",
+]

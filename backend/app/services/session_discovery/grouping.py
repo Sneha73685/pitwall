@@ -87,6 +87,42 @@ def list_events_for_season(sessions: Sequence[Session], season: int) -> list[Eve
     return sorted(summaries, key=lambda e: (e.round_number, e.event_id))
 
 
+def list_sessions_for_driver_season(
+    sessions: Sequence[Session], season: int, session_type: SessionType
+) -> list[Session]:
+    """Sessions of one type within one season -- the M17 pace-trend
+    endpoint's own filtering step (docs/m17-design-review.md §5.3), added
+    here rather than as a new module since it's the same shape as
+    `list_events_for_season`/`list_sessions_for_event` above: pure,
+    already-fetched-`Session`-list filtering, no I/O, no new repository
+    method.
+
+    Ordered by `session_date` ascending, `SessionType`'s own declaration
+    order as the fallback for an undated session -- the same rule
+    `list_sessions_for_event` already applies within one event, extended
+    here across a whole season rather than invented fresh. Deliberately
+    does not order by `round_number` as the primary key: M12 §18 Q2
+    (round-number stability across a season) remains open, and this
+    function doesn't depend on it holding (docs/m17-design-review.md §6).
+    `round_number` only participates as the final tiebreaker, matching
+    `list_sessions_for_event`'s own tiebreaker shape.
+
+    Driver participation is not checked here -- this only narrows by
+    `(season, session_type)`; the caller (the route) still has to check
+    each matching session's own roster, since that requires an I/O call
+    this pure function deliberately doesn't make.
+    """
+    matching = [s for s in sessions if s.season == season and s.session_type == session_type]
+    return sorted(
+        matching,
+        key=lambda s: (
+            s.session_date is None,
+            s.session_date or "",
+            s.round_number,
+        ),
+    )
+
+
 def list_sessions_for_event(
     sessions: Sequence[Session], season: int, event_id: str
 ) -> list[Session]:

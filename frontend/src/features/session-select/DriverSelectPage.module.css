@@ -38,21 +38,41 @@
   gap: var(--pw-space-4);
 }
 
-.cardLink {
-  display: block;
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.15s ease;
-}
-
-.cardLink:hover {
-  transform: translateY(-2px);
+.cardRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pw-space-2);
 }
 
 .cardBody {
   display: flex;
   flex-direction: column;
   gap: var(--pw-space-1);
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+  transition: transform 0.15s ease;
+}
+
+.cardBody:hover {
+  transform: translateY(-2px);
+}
+
+.paceTrendLink {
+  padding: var(--pw-space-1) var(--pw-space-2);
+  background: var(--pw-accent-muted);
+  color: var(--pw-accent);
+  border-radius: var(--pw-radius-sm);
+  text-decoration: none;
+  font-size: var(--pw-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.paceTrendLink:hover {
+  background: var(--pw-accent);
+  color: var(--pw-bg-canvas);
 }
 
 .driverNumber {

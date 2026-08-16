@@ -1,6 +1,7 @@
 """Unit tests for ParquetRepository against a synthetic Parquet cache."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -214,3 +215,259 @@ def test_list_track_points_unknown_session_returns_empty_list(tmp_path: Path) ->
     repo = ParquetRepository(tmp_path)
 
     assert repo.list_track_points("2023_monza_race") == []
+
+
+# --- M17 session index (docs/m17-design-review.md §3/§13) --------------------
+
+
+def _write_roster_and_laps(session_dir: Path, session_id: str) -> None:
+    """write_minimal_session only writes session.parquet/telemetry.parquet
+    (M12 Phase 4's own session/event/season discovery tests never needed
+    more) -- these M17 index tests also exercise list_drivers/list_laps,
+    the pace-trend endpoint's own access pattern (§4/§5.3), so this adds
+    the two files that pattern actually reads."""
+    pd.DataFrame(
+        [
+            {
+                "session_id": session_id,
+                "driver_id": "VER",
+                "driver_number": 1,
+                "full_name": "Max Verstappen",
+                "team_name": "Red Bull Racing",
+            }
+        ]
+    ).to_parquet(session_dir / "drivers.parquet", index=False)
+    pd.DataFrame(
+        [
+            {
+                "session_id": session_id,
+                "driver_id": "VER",
+                "lap_number": 1,
+                "lap_time_seconds": 90.0,
+                "sector_1_seconds": 30.0,
+                "sector_2_seconds": 30.0,
+                "sector_3_seconds": 30.0,
+                "is_personal_best": True,
+                "is_accurate": True,
+            }
+        ]
+    ).to_parquet(session_dir / "laps.parquet", index=False)
+
+
+def _write_three_sessions(base_dir: Path) -> None:
+    """Three distinct, minimal sessions across two seasons -- enough to
+    exercise index membership, ordering, and multi-lookup call counting
+    without stretching write_session_cache's single-fixed-session shape."""
+    session_dir = write_minimal_session(
+        base_dir,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_roster_and_laps(session_dir, "2023_bahrain_grand_prix_race")
+    session_dir = write_minimal_session(
+        base_dir,
+        session_id="2023_saudi_arabian_grand_prix_race",
+        season=2023,
+        event_slug="saudi_arabian_grand_prix",
+        session_type="race",
+        event_name="Saudi Arabian Grand Prix",
+        round_number=2,
+        location="Jeddah",
+        country="Saudi Arabia",
+        session_date="2023-03-19T17:00:00+00:00",
+    )
+    _write_roster_and_laps(session_dir, "2023_saudi_arabian_grand_prix_race")
+    session_dir = write_minimal_session(
+        base_dir,
+        session_id="2024_bahrain_grand_prix_race",
+        season=2024,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2024-03-02T15:00:00+00:00",
+    )
+    _write_roster_and_laps(session_dir, "2024_bahrain_grand_prix_race")
+
+
+def test_index_contents_are_correct(tmp_path: Path) -> None:
+    _write_three_sessions(tmp_path)
+    repo = ParquetRepository(tmp_path)
+
+    sessions = repo.list_sessions()
+
+    assert {s.session_id for s in sessions} == {
+        "2023_bahrain_grand_prix_race",
+        "2023_saudi_arabian_grand_prix_race",
+        "2024_bahrain_grand_prix_race",
+    }
+    session_by_id = {s.session_id: s for s in sessions}
+    assert session_by_id["2023_bahrain_grand_prix_race"].round_number == 1
+    assert session_by_id["2024_bahrain_grand_prix_race"].season == 2024
+
+
+def test_indexed_lookup_matches_direct_scan_for_every_session(tmp_path: Path) -> None:
+    """Equivalence by construction (the index memoizes the same
+    _iter_session_dirs() generator, it doesn't reimplement it) -- this test
+    proves it holds for get_session, not just list_sessions."""
+    _write_three_sessions(tmp_path)
+    repo = ParquetRepository(tmp_path)
+    expected = {s.session_id: s for s in repo.list_sessions()}
+
+    fresh_repo = ParquetRepository(tmp_path)
+    for session_id, expected_session in expected.items():
+        assert fresh_repo.get_session(session_id) == expected_session
+
+
+def test_list_sessions_order_is_unchanged_by_indexing(tmp_path: Path) -> None:
+    """list_sessions()'s order (sorted-glob path order: season/event_slug/
+    session_type) must survive being routed through the memoized index --
+    dict insertion order preserves it, but this asserts it directly rather
+    than only by prose."""
+    _write_three_sessions(tmp_path)
+    repo = ParquetRepository(tmp_path)
+
+    session_ids = [s.session_id for s in repo.list_sessions()]
+
+    assert session_ids == [
+        "2023_bahrain_grand_prix_race",
+        "2023_saudi_arabian_grand_prix_race",
+        "2024_bahrain_grand_prix_race",
+    ]
+
+
+def test_index_is_not_built_until_first_relevant_access(tmp_path: Path) -> None:
+    _write_three_sessions(tmp_path)
+    repo = ParquetRepository(tmp_path)
+
+    assert repo._session_index is None  # noqa: SLF001
+
+    repo.list_sessions()
+
+    assert repo._session_index is not None  # noqa: SLF001
+
+
+def test_repeated_lookups_on_the_same_instance_do_not_rebuild_the_index(tmp_path: Path) -> None:
+    _write_three_sessions(tmp_path)
+    repo = ParquetRepository(tmp_path)
+
+    with patch.object(
+        ParquetRepository, "_iter_session_dirs", wraps=repo._iter_session_dirs
+    ) as scan_spy:
+        repo.get_session("2023_bahrain_grand_prix_race")
+        repo.get_session("2023_saudi_arabian_grand_prix_race")
+        repo.list_drivers("2024_bahrain_grand_prix_race")
+        repo.list_laps("2023_bahrain_grand_prix_race")
+        repo.has_telemetry("2023_saudi_arabian_grand_prix_race")
+
+        assert scan_spy.call_count == 1
+
+
+def test_a_naive_22_session_lookup_pattern_scans_exactly_once(tmp_path: Path) -> None:
+    """Simulates the pace-trend endpoint's own access pattern (§4/§5.3:
+    list_drivers + list_laps per matching session) against a
+    representative 22-session season -- the concrete performance
+    requirement the design's session index exists to satisfy."""
+    for round_number in range(1, 23):
+        session_id = f"2023_round_{round_number}_race"
+        session_dir = write_minimal_session(
+            tmp_path,
+            session_id=session_id,
+            season=2023,
+            event_slug=f"round_{round_number}",
+            session_type="race",
+            event_name=f"Round {round_number}",
+            round_number=round_number,
+            location="Testville",
+            country="Testland",
+            session_date=(
+                f"2023-{round_number:02d}-01T15:00:00+00:00" if round_number <= 12 else None
+            ),
+        )
+        _write_roster_and_laps(session_dir, session_id)
+    repo = ParquetRepository(tmp_path)
+
+    with patch.object(
+        ParquetRepository, "_iter_session_dirs", wraps=repo._iter_session_dirs
+    ) as scan_spy:
+        sessions = [s for s in repo.list_sessions() if s.season == 2023]
+        for session in sessions:
+            repo.list_drivers(session.session_id)
+            repo.list_laps(session.session_id)
+
+        assert len(sessions) == 22
+        assert scan_spy.call_count == 1
+
+
+def test_a_fresh_repository_instance_gets_a_fresh_index(tmp_path: Path) -> None:
+    """Proves the lifecycle claim in docs/m17-design-review.md §3: a new
+    session directory that appears after one instance's index was already
+    built is invisible to that instance, but visible to a brand-new one --
+    exactly the "next request is fresh" behavior the design relies on
+    instead of any explicit invalidation."""
+    write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    repo = ParquetRepository(tmp_path)
+    assert {s.session_id for s in repo.list_sessions()} == {"2023_bahrain_grand_prix_race"}
+
+    write_minimal_session(
+        tmp_path,
+        session_id="2023_saudi_arabian_grand_prix_race",
+        season=2023,
+        event_slug="saudi_arabian_grand_prix",
+        session_type="race",
+        event_name="Saudi Arabian Grand Prix",
+        round_number=2,
+        location="Jeddah",
+        country="Saudi Arabia",
+        session_date="2023-03-19T17:00:00+00:00",
+    )
+
+    # The already-built instance is stale by design -- no invalidation.
+    assert {s.session_id for s in repo.list_sessions()} == {"2023_bahrain_grand_prix_race"}
+
+    # A brand-new instance against the same directory sees current disk state.
+    fresh_repo = ParquetRepository(tmp_path)
+    assert {s.session_id for s in fresh_repo.list_sessions()} == {
+        "2023_bahrain_grand_prix_race",
+        "2023_saudi_arabian_grand_prix_race",
+    }
+
+
+def test_has_telemetry_reuses_the_indexed_value_not_a_second_file_read(tmp_path: Path) -> None:
+    write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+        include_telemetry=True,
+    )
+    repo = ParquetRepository(tmp_path)
+
+    assert repo.has_telemetry("2023_bahrain_grand_prix_race") is True
+    assert repo.get_session("2023_bahrain_grand_prix_race").has_telemetry is True  # type: ignore[union-attr]

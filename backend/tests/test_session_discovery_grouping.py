@@ -6,6 +6,7 @@ from app.models.telemetry import Session, SessionType
 from app.services.session_discovery import (
     list_events_for_season,
     list_seasons,
+    list_sessions_for_driver_season,
     list_sessions_for_event,
 )
 
@@ -203,3 +204,83 @@ def test_list_sessions_for_event_mixed_structures_no_cross_contamination() -> No
     session) must not blend results between events."""
     sessions = list_sessions_for_event(ALL_SESSIONS, 2023, "2023_bahrain_grand_prix")
     assert [s.session_id for s in sessions] == ["2023_bahrain_grand_prix_race"]
+
+
+# D. Driver-season pace-trend filtering (M17, docs/m17-design-review.md §5.3/§6)
+
+
+def test_list_sessions_for_driver_season_filters_by_season_and_type() -> None:
+    sessions = list_sessions_for_driver_season(ALL_SESSIONS, 2024, SessionType.RACE)
+
+    assert [s.session_id for s in sessions] == ["2024_bahrain_grand_prix_race"]
+
+
+def test_list_sessions_for_driver_season_excludes_other_session_types() -> None:
+    sessions = list_sessions_for_driver_season(ALL_SESSIONS, 2024, SessionType.RACE)
+
+    assert BAHRAIN_2024_QUALIFYING not in sessions
+    assert CHINA_2024_SPRINT_QUALIFYING not in sessions
+
+
+def test_list_sessions_for_driver_season_excludes_other_seasons() -> None:
+    sessions = list_sessions_for_driver_season(ALL_SESSIONS, 2024, SessionType.RACE)
+
+    assert BAHRAIN_2023_RACE not in sessions
+
+
+def test_list_sessions_for_driver_season_orders_by_session_date_not_round_number() -> None:
+    """Later round, earlier date -- proves round_number is not the primary
+    sort key (M12 §18 Q2 stays open; this function doesn't depend on
+    round-number stability, docs/m17-design-review.md §6)."""
+    later_round_earlier_date = _session(
+        "2024_early_date_round_9_race",
+        season=2024,
+        event_name="Early Date Grand Prix",
+        event_id="2024_early_date_grand_prix",
+        round_number=9,
+        session_type=SessionType.RACE,
+        session_date="2024-01-01T15:00:00+00:00",
+    )
+    sessions = list_sessions_for_driver_season(
+        [BAHRAIN_2024_RACE, later_round_earlier_date], 2024, SessionType.RACE
+    )
+
+    assert [s.session_id for s in sessions] == [
+        "2024_early_date_round_9_race",
+        "2024_bahrain_grand_prix_race",
+    ]
+
+
+def test_list_sessions_for_driver_season_undated_session_falls_back_to_round_number() -> None:
+    undated = _session(
+        "2024_undated_round_2_race",
+        season=2024,
+        event_name="Undated Grand Prix",
+        event_id="2024_undated_grand_prix",
+        round_number=2,
+        session_type=SessionType.RACE,
+        session_date=None,
+    )
+    sessions = list_sessions_for_driver_season([BAHRAIN_2024_RACE, undated], 2024, SessionType.RACE)
+
+    # Dated session (round 1) sorts before the undated one (round 2),
+    # regardless of the undated session's own round number.
+    assert [s.session_id for s in sessions] == [
+        "2024_bahrain_grand_prix_race",
+        "2024_undated_round_2_race",
+    ]
+
+
+def test_list_sessions_for_driver_season_unknown_season_returns_empty_list() -> None:
+    assert list_sessions_for_driver_season(ALL_SESSIONS, 2099, SessionType.RACE) == []
+
+
+def test_list_sessions_for_driver_season_empty_input_returns_empty_list() -> None:
+    assert list_sessions_for_driver_season([], 2024, SessionType.RACE) == []
+
+
+def test_list_sessions_for_driver_season_deterministic_regardless_of_input_order() -> None:
+    shuffled = list(reversed(ALL_SESSIONS))
+    assert list_sessions_for_driver_season(
+        shuffled, 2024, SessionType.RACE
+    ) == list_sessions_for_driver_season(ALL_SESSIONS, 2024, SessionType.RACE)

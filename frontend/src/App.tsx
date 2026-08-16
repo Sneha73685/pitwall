@@ -3,6 +3,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import { getHealth } from "./api/client";
 import { AppShell } from "./components/AppShell";
 import { StatusChip } from "./components/StatusChip";
+import { DriverSeasonPaceTrendPage } from "./features/driver-trends/DriverSeasonPaceTrendPage";
 import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
 import { StrategyPage } from "./features/race-context/StrategyPage";
 import { SessionAnalyticsPage } from "./features/session-analytics/SessionAnalyticsPage";
@@ -55,6 +56,12 @@ type BackendStatus = "checking" | "online" | "offline";
  * M15 adds the standalone "/stints/compare" (docs/m15-design-review.md §4/§7)
  * -- top-level, not nested under "/sessions/:sessionId", mirroring
  * "/laps/compare"'s own M13 rationale: neither compared side is privileged.
+ *
+ * M17 adds the standalone "/drivers/:driverId/seasons/:season/pace-trend"
+ * (docs/m17-design-review.md §7) -- top-level, since it's season-scoped,
+ * not session-scoped; mirrors the same "doesn't fit the /sessions/:sessionId
+ * nesting" reasoning M13/M15 already established for their own top-level
+ * routes.
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -111,6 +118,10 @@ function App() {
         <Route
           path="/sessions/:sessionId/drivers/:driverId/stint-pace"
           element={<StintPacePage />}
+        />
+        <Route
+          path="/drivers/:driverId/seasons/:season/pace-trend"
+          element={<DriverSeasonPaceTrendPage />}
         />
       </Routes>
     </AppShell>
