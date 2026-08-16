@@ -1,0 +1,82 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-5);
+}
+
+.heading {
+  font-size: var(--pw-text-lg);
+}
+
+.sessionPickers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pw-space-4);
+}
+
+@media (max-width: 1024px) {
+  .sessionPickers {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sessionSlot {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-space-2);
+  background: var(--pw-bg-surface);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-md);
+  padding: var(--pw-space-2) var(--pw-space-3);
+}
+
+.sessionSlotLabel {
+  font-size: var(--pw-text-sm);
+  font-weight: 600;
+  color: var(--pw-text-secondary);
+}
+
+.sessionSlotValue {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionSlotButton {
+  background: none;
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-md);
+  color: var(--pw-text-secondary);
+  cursor: pointer;
+  padding: var(--pw-space-1) var(--pw-space-2);
+}
+
+.warnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pw-space-2);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pw-space-4);
+}
+
+@media (max-width: 1024px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-4);
+}
+
+.columnHeading {
+  font-size: var(--pw-text-md);
+  color: var(--pw-text-secondary);
+}

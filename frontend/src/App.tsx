@@ -11,6 +11,7 @@ import { EventListPage } from "./features/session-select/EventListPage";
 import { LapSelectPage } from "./features/session-select/LapSelectPage";
 import { SeasonListPage } from "./features/session-select/SeasonListPage";
 import { SessionListForEventPage } from "./features/session-select/SessionListForEventPage";
+import { StintComparisonPage } from "./features/stint-comparison/StintComparisonPage";
 import { TrackMapPage } from "./features/track-map/TrackMapPage";
 import { StintPacePage } from "./features/tyre-performance/StintPacePage";
 import { TyrePerformancePage } from "./features/tyre-performance/TyrePerformancePage";
@@ -50,6 +51,10 @@ type BackendStatus = "checking" | "online" | "offline";
  * discovery API), never fabricating a session that hasn't been ingested.
  * Everything from "/sessions/:sessionId" onward is unchanged
  * (docs/m12-frontend-design-note.md).
+ *
+ * M15 adds the standalone "/stints/compare" (docs/m15-design-review.md §4/§7)
+ * -- top-level, not nested under "/sessions/:sessionId", mirroring
+ * "/laps/compare"'s own M13 rationale: neither compared side is privileged.
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -99,6 +104,7 @@ function App() {
           element={<TrackMapPage />}
         />
         <Route path="/laps/compare" element={<ComparisonPage />} />
+        <Route path="/stints/compare" element={<StintComparisonPage />} />
         <Route path="/sessions/:sessionId/analytics" element={<SessionAnalyticsPage />} />
         <Route path="/sessions/:sessionId/drivers/:driverId/strategy" element={<StrategyPage />} />
         <Route path="/sessions/:sessionId/tyre-performance" element={<TyrePerformancePage />} />

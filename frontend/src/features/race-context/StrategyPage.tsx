@@ -17,6 +17,11 @@ import styles from "./StrategyPage.module.css";
  * of these same raw facts, the same raw-facts-vs-analysis split this
  * codebase already draws between race-context/ and session-analytics/
  * (docs/m11-frontend-design-note.md §4 Flow C, §22).
+ *
+ * M15 adds a second cross-link, "Compare Strategy", to "/stints/compare"
+ * (docs/m15-design-review.md §7) -- the one entry point this milestone
+ * adds, pre-filling Session A/Driver A so the comparison page opens with
+ * this driver already selected rather than two empty pickers.
  */
 export function StrategyPage() {
   const { sessionId, driverId } = useParams<{ sessionId: string; driverId: string }>();
@@ -43,6 +48,12 @@ export function StrategyPage() {
           className={styles.crossLink}
         >
           View Stint Pace
+        </Link>
+        <Link
+          to={`/stints/compare?sessionA=${sessionId}&driverA=${driverId}`}
+          className={styles.crossLink}
+        >
+          Compare Strategy
         </Link>
       </div>
       <Card title="Stint timeline">

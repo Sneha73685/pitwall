@@ -459,3 +459,55 @@ export async function getTyrePerformance(sessionId: string): Promise<TyrePerform
     `/sessions/${encodeURIComponent(sessionId)}/tyre-performance`,
   );
 }
+
+export type StintComparisonWarningCode =
+  "different_circuit" | "no_stint_data_a" | "no_stint_data_b";
+
+export interface StintComparisonWarning {
+  code: StintComparisonWarningCode;
+  detail: string | null;
+}
+
+/**
+ * M15: one driver's strategy for one session -- one side of a pairwise
+ * comparison. `strategy`/`stints`/`pit_stops` are exactly the shapes
+ * DriverStintPaceResponse/getStints/getPitStops already return, reused
+ * unchanged (docs/m15-design-review.md §4/§6) -- deliberately no per-lap
+ * `laps` field (Decision A, approved: summary-level only).
+ */
+export interface DriverStintComparisonSide {
+  session_id: string;
+  driver_id: string;
+  strategy: DriverStrategySummary;
+  stints: StintPace[];
+  pit_stops: PitStop[];
+}
+
+export interface StintComparisonResponse {
+  a: DriverStintComparisonSide;
+  b: DriverStintComparisonSide;
+  warnings: StintComparisonWarning[];
+}
+
+export interface CompareStintsParams {
+  sessionIdA: string;
+  driverA: string;
+  sessionIdB: string;
+  driverB: string;
+}
+
+/**
+ * M15 (docs/m15-design-review.md §4): cross-session stint/tyre-strategy
+ * comparison. Mirrors compareLaps' query-string construction exactly, minus
+ * the lap-number dimension -- this comparison is session+driver-scoped, not
+ * lap-scoped (§8: stints/pit-stops are discrete lists, not continuous
+ * samples, so there's no alignment/resolution parameter to carry).
+ */
+export async function compareStints(params: CompareStintsParams): Promise<StintComparisonResponse> {
+  const query =
+    `?session_id_a=${encodeURIComponent(params.sessionIdA)}` +
+    `&driver_a=${encodeURIComponent(params.driverA)}` +
+    `&session_id_b=${encodeURIComponent(params.sessionIdB)}` +
+    `&driver_b=${encodeURIComponent(params.driverB)}`;
+  return getJson<StintComparisonResponse>(`/stints/compare${query}`);
+}
