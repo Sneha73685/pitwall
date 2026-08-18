@@ -138,6 +138,32 @@ describe("TelemetryCharts", () => {
     );
   });
 
+  it("passes corners through to the built chart option, when given (M22)", () => {
+    const samples = [sample({ distance_m: 0 })];
+    const corners = [{ start_distance_m: 10, end_distance_m: 40 }];
+    render(<TelemetryCharts samples={samples} cursorStore={cursorStore} corners={corners} />);
+
+    expect(fakeChart.setOption).toHaveBeenCalledWith(
+      buildChartOption(samples, undefined, undefined, corners),
+      true,
+    );
+  });
+
+  it("re-applies options when only corners changes", () => {
+    const samples = [sample({ distance_m: 0 })];
+    const { rerender } = render(<TelemetryCharts samples={samples} cursorStore={cursorStore} />);
+    rerender(
+      <TelemetryCharts
+        samples={samples}
+        cursorStore={cursorStore}
+        corners={[{ start_distance_m: 10, end_distance_m: 40 }]}
+      />,
+    );
+
+    expect(echarts.init).toHaveBeenCalledTimes(1);
+    expect(fakeChart.setOption).toHaveBeenCalledTimes(2);
+  });
+
   it("re-applies options when only secondarySamples changes", () => {
     const samples = [sample({ distance_m: 0 })];
     const { rerender } = render(<TelemetryCharts samples={samples} cursorStore={cursorStore} />);

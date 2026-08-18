@@ -1,5 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { LapComparisonResponse } from "../../../api/client";
+import type { CornerRegion } from "../../track-map/detectCorners";
 
 // Same fixed A/B pair TelemetryCharts/TrackMap already use -- no team/driver
 // color system exists in this app yet.
@@ -21,8 +22,17 @@ const LAP_B_COLOR = "#ee6666";
  * that lap is actually ahead, and a sign flip just starts a new segment.
  * This is the only approach implemented (§0.2): `visualMap` piecewise is
  * not implemented, not stubbed, not left as a commented-out alternative.
+ *
+ * `corners` (M22, docs/m22-design-review.md §8): the same static,
+ * non-interactive `markArea` treatment `chartOptions.ts` gives every
+ * telemetry channel, applied here to this chart's own single grid.
+ * Omitted (or empty) produces byte-identical output to before this
+ * milestone.
  */
-export function buildDeltaChartOption(comparison: LapComparisonResponse): EChartsCoreOption {
+export function buildDeltaChartOption(
+  comparison: LapComparisonResponse,
+  corners?: CornerRegion[],
+): EChartsCoreOption {
   const { distance_m, delta_ms } = comparison;
 
   const aAhead: [number, number][] = delta_ms.map((value, index) => [
@@ -33,6 +43,18 @@ export function buildDeltaChartOption(comparison: LapComparisonResponse): EChart
     distance_m[index],
     value <= 0 ? value : NaN,
   ]);
+
+  const cornerMarkArea =
+    corners && corners.length > 0
+      ? {
+          silent: true,
+          itemStyle: { color: "rgba(144, 160, 179, 0.12)" },
+          data: corners.map((corner) => [
+            { xAxis: corner.start_distance_m },
+            { xAxis: corner.end_distance_m },
+          ]),
+        }
+      : undefined;
 
   return {
     animation: false,
@@ -72,6 +94,7 @@ export function buildDeltaChartOption(comparison: LapComparisonResponse): EChart
         color: LAP_A_COLOR,
         areaStyle: { opacity: 0.3 },
         data: aAhead,
+        ...(cornerMarkArea ? { markArea: cornerMarkArea } : {}),
         markLine: {
           symbol: "none",
           silent: true,

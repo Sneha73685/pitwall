@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { getTrackPoints, type TrackPoint } from "../../api/client";
 import { ErrorState } from "../../components/ErrorState";
+import { detectCorners } from "../track-map/detectCorners";
 import { useLapComparison } from "./hooks/useLapComparison";
 import { LapPairSelector } from "./components/LapPairSelector";
 import { SessionPicker } from "./components/SessionPicker";
@@ -33,6 +35,19 @@ import styles from "./ComparisonPage.module.css";
  * both sides so the comparison loads immediately; Sidebar's "Lap
  * Comparison" link sets only sessionA= (session B still needs picking).
  * Both are additive uses of the same mechanism M6 Phase 9 established.
+ *
+ * M22 (docs/m22-design-review.md §7, §17): fetches session A's track
+ * geometry once at this page level (lifted from `TrackMapDelta`'s own
+ * former internal fetch -- same session, same "session A is the reference
+ * geometry" convention that component already established, docs/m13-
+ * design-review.md §9) so the one resulting corner list can be shared by
+ * `TrackMapDelta`, `DeltaChart`, and `ChannelOverlayPanel` alike, keeping
+ * them "in sync" by construction rather than by any new coordination.
+ * Skipped entirely when session A/B are at different circuits (the
+ * existing `different_circuit` warning), mirroring exactly the condition
+ * `TrackMapDelta` already used to skip its own fetch -- the request
+ * pattern is unchanged: still exactly one `getTrackPoints` call where one
+ * was made before, never zero, never two.
  */
 export function ComparisonPage() {
   const [searchParams] = useSearchParams();
@@ -41,6 +56,8 @@ export function ComparisonPage() {
   const [selectionA, setSelectionA] = useState<DriverLapSelection | null>(null);
   const [selectionB, setSelectionB] = useState<DriverLapSelection | null>(null);
   const [pickingSession, setPickingSession] = useState<"a" | "b" | null>(null);
+  const [trackPoints, setTrackPoints] = useState<TrackPoint[] | null>(null);
+  const [trackPointsError, setTrackPointsError] = useState<string | null>(null);
 
   const { comparison, error } = useLapComparison(
     sessionIdA ?? undefined,
@@ -51,6 +68,8 @@ export function ComparisonPage() {
     selectionB?.lapNumber,
   );
   const clearCursor = useComparisonStore((state) => state.clearCursor);
+  const hasCircuitMismatch =
+    comparison?.warnings.some((w) => w.code === "different_circuit") ?? false;
 
   // M14 (docs/m14-design-review.md §6.1): clear the synchronized cursor on
   // every new successful comparison fetch (session A/B, driver/lap, and the
@@ -63,6 +82,19 @@ export function ComparisonPage() {
       clearCursor();
     }
   }, [comparison, clearCursor]);
+
+  useEffect(() => {
+    if (!comparison || hasCircuitMismatch) {
+      setTrackPoints(null);
+      return;
+    }
+    setTrackPointsError(null);
+    getTrackPoints(comparison.session_id_a)
+      .then(setTrackPoints)
+      .catch(() => setTrackPointsError("Could not load track geometry."));
+  }, [comparison, hasCircuitMismatch]);
+
+  const corners = useMemo(() => (trackPoints ? detectCorners(trackPoints) : []), [trackPoints]);
 
   function handleSwap() {
     setSessionIdA(sessionIdB);
@@ -119,11 +151,17 @@ export function ComparisonPage() {
         <div className={styles.workspace}>
           <ComparisonHeader comparison={comparison} onSwap={handleSwap} />
           <div className={styles.mapAndDelta}>
-            <TrackMapDelta sessionId={comparison.session_id_a} comparison={comparison} />
-            <DeltaChart comparison={comparison} />
+            <TrackMapDelta
+              comparison={comparison}
+              trackPoints={trackPoints}
+              error={trackPointsError}
+              hasCircuitMismatch={hasCircuitMismatch}
+              corners={corners}
+            />
+            <DeltaChart comparison={comparison} corners={corners} />
           </div>
           <SectorBreakdownTable sectors={comparison.sectors} />
-          <ChannelOverlayPanel comparison={comparison} />
+          <ChannelOverlayPanel comparison={comparison} corners={corners} />
         </div>
       )}
     </section>

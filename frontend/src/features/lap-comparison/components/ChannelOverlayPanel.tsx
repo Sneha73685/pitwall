@@ -1,12 +1,16 @@
 import type { LapComparisonResponse } from "../../../api/client";
 import { Card } from "../../../components/Card";
 import { TelemetryCharts } from "../../telemetry-charts/TelemetryCharts";
+import type { CornerRegion } from "../../track-map/detectCorners";
 import { COMPARISON_CHANNELS, useComparisonStore } from "../comparisonStore";
 import { toChannelSamples } from "./toChannelSamples";
 import styles from "./ChannelOverlayPanel.module.css";
 
 interface ChannelOverlayPanelProps {
   comparison: LapComparisonResponse;
+  /** Detected corner regions (M22, docs/m22-design-review.md §8), threaded
+   * through to TelemetryCharts unchanged. */
+  corners?: CornerRegion[];
 }
 
 /**
@@ -25,7 +29,7 @@ interface ChannelOverlayPanelProps {
  * TelemetryCharts as its cursor store, so hovering this overlay
  * participates in the same synchronized cursor as DeltaChart/TrackMapDelta.
  */
-export function ChannelOverlayPanel({ comparison }: ChannelOverlayPanelProps) {
+export function ChannelOverlayPanel({ comparison, corners }: ChannelOverlayPanelProps) {
   const visibleChannels = useComparisonStore((state) => state.visibleChannels);
   const toggleChannel = useComparisonStore((state) => state.toggleChannel);
 
@@ -58,6 +62,7 @@ export function ChannelOverlayPanel({ comparison }: ChannelOverlayPanelProps) {
         secondarySamples={samplesB}
         channels={[...visibleChannels]}
         cursorStore={useComparisonStore}
+        corners={corners}
       />
     </Card>
   );

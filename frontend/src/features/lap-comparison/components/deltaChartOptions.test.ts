@@ -91,4 +91,49 @@ describe("buildDeltaChartOption", () => {
 
     expect(aAheadSeries.markLine?.data).toEqual([{ yAxis: 0 }]);
   });
+
+  describe("with corners (M22, docs/m22-design-review.md §8)", () => {
+    it("adds a markArea with the exact corner distances", () => {
+      const corners = [
+        { start_distance_m: 10, end_distance_m: 40 },
+        { start_distance_m: 60, end_distance_m: 90 },
+      ];
+      const option = buildDeltaChartOption(comparison(), corners);
+      const aAheadSeries = (
+        option.series as { name: string; markArea?: { data: unknown[] } }[]
+      ).find((entry) => entry.name === "Lap A ahead")!;
+
+      expect(aAheadSeries.markArea?.data).toEqual([
+        [{ xAxis: 10 }, { xAxis: 40 }],
+        [{ xAxis: 60 }, { xAxis: 90 }],
+      ]);
+    });
+
+    it("marks corner regions as silent (non-interactive, no tooltip)", () => {
+      const option = buildDeltaChartOption(comparison(), [
+        { start_distance_m: 10, end_distance_m: 40 },
+      ]);
+      const aAheadSeries = (
+        option.series as { name: string; markArea?: { silent?: boolean } }[]
+      ).find((entry) => entry.name === "Lap A ahead")!;
+
+      expect(aAheadSeries.markArea?.silent).toBe(true);
+    });
+
+    it("produces byte-identical output to omitting corners entirely when the list is empty", () => {
+      const withEmptyCorners = buildDeltaChartOption(comparison(), []);
+      const withoutCorners = buildDeltaChartOption(comparison());
+
+      expect(withEmptyCorners).toEqual(withoutCorners);
+    });
+
+    it("adds no markArea key to any series when corners is omitted", () => {
+      const option = buildDeltaChartOption(comparison());
+      const series = option.series as { markArea?: unknown }[];
+
+      for (const entry of series) {
+        expect(entry.markArea).toBeUndefined();
+      }
+    });
+  });
 });

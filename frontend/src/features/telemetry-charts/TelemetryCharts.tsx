@@ -12,6 +12,7 @@ import {
   type CursorSlice,
 } from "../../components/useCursorSync";
 import { useEChartsInstance } from "../../components/useEChartsInstance";
+import type { CornerRegion } from "../track-map/detectCorners";
 import { buildChartOption, type ChannelKey } from "./chartOptions";
 import styles from "./TelemetryCharts.module.css";
 
@@ -43,6 +44,13 @@ interface TelemetryChartsProps {
    * component stays agnostic of which page it's rendered on.
    */
   cursorStore: UseBoundStore<StoreApi<CursorSlice>>;
+  /**
+   * Detected corner regions (M22, docs/m22-design-review.md §8), rendered
+   * as static `markArea` bands on every channel -- static, non-
+   * interactive, and orthogonal to `cursorStore`'s dynamic axisPointer
+   * (§7). Omitted for any page/view that hasn't computed corners.
+   */
+  corners?: CornerRegion[];
 }
 
 /**
@@ -65,6 +73,7 @@ export function TelemetryCharts({
   secondarySamples,
   channels,
   cursorStore,
+  corners,
 }: TelemetryChartsProps) {
   const hasData = samples.length > 0;
   const setCursor = cursorStore((state) => state.setCursor);
@@ -81,8 +90,8 @@ export function TelemetryCharts({
   );
 
   const chart = useEChartsInstance(
-    () => buildChartOption(samples, secondarySamples, channels),
-    [samples, secondarySamples, channels],
+    () => buildChartOption(samples, secondarySamples, channels, corners),
+    [samples, secondarySamples, channels, corners],
     { updateAxisPointer: handleAxisPointerUpdate },
   );
   useCursorSync(chart.dispatch, CURSOR_SOURCE, cursorStore);

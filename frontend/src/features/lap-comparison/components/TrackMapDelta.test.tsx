@@ -1,6 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as client from "../../../api/client";
 import type { LapComparisonResponse, TrackPoint } from "../../../api/client";
 import { useComparisonStore, type ComparisonChannelKey } from "../comparisonStore";
 import * as trackMapSegmentColors from "./trackMapSegmentColors";
@@ -8,21 +7,24 @@ import { TrackMapDelta } from "./TrackMapDelta";
 
 // TrackMap owns the actual SVG rendering (covered by its own test suite);
 // TrackMapDelta only needs to know it's wired up with the right geometry,
-// colors, and (M14) cursor marker position -- same pattern
+// colors, corner regions, and (M14) cursor marker position -- same pattern
 // TrackMapPage.test.tsx uses for TelemetryCharts.
 vi.mock("../../track-map/TrackMap", () => ({
   TrackMap: ({
     trackPoints,
     segmentColors,
     cursorPoint,
+    cornerRegions,
   }: {
     trackPoints: TrackPoint[];
     segmentColors?: string[];
     cursorPoint?: { x: number; y: number } | null;
+    cornerRegions?: { start_distance_m: number; end_distance_m: number }[];
   }) => (
     <div data-testid="track-map-stub">
       {trackPoints.length} points, {segmentColors?.length ?? 0} colors,{" "}
-      {cursorPoint ? `cursor at (${cursorPoint.x}, ${cursorPoint.y})` : "no cursor"}
+      {cursorPoint ? `cursor at (${cursorPoint.x}, ${cursorPoint.y})` : "no cursor"},{" "}
+      {cornerRegions?.length ?? 0} corners
     </div>
   ),
 }));
@@ -31,6 +33,8 @@ const trackPoints: TrackPoint[] = [
   { distance_m: 0, x: 0, y: 0 },
   { distance_m: 100, x: 10, y: 0 },
 ];
+
+const corners = [{ start_distance_m: 10, end_distance_m: 40 }];
 
 function comparison(overrides: Partial<LapComparisonResponse> = {}): LapComparisonResponse {
   return {
@@ -76,61 +80,106 @@ describe("TrackMapDelta", () => {
     });
   });
 
-  it("fetches session track geometry and passes it, plus computed colors, to TrackMap", async () => {
-    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
+  it("renders TrackMap with the given track geometry, computed colors, and corner regions", () => {
+    render(
+      <TrackMapDelta
+        comparison={comparison()}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
+        corners={corners}
+      />,
+    );
 
-    render(<TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />);
-
-    await waitFor(() => expect(client.getTrackPoints).toHaveBeenCalledWith("2023_monza_race"));
-    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent(
-      "2 points, 2 colors, no cursor",
+    expect(screen.getByTestId("track-map-stub")).toHaveTextContent(
+      "2 points, 2 colors, no cursor, 1 corners",
     );
   });
 
-  it("shows a loading message before track geometry has arrived", () => {
-    vi.spyOn(client, "getTrackPoints").mockReturnValue(new Promise(() => {}));
+  it("renders no corner regions when corners is omitted", () => {
+    render(
+      <TrackMapDelta
+        comparison={comparison()}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
+      />,
+    );
 
-    render(<TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />);
+    expect(screen.getByTestId("track-map-stub")).toHaveTextContent("0 corners");
+  });
+
+  it("shows a loading message while trackPoints is null (no error, no circuit mismatch)", () => {
+    render(
+      <TrackMapDelta
+        comparison={comparison()}
+        trackPoints={null}
+        error={null}
+        hasCircuitMismatch={false}
+      />,
+    );
 
     expect(screen.getByText(/loading track map/i)).toBeInTheDocument();
   });
 
-  it("shows an error message when the track geometry fetch fails", async () => {
-    vi.spyOn(client, "getTrackPoints").mockRejectedValue(new Error("network error"));
+  it("shows an error message when the error prop is set", () => {
+    render(
+      <TrackMapDelta
+        comparison={comparison()}
+        trackPoints={null}
+        error="Could not load track geometry."
+        hasCircuitMismatch={false}
+      />,
+    );
 
-    render(<TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(/could not load track geometry/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/could not load track geometry/i);
   });
 
-  it("memoizes segment-color computation: does not recompute on an unrelated rerender", async () => {
-    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
+  it("memoizes segment-color computation: does not recompute on an unrelated rerender", () => {
     const computeSpy = vi.spyOn(trackMapSegmentColors, "computeSegmentColors");
     const data = comparison();
 
-    const { rerender } = render(<TrackMapDelta sessionId="2023_monza_race" comparison={data} />);
-    await screen.findByTestId("track-map-stub");
-    const callsAfterFirstRender = computeSpy.mock.calls.length;
-
-    rerender(<TrackMapDelta sessionId="2023_monza_race" comparison={data} />);
-
-    expect(computeSpy.mock.calls.length).toBe(callsAfterFirstRender);
-  });
-
-  it("recomputes segment colors when the comparison actually changes", async () => {
-    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
-    const computeSpy = vi.spyOn(trackMapSegmentColors, "computeSegmentColors");
-
     const { rerender } = render(
-      <TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />,
+      <TrackMapDelta
+        comparison={data}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
+      />,
     );
-    await screen.findByTestId("track-map-stub");
     const callsAfterFirstRender = computeSpy.mock.calls.length;
 
     rerender(
       <TrackMapDelta
-        sessionId="2023_monza_race"
+        comparison={data}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
+      />,
+    );
+
+    expect(computeSpy.mock.calls.length).toBe(callsAfterFirstRender);
+  });
+
+  it("recomputes segment colors when the comparison actually changes", () => {
+    const computeSpy = vi.spyOn(trackMapSegmentColors, "computeSegmentColors");
+
+    const { rerender } = render(
+      <TrackMapDelta
+        comparison={comparison()}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
+      />,
+    );
+    const callsAfterFirstRender = computeSpy.mock.calls.length;
+
+    rerender(
+      <TrackMapDelta
         comparison={comparison({ delta_ms: [0, -200] })}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
       />,
     );
 
@@ -141,58 +190,65 @@ describe("TrackMapDelta", () => {
   // different circuits -- session A's track outline would misrepresent
   // lap B, which never drove it, so the map is hidden and explained
   // rather than rendered.
-  it("hides the track map and explains why when sessions are at different circuits", () => {
-    const getTrackPointsSpy = vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
-
+  it("hides the track map and explains why when hasCircuitMismatch is true", () => {
     render(
       <TrackMapDelta
-        sessionId="2023_monza_race"
         comparison={comparison({
           warnings: [{ code: "different_circuit", detail: "Monza vs Spa" }],
         })}
+        trackPoints={null}
+        error={null}
+        hasCircuitMismatch={true}
       />,
     );
 
     expect(screen.queryByTestId("track-map-stub")).not.toBeInTheDocument();
     expect(screen.getByText(/different circuits/i)).toBeInTheDocument();
-    // Never even fetches geometry it won't use.
-    expect(getTrackPointsSpy).not.toHaveBeenCalled();
   });
 
-  it("renders the track map normally when sessions share a circuit (no different_circuit warning)", async () => {
-    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
-
+  it("renders the track map normally when hasCircuitMismatch is false, even with an unrelated warning present", () => {
     render(
       <TrackMapDelta
-        sessionId="2023_monza_race"
         comparison={comparison({
           warnings: [{ code: "invalid_lap_a", detail: "Lap A is not marked accurate." }],
         })}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
       />,
     );
 
-    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent(
-      "2 points, 2 colors, no cursor",
-    );
+    expect(screen.getByTestId("track-map-stub")).toHaveTextContent("2 points, 2 colors, no cursor");
   });
 
   // --- M14 cursor marker (docs/m14-design-review.md §9/§12) ---
 
-  it("passes the nearest track-outline point as the cursor marker when comparisonStore.distanceM is set (same circuit)", async () => {
-    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
+  it("passes the nearest track-outline point as the cursor marker when comparisonStore.distanceM is set (same circuit)", () => {
     useComparisonStore.setState({ distanceM: 60, source: "delta-chart" });
 
-    render(<TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />);
+    render(
+      <TrackMapDelta
+        comparison={comparison()}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
+      />,
+    );
 
     // trackPoints: distance_m 0 -> (0,0), 100 -> (10,0); 60 is nearer 100.
-    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent("cursor at (10, 0)");
+    expect(screen.getByTestId("track-map-stub")).toHaveTextContent("cursor at (10, 0)");
   });
 
-  it("passes no cursor marker when comparisonStore.distanceM is null", async () => {
-    vi.spyOn(client, "getTrackPoints").mockResolvedValue(trackPoints);
+  it("passes no cursor marker when comparisonStore.distanceM is null", () => {
+    render(
+      <TrackMapDelta
+        comparison={comparison()}
+        trackPoints={trackPoints}
+        error={null}
+        hasCircuitMismatch={false}
+      />,
+    );
 
-    render(<TrackMapDelta sessionId="2023_monza_race" comparison={comparison()} />);
-
-    expect(await screen.findByTestId("track-map-stub")).toHaveTextContent("no cursor");
+    expect(screen.getByTestId("track-map-stub")).toHaveTextContent("no cursor");
   });
 });

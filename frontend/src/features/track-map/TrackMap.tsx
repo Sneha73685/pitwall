@@ -2,6 +2,7 @@ import { scaleLinear } from "d3-scale";
 import { line as d3Line } from "d3-shape";
 import type { TrackPoint } from "../../api/client";
 import { EmptyState } from "../../components/EmptyState";
+import type { CornerRegion } from "./detectCorners";
 import styles from "./TrackMap.module.css";
 
 interface Point {
@@ -37,6 +38,15 @@ interface TrackMapProps {
    * `startPoint`/`secondaryStartPoint`. `null`/omitted: no marker.
    */
   cursorPoint?: Point | null;
+  /**
+   * Detected corner regions (M22, docs/m22-design-review.md §9), rendered
+   * as a subtle shaded background band along the track outline -- an
+   * independent visual layer, drawn underneath everything else, deliberately
+   * not reusing `segmentColors` (that channel is already spoken for by
+   * TrackMapDelta's own delta-based coloring). Omitted or empty: renders
+   * nothing extra, identical to today.
+   */
+  cornerRegions?: CornerRegion[];
 }
 
 const WIDTH = 600;
@@ -63,6 +73,7 @@ export function TrackMap({
   secondaryLapPoints,
   segmentColors,
   cursorPoint,
+  cornerRegions,
 }: TrackMapProps) {
   if (trackPoints.length === 0) {
     return <EmptyState>No track geometry available for this session.</EmptyState>;
@@ -84,6 +95,15 @@ export function TrackMap({
     .y((point) => yScale(point.y));
 
   const trackPath = lineGenerator(trackPoints);
+  const cornerPaths = (cornerRegions ?? [])
+    .map((region) => {
+      const slice = trackPoints.filter(
+        (point) =>
+          point.distance_m >= region.start_distance_m && point.distance_m <= region.end_distance_m,
+      );
+      return slice.length >= 2 ? lineGenerator(slice) : null;
+    })
+    .filter((d): d is string => d !== null);
   const trackSegments =
     segmentColors &&
     trackPoints.slice(0, -1).map((point, index) => ({
@@ -105,6 +125,17 @@ export function TrackMap({
       data-testid="track-map"
       className={styles.svg}
     >
+      {cornerPaths.map((d, index) => (
+        <path
+          key={index}
+          d={d}
+          fill="none"
+          stroke="rgba(144, 160, 179, 0.35)"
+          strokeWidth={8}
+          strokeLinecap="round"
+          data-testid={`corner-region-${index}`}
+        />
+      ))}
       {trackSegments
         ? trackSegments.map(
             (segment, index) =>

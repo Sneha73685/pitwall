@@ -45,17 +45,20 @@ vi.mock("./components/ChannelOverlayPanel", () => ({
 }));
 vi.mock("./components/TrackMapDelta", () => ({
   TrackMapDelta: ({
-    sessionId,
     comparison,
+    trackPoints,
+    corners,
   }: {
-    sessionId: string;
     comparison: client.LapComparisonResponse;
+    trackPoints: client.TrackPoint[] | null;
+    corners?: { start_distance_m: number; end_distance_m: number }[];
   }) => {
     const distanceM = useComparisonStore((s) => s.distanceM);
     return (
       <div data-testid="track-map-delta-stub">
-        track map for {sessionId} ({comparison.lap_a.driver_id} vs {comparison.lap_b.driver_id}),
-        cursor: {distanceM ?? "none"}
+        track map for {comparison.session_id_a} ({comparison.lap_a.driver_id} vs{" "}
+        {comparison.lap_b.driver_id}), cursor: {distanceM ?? "none"}, points:{" "}
+        {trackPoints?.length ?? "none"}, corners: {corners?.length ?? 0}
       </div>
     );
   },
@@ -151,6 +154,10 @@ describe("ComparisonPage", () => {
     vi.spyOn(client, "listLaps").mockImplementation((_sessionId, driverId) =>
       Promise.resolve(driverId === "LEC" ? lecLaps : verLaps),
     );
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue([
+      { distance_m: 0, x: 0, y: 0 },
+      { distance_m: 500, x: 50, y: 0 },
+    ]);
   });
 
   it("renders the lap pair selector and nothing else before both laps are chosen", async () => {
@@ -283,6 +290,49 @@ describe("ComparisonPage", () => {
       lapB: 1,
       resolution: undefined,
     });
+  });
+
+  // --- M22 track-point fetch lifting (docs/m22-design-review.md §7/§17) ---
+
+  it("fetches session A's track points exactly once and passes trackPoints/corners down to TrackMapDelta, DeltaChart, and ChannelOverlayPanel", async () => {
+    vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+    const getTrackPointsSpy = vi.spyOn(client, "getTrackPoints").mockResolvedValue([
+      { distance_m: 0, x: 0, y: 0 },
+      { distance_m: 500, x: 50, y: 0 },
+    ]);
+    renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+    await waitFor(() =>
+      expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+    );
+
+    await selectDriverAndLap(0, "VER");
+    await selectDriverAndLap(1, "LEC");
+
+    await waitFor(() =>
+      expect(getTrackPointsSpy).toHaveBeenCalledWith(sampleComparison.session_id_a),
+    );
+    expect(getTrackPointsSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(screen.getByTestId("track-map-delta-stub")).toHaveTextContent("points: 2"),
+    );
+  });
+
+  it("does not fetch track points when session A/B are at different circuits", async () => {
+    vi.spyOn(client, "compareLaps").mockResolvedValue({
+      ...sampleComparison,
+      warnings: [{ code: "different_circuit", detail: "Monza vs Spa" }],
+    });
+    const getTrackPointsSpy = vi.spyOn(client, "getTrackPoints").mockResolvedValue([]);
+    renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+    await waitFor(() =>
+      expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+    );
+
+    await selectDriverAndLap(0, "VER");
+    await selectDriverAndLap(1, "LEC");
+
+    await waitFor(() => expect(screen.getByTestId("track-map-delta-stub")).toBeInTheDocument());
+    expect(getTrackPointsSpy).not.toHaveBeenCalled();
   });
 
   it("shows an error message when the comparison fetch fails", async () => {

@@ -1,5 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { TelemetrySample } from "../../api/client";
+import type { CornerRegion } from "../track-map/detectCorners";
 
 interface ChannelConfig {
   key: "speed_kph" | "throttle_pct" | "brake_active" | "rpm" | "gear" | "drs_active";
@@ -55,11 +56,20 @@ const LAP_B_COLOR = "#ee6666";
  * all -- the comparison view's per-channel toggle (ChannelOverlayPanel)
  * needs to show only the channels a user has switched on. Omitted for the
  * single-lap view, which keeps rendering every channel as before.
+ *
+ * `corners` (M22, docs/m22-design-review.md §8) adds a static, non-
+ * interactive `markArea` per grid for each detected corner region -- one
+ * shared distance_m axis means the same regions apply to every channel.
+ * `silent: true` keeps them out of tooltip/axisPointer interaction
+ * entirely (§10: corners are visual-only). Omitted (or empty) produces
+ * byte-identical output to before this milestone -- no `markArea` key is
+ * added to any series unless there is at least one region to show.
  */
 export function buildChartOption(
   samples: TelemetrySample[],
   secondarySamples?: TelemetrySample[],
   channels?: ChannelKey[],
+  corners?: CornerRegion[],
 ): EChartsCoreOption {
   const activeChannels = channels
     ? CHANNELS.filter((channel) => channels.includes(channel.key))
@@ -68,6 +78,18 @@ export function buildChartOption(
   const gridGapPct = 3;
   const gridHeightPct = gridCount > 0 ? 100 / gridCount - gridGapPct : 0;
   const lastIndex = gridCount - 1;
+
+  const cornerMarkArea =
+    corners && corners.length > 0
+      ? {
+          silent: true,
+          itemStyle: { color: "rgba(144, 160, 179, 0.12)" },
+          data: corners.map((corner) => [
+            { xAxis: corner.start_distance_m },
+            { xAxis: corner.end_distance_m },
+          ]),
+        }
+      : undefined;
 
   const series = activeChannels.flatMap((channel, index) => {
     const primary = {
@@ -79,6 +101,7 @@ export function buildChartOption(
       step: channel.step ? "end" : undefined,
       color: secondarySamples ? LAP_A_COLOR : undefined,
       data: samples.map((sample) => [sample.distance_m, channelValue(sample, channel.key)]),
+      ...(cornerMarkArea ? { markArea: cornerMarkArea } : {}),
     };
     if (!secondarySamples) {
       return [primary];

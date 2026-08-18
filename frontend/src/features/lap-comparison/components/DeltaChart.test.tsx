@@ -93,6 +93,14 @@ describe("DeltaChart", () => {
     expect(fakeChart.setOption).toHaveBeenCalledWith(buildDeltaChartOption(data), true);
   });
 
+  it("sets chart options with corners threaded through, when given (M22)", () => {
+    const data = comparison();
+    const corners = [{ start_distance_m: 10, end_distance_m: 40 }];
+    render(<DeltaChart comparison={data} corners={corners} />);
+
+    expect(fakeChart.setOption).toHaveBeenCalledWith(buildDeltaChartOption(data, corners), true);
+  });
+
   it("re-applies options when the comparison prop changes without re-initializing", () => {
     const { rerender } = render(<DeltaChart comparison={comparison()} />);
     rerender(<DeltaChart comparison={comparison({ delta_ms: [0, 200] })} />);

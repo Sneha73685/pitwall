@@ -12,6 +12,7 @@ import type { LapComparisonResponse } from "../../../api/client";
 import { Card } from "../../../components/Card";
 import { extractAxisPointerValue, useCursorSync } from "../../../components/useCursorSync";
 import { useEChartsInstance } from "../../../components/useEChartsInstance";
+import type { CornerRegion } from "../../track-map/detectCorners";
 import { useComparisonStore } from "../comparisonStore";
 import { buildDeltaChartOption } from "./deltaChartOptions";
 import styles from "./DeltaChart.module.css";
@@ -30,6 +31,9 @@ const CURSOR_SOURCE = "delta-chart" as const;
 
 interface DeltaChartProps {
   comparison: LapComparisonResponse;
+  /** Detected corner regions (M22, docs/m22-design-review.md §8) -- static
+   * `markArea` bands, omitted when the caller hasn't computed corners. */
+  corners?: CornerRegion[];
 }
 
 /**
@@ -44,7 +48,7 @@ interface DeltaChartProps {
  * one shared grid both compared laps are aligned onto, so a `distanceM`
  * cursor value indexes both sides identically -- no reconciliation needed.
  */
-export function DeltaChart({ comparison }: DeltaChartProps) {
+export function DeltaChart({ comparison, corners }: DeltaChartProps) {
   const setCursor = useComparisonStore((state) => state.setCursor);
 
   const handleAxisPointerUpdate = useCallback(
@@ -58,9 +62,11 @@ export function DeltaChart({ comparison }: DeltaChartProps) {
     [setCursor],
   );
 
-  const chart = useEChartsInstance(() => buildDeltaChartOption(comparison), [comparison], {
-    updateAxisPointer: handleAxisPointerUpdate,
-  });
+  const chart = useEChartsInstance(
+    () => buildDeltaChartOption(comparison, corners),
+    [comparison, corners],
+    { updateAxisPointer: handleAxisPointerUpdate },
+  );
   useCursorSync(chart.dispatch, CURSOR_SOURCE, useComparisonStore);
   const containerRef = chart;
 

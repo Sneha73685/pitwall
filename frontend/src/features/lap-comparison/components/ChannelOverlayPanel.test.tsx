@@ -116,6 +116,19 @@ describe("ChannelOverlayPanel", () => {
     expect(option.series).toHaveLength(0);
   });
 
+  it("threads corners through to the built chart option (M22)", () => {
+    render(
+      <ChannelOverlayPanel
+        comparison={comparison()}
+        corners={[{ start_distance_m: 10, end_distance_m: 40 }]}
+      />,
+    );
+
+    const option = fakeChart.setOption.mock.calls.at(-1)![0];
+    const series = option.series as { markArea?: { data: unknown[] } }[];
+    expect(series[0].markArea?.data).toEqual([[{ xAxis: 10 }, { xAxis: 40 }]]);
+  });
+
   it("passes both laps' values through to the chart, not just lap A", () => {
     render(<ChannelOverlayPanel comparison={comparison()} />);
 

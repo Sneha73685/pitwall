@@ -127,4 +127,74 @@ describe("TrackMap", () => {
       expect(screen.queryByTestId("track-segment-0")).not.toBeInTheDocument();
     });
   });
+
+  describe("with cornerRegions (M22, docs/m22-design-review.md §9)", () => {
+    it("renders one shaded region per corner, sliced from the matching trackPoints range", () => {
+      render(
+        <TrackMap
+          trackPoints={trackPoints}
+          lapPoints={[]}
+          cornerRegions={[{ start_distance_m: 0, end_distance_m: 50 }]}
+        />,
+      );
+
+      expect(screen.getByTestId("corner-region-0")).toBeInTheDocument();
+    });
+
+    it("renders one region per entry when multiple corners are given", () => {
+      render(
+        <TrackMap
+          trackPoints={trackPoints}
+          lapPoints={[]}
+          cornerRegions={[
+            { start_distance_m: 0, end_distance_m: 50 },
+            { start_distance_m: 50, end_distance_m: 100 },
+          ]}
+        />,
+      );
+
+      expect(screen.getByTestId("corner-region-0")).toBeInTheDocument();
+      expect(screen.getByTestId("corner-region-1")).toBeInTheDocument();
+    });
+
+    it("renders no corner regions when cornerRegions is omitted", () => {
+      render(<TrackMap trackPoints={trackPoints} lapPoints={[]} />);
+
+      expect(screen.queryByTestId("corner-region-0")).not.toBeInTheDocument();
+    });
+
+    it("renders no corner regions when cornerRegions is an empty array", () => {
+      render(<TrackMap trackPoints={trackPoints} lapPoints={[]} cornerRegions={[]} />);
+
+      expect(screen.queryByTestId("corner-region-0")).not.toBeInTheDocument();
+    });
+
+    it("skips a corner region whose distance range matches fewer than two track points", () => {
+      render(
+        <TrackMap
+          trackPoints={trackPoints}
+          lapPoints={[]}
+          cornerRegions={[{ start_distance_m: 200, end_distance_m: 250 }]}
+        />,
+      );
+
+      expect(screen.queryByTestId("corner-region-0")).not.toBeInTheDocument();
+    });
+
+    it("still renders the existing track outline, lap line, and cursor marker unchanged alongside corner regions", () => {
+      render(
+        <TrackMap
+          trackPoints={trackPoints}
+          lapPoints={lapPoints}
+          cursorPoint={{ x: 10, y: 10 }}
+          cornerRegions={[{ start_distance_m: 0, end_distance_m: 50 }]}
+        />,
+      );
+
+      expect(screen.getByTestId("corner-region-0")).toBeInTheDocument();
+      expect(screen.getByTestId("track-outline")).toBeInTheDocument();
+      expect(screen.getByTestId("lap-line")).toBeInTheDocument();
+      expect(screen.getByTestId("cursor-marker")).toBeInTheDocument();
+    });
+  });
 });

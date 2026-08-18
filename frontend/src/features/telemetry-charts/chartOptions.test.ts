@@ -168,4 +168,47 @@ describe("buildChartOption", () => {
       expect((filtered.series as unknown[]).length).toBe(6);
     });
   });
+
+  describe("with corners (M22, docs/m22-design-review.md §8)", () => {
+    it("adds a markArea with the exact corner distances to every channel's series", () => {
+      const corners = [
+        { start_distance_m: 10, end_distance_m: 40 },
+        { start_distance_m: 100, end_distance_m: 130 },
+      ];
+      const option = buildChartOption([sample()], undefined, undefined, corners);
+      const series = option.series as { name: string; markArea?: { data: unknown[] } }[];
+
+      for (const entry of series) {
+        expect(entry.markArea?.data).toEqual([
+          [{ xAxis: 10 }, { xAxis: 40 }],
+          [{ xAxis: 100 }, { xAxis: 130 }],
+        ]);
+      }
+    });
+
+    it("marks corner regions as silent (non-interactive, no tooltip)", () => {
+      const option = buildChartOption([sample()], undefined, undefined, [
+        { start_distance_m: 10, end_distance_m: 40 },
+      ]);
+      const series = option.series as { markArea?: { silent?: boolean } }[];
+
+      expect(series[0].markArea?.silent).toBe(true);
+    });
+
+    it("produces byte-identical output to omitting corners entirely when the list is empty", () => {
+      const withEmptyCorners = buildChartOption([sample()], undefined, undefined, []);
+      const withoutCorners = buildChartOption([sample()], undefined, undefined);
+
+      expect(withEmptyCorners).toEqual(withoutCorners);
+    });
+
+    it("adds no markArea key to any series when corners is omitted", () => {
+      const option = buildChartOption([sample()]);
+      const series = option.series as { markArea?: unknown }[];
+
+      for (const entry of series) {
+        expect(entry.markArea).toBeUndefined();
+      }
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   getSession,
@@ -17,6 +17,7 @@ import { useSelectionStore } from "../../state/selectionStore";
 import { TelemetryCharts } from "../telemetry-charts/TelemetryCharts";
 import { TopSummaryPanel } from "./components/TopSummaryPanel";
 import { useTrackMapCursorStore } from "./cursorStore";
+import { detectCorners } from "./detectCorners";
 import { nearestTrackPointAt } from "./nearestTrackPointAt";
 import { TrackMap } from "./TrackMap";
 import styles from "./TrackMapPage.module.css";
@@ -37,6 +38,12 @@ import styles from "./TrackMapPage.module.css";
  * whenever `sessionId`/`driverId`/`lapNumber` changes -- the same
  * dependency array the data-fetch effect below already uses -- so a stale
  * marker from the previous lap never appears on the next one.
+ *
+ * M22 (docs/m22-design-review.md §6/§11): corner regions are computed once
+ * per `trackPoints` fetch (`useMemo`, not per render), from this session's
+ * own already-fetched track geometry -- no new fetch, no backend change.
+ * Passed to both `TrackMap` and `TelemetryCharts` so the same regions
+ * appear on both surfaces, by construction (one array, one source).
  */
 export function TrackMapPage() {
   const { sessionId, driverId, lapNumber } = useParams<{
@@ -52,6 +59,7 @@ export function TrackMapPage() {
   const [error, setError] = useState<string | null>(null);
   const cursorDistanceM = useTrackMapCursorStore((state) => state.distanceM);
   const clearCursor = useTrackMapCursorStore((state) => state.clearCursor);
+  const corners = useMemo(() => (trackPoints ? detectCorners(trackPoints) : []), [trackPoints]);
 
   useEffect(() => {
     clearCursor();
@@ -92,10 +100,19 @@ export function TrackMapPage() {
     <section className={styles.workspace}>
       <TopSummaryPanel driver={driverId ?? ""} session={session} lap={currentLap} laps={laps} />
       <Card title="Track Map">
-        <TrackMap trackPoints={trackPoints} lapPoints={lapPoints} cursorPoint={cursorPoint} />
+        <TrackMap
+          trackPoints={trackPoints}
+          lapPoints={lapPoints}
+          cursorPoint={cursorPoint}
+          cornerRegions={corners}
+        />
       </Card>
       <Card title="Telemetry">
-        <TelemetryCharts samples={lapPoints} cursorStore={useTrackMapCursorStore} />
+        <TelemetryCharts
+          samples={lapPoints}
+          cursorStore={useTrackMapCursorStore}
+          corners={corners}
+        />
       </Card>
     </section>
   );

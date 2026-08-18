@@ -18,12 +18,14 @@ vi.mock("../telemetry-charts/TelemetryCharts", () => ({
   TelemetryCharts: ({
     samples,
     cursorStore,
+    corners,
   }: {
     samples: client.TelemetrySample[];
     cursorStore: UseBoundStore<StoreApi<CursorSlice>>;
+    corners?: { start_distance_m: number; end_distance_m: number }[];
   }) => (
     <div data-testid="telemetry-charts-stub">
-      {samples.length} samples
+      {samples.length} samples, {corners?.length ?? 0} corners
       <button onClick={() => cursorStore.getState().setCursor(50, "telemetry-charts")}>
         simulate hover
       </button>
@@ -116,6 +118,41 @@ describe("TrackMapPage", () => {
     await waitFor(() =>
       expect(screen.getByTestId("telemetry-charts-stub")).toHaveTextContent("2 samples"),
     );
+  });
+
+  // --- M22 corner highlighting (docs/m22-design-review.md §6/§11) ---
+
+  it("computes corner regions from the fetched track points and passes them to TrackMap and TelemetryCharts", async () => {
+    // A real single 90-degree left turn, r=100m -- the same shape
+    // detectCorners.test.ts already validates as producing exactly one
+    // region. Enough points to give the detection window real geometry.
+    const turnPoints = Array.from({ length: 20 }, (_, i) => {
+      const d = i * 8;
+      const theta = d / 100;
+      return { distance_m: d, x: 100 * Math.sin(theta), y: 100 * (1 - Math.cos(theta)) };
+    });
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue(turnPoints);
+    vi.spyOn(client, "getTelemetry").mockResolvedValue([sampleTelemetry]);
+
+    renderAt("/sessions/2023_monza_race/drivers/VER/laps/1");
+
+    await waitFor(() => expect(screen.getByTestId("track-map")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId("telemetry-charts-stub")).toHaveTextContent("1 corners"),
+    );
+    expect(screen.getByTestId("corner-region-0")).toBeInTheDocument();
+  });
+
+  it("passes no corner regions when track geometry produces none (e.g. no track data)", async () => {
+    vi.spyOn(client, "getTrackPoints").mockResolvedValue([]);
+    vi.spyOn(client, "getTelemetry").mockResolvedValue([sampleTelemetry]);
+
+    renderAt("/sessions/2023_monza_race/drivers/VER/laps/1");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("telemetry-charts-stub")).toHaveTextContent("0 corners"),
+    );
+    expect(screen.queryByTestId("corner-region-0")).not.toBeInTheDocument();
   });
 
   it("shows an error message when a request fails", async () => {
