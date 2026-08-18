@@ -85,7 +85,7 @@ Sequencing note: M1 and M2 can't be meaningfully parallelized (API needs real ca
 
 ---
 
-## 3a. Milestone History Beyond V1 (M8–M15)
+## 3a. Milestone History Beyond V1 (M8–M19)
 
 The table above (§3) is the original, dated V1 schedule and is not edited by later milestones.
 Everything from M8 onward was added after V1 shipped, each with its own design review under `docs/`
@@ -103,8 +103,13 @@ relates to the themes §5 already named, not as a retroactive edit to §3:
 | M13 | Cross-session lap/telemetry comparison (`/laps/compare` generalized to two independently-selected sessions) | Extends V1's two-lap comparison (§2.1) beyond what V1 originally specified (single-session only) |
 | M14 | Synchronized telemetry cursor, Zustand-based (`docs/m14-design-review.md`) | Delivers V2's synchronized-cursor criterion (§5) — via a different mechanism than originally specified |
 | M15 | Cross-session stint/tyre-strategy comparison (`/stints/compare`) | Completes V3's stint/pit-stop deliverable's cross-session case — not originally specified in V3's text at all |
+| M16 | Documentation & roadmap reconciliation (`docs/m16-design-review.md`) | Documentation-only reconciliation pass; not itself V-scoped |
+| M17 | Cross-season driver pace-trend analytics (`/drivers/{driver_id}/seasons/{season}/pace-trend`) | Not itself named in the original roadmap; a new cross-season capability building on M8's session-analytics pattern, not a V1–V5 criterion |
+| M18 | Per-session Parquet file-level caching (performance) | Infrastructure; not itself V-scoped |
+| M19 | Telemetry driver/lap positional index (performance) | Infrastructure; not itself V-scoped |
 
-See `docs/m16-design-review.md` for the reconciliation pass this table is part of.
+See `docs/m16-design-review.md` and `docs/m20-design-review.md` for the reconciliation passes this
+table is part of.
 
 ---
 
@@ -152,3 +157,4 @@ originally written, describing the reasoning at V1 design time.
 - v1: initial PRD, architecture, and tech stack in one document.
 - v2: architecture, tech stack, and repository structure extracted to `docs/architecture.md` following the design freeze at the end of the architecture discussion phase; tech stack updated to reflect ADR-0007 (Zustand) and ADR-0008 (ECharts), which superseded this document's original Context/uPlot recommendations.
 - v3 (M16, `docs/m16-design-review.md`): added §3a recording M8–M15's shipped milestone history, distinct from the original V1 table; updated §5's deferred-features table with current shipped/unshipped status for V2/V3. No scope or architecture change — documentation reconciliation only.
+- v4 (M20, `docs/m20-design-review.md`): extended §3a through M19 (M16 docs reconciliation, M17 cross-season pace trends, M18/M19 repository performance work). §5 re-verified against current source with no edit needed — every row's status is still accurate. No scope or architecture change — documentation reconciliation only.

@@ -108,6 +108,50 @@ non-breaking on the existing `GET /sessions/{session_id}/drivers/{driver_id}/sti
 existing per-driver route is unaffected (still passes `driver_id` explicitly); the field is only
 required to tell drivers' stints apart on M11's session-wide read.
 
+## M13 addition: cross-session lap comparison
+
+`GET /laps/compare` (generalized from the retired `GET /sessions/{session_id}/laps/compare`) reads
+`session_id_a`/`driver_a`/`lap_a`/`session_id_b`/`driver_b`/`lap_b` query params (each side
+independently resolved — `session_id_b` may equal `session_id_a`, or name a different session
+entirely) plus an optional `resolution` (grid point count). Returns `LapComparisonResponse`
+(`app/models/lap_comparison.py`): `session_id_a`, `session_id_b`, `lap_a: Lap`, `lap_b: Lap`,
+`compared_distance_m`, `distance_m: list[float]`, `delta_ms: list[float]` (positive means lap A is
+faster), `channels: dict[str, ChannelSeries{a, b}]`, `sectors: list[SectorDelta]`,
+`warnings: list[ComparisonWarning]`. 404 if either session, or either driver/lap's telemetry,
+doesn't exist. `WarningCode.DIFFERENT_CIRCUIT` — a non-blocking (200, not 4xx) warning when the two
+sessions' `Session.location` values differ: comparison stays allowed and computed, this only tells
+the frontend to hide track-outline rendering for a lap that never drove that circuit.
+
+## M15 addition: cross-session stint/tyre-strategy comparison
+
+`GET /stints/compare` reads `session_id_a`/`driver_a`/`session_id_b`/`driver_b` query params (same
+independently-resolved-sides shape as `/laps/compare`, no lap dimension). Returns
+`StintComparisonResponse` (`app/models/stint_comparison.py`): `a`/`b: DriverStintComparisonSide`
+(`session_id`, `driver_id`, `strategy: DriverStrategySummary`, `stints: list[StintPace]`,
+`pit_stops: list[PitStop]` — reusing M11's already-descriptive shapes unchanged) plus
+`warnings: list[StintComparisonWarning]`. No aligned grid, no delta series, and no computed
+strategy deltas or verdicts — juxtaposition only, matching M11's own descriptive-only boundary.
+Warnings (non-blocking, 200): `DIFFERENT_CIRCUIT` (same meaning as `/laps/compare`'s) and
+`NO_STINT_DATA_A`/`NO_STINT_DATA_B` (that side's session/driver combination has zero stints —
+indistinguishable from an unknown `driver_id` under `RaceContextRepository`'s existing contract,
+so this is disclosed rather than treated as a 404, matching ADR-0011's "absence is data, not
+failure").
+
+## M17 addition: cross-season driver pace trend
+
+`GET /drivers/{driver_id}/seasons/{season}/pace-trend?session_type=` (defaults to `race`) returns
+`SeasonPaceTrendResponse` (`app/models/driver_trends.py`): `driver_id`, `season`, `session_type`,
+`points: list[SeasonPaceTrendPoint]`. Each point (`session_id`, `event_id`, `event_name`,
+`round_number`, `session_date`, `valid_lap_count`, `best_lap_ms`, `median_lap_ms`,
+`theoretical_best_lap_ms`, `consistency_ms`, `consistency_cv`) is a deliberate subset of M8's
+`DriverSummary` — `full_throttle_pct` is omitted entirely (this route never fetches telemetry, so
+that field would always be null) and so are per-lap fields not meaningful at trend-point
+granularity. A round the driver didn't compete in is omitted from `points` entirely, not
+represented as a null point. **Never 404s**: neither `driver_id` nor `season` is a persisted,
+independently-checkable resource — both are aggregation keys over
+`TelemetryRepository.list_sessions()`, the same reasoning already given above for why
+`/seasons/{season}/events` doesn't 404 either.
+
 ## Why the backend re-reads Parquet directly (not via the pipeline package)
 
 `TelemetryRepository` (ADR-0006) is defined by the API's own read patterns, not by importing
@@ -210,6 +254,11 @@ value on every list item for no reason — a plain response-shaping choice, not 
 | GET | `/seasons` (M12, `app/api/seasons.py`) | `list[SeasonSummary]` | `200 []` if nothing is ingested yet — see below |
 | GET | `/seasons/{season}/events` (M12) | `list[EventSummary]` | `200 []` if that season has no ingested sessions |
 | GET | `/seasons/{season}/events/{event_id}/sessions` (M12) | `list[Session]` | `200 []` if that `(season, event_id)` has no ingested sessions |
+| GET | `/sessions/{session_id}/analytics/drivers` (M8, `app/api/session_analytics.py`) | `SessionAnalyticsResponse` | 404 if session doesn't exist |
+| GET | `/sessions/{session_id}/analytics/drivers/{driver}/laps` (M8) | `DriverLapsResponse` | 404 if session doesn't exist; unknown `driver` produces an all-empty/null response, not a 404 (`list_laps` already returns `[]` for a non-matching filter) |
+| GET | `/laps/compare?session_id_a=&driver_a=&lap_a=&session_id_b=&driver_b=&lap_b=` (M13, `app/api/laps_compare.py`) | `LapComparisonResponse` | 404 if either session doesn't exist, or either side's driver/lap has no telemetry |
+| GET | `/stints/compare?session_id_a=&driver_a=&session_id_b=&driver_b=` (M15, `app/api/stints_compare.py`) | `StintComparisonResponse` | 404 if either session doesn't exist; empty stints/pit-stops (plus a warning) if a side's driver has no stint data |
+| GET | `/drivers/{driver_id}/seasons/{season}/pace-trend?session_type=` (M17, `app/api/driver_trends.py`) | `SeasonPaceTrendResponse` | Never 404s — see the M17 addition above |
 
 `driver_id` and `lap_number` are both required query parameters on `/telemetry` — fetching a whole
 session's telemetry in one response isn't a V1 read pattern (PRD's success criteria and

@@ -53,15 +53,21 @@ Items are removed once fixed, not marked done — this list should always reflec
 
 ## Backend / performance
 
-- **`ParquetRepository._find_session` re-globs and re-reads every session's `session.parquet` on
-  every call**, and every one of `list_drivers`/`list_laps`/`get_telemetry`/`list_track_points`
-  calls it independently — so a single `TrackMapPage` load (which fetches track points and telemetry
-  in parallel) does two full session-directory scans from scratch. Found during the pre-M6
-  engineering audit (2026-08-01); not a new issue, just not previously written down. Deliberate
-  per `docs/api-model.md`'s "match on session_id, don't parse it" design note (the slug scheme can't
-  be unambiguously reverse-parsed from the directory path), and fine at V1's "small, curated set of
-  sessions" data volume (PRD §4). Worth an in-memory session_id → directory index if/when the ingested
-  session count grows enough for this to matter — not before.
+- **`ParquetRepository.get_telemetry`'s per-call `to_dict("records")` + Pydantic (`TelemetrySample`)
+  construction is now the dominant remaining cost on the full-grid `session_analytics` path.**
+  Found during the M20 documentation-reconciliation audit (2026-08-19), confirmed with a fresh
+  read-only benchmark against the real 2023 Bahrain GP race (20 drivers, 800,120 telemetry rows):
+  a full-grid `/sessions/{id}/analytics/drivers` request (1,056 `get_telemetry` calls) took ~3.0s
+  total, ~2.07ms/call once the M19 positional-index build itself is excluded — down from the
+  pre-M17 baseline of 37.7s, but `session_analytics` remains the slowest page in the app by a wide
+  margin over every other endpoint measured in the same audit (all sub-second). M17 (session
+  index), M18 (per-session file caches), and M19 (telemetry driver/lap positional index) already
+  eliminated the repeated-file-read and repeated-full-frame-filter costs that used to dominate this
+  path — what's left is per-matched-row `.to_dict("records")` and Pydantic model construction,
+  which none of those three milestones targeted (M19's own design review, §9/§11, explicitly
+  scoped this out). Worth a vectorized-construction pass (e.g. building `TelemetrySample`s from
+  columnar arrays instead of per-row dicts) if/when this page's load time becomes a priority again
+  — not before, and not part of any milestone that found it.
 
 ## Docker / deployment
 

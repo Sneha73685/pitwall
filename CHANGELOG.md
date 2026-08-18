@@ -8,10 +8,95 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing in progress — M15 is the most recently completed milestone (see `README.md`'s Project
-status). M16 is a documentation-only reconciliation pass (`docs/m16-design-review.md`) backfilling
-this file's M13–M15 entries below and correcting stale statements elsewhere; it touches no
+Nothing in progress — M19 is the most recently completed milestone (see `README.md`'s Project
+status). M20 is a documentation-only reconciliation pass (`docs/m20-design-review.md`) backfilling
+this file's M16–M19 entries below and correcting stale statements elsewhere; it touches no
 application code.
+
+## M19 — Telemetry Positional Index — 2026-08-19
+
+See `docs/m19-design-review.md` for the full design record.
+
+### Added
+
+- `ParquetRepository._telemetry_index_cache`/`_telemetry_positions`/`_group_telemetry_by_driver_lap`
+  (`app/repositories/parquet_repository.py`) — a per-session `(driver_id, lap_number) -> row
+  positions` index over the already-cached, unfiltered telemetry frame (M18), built via one
+  `groupby(...).indices` pass at most once per session, per instance. `get_telemetry()` now looks
+  up row positions and slices with `.iloc[...]` instead of re-scanning the full frame with a
+  boolean mask on every call — M18 stopped repeated file reads; this stops the repeated per-call
+  filter that remained. `distance_m` ordering, missing-driver/missing-lap behavior, cross-session
+  isolation, and per-instance isolation are all unchanged (verified byte-identical response body
+  on the same real full-grid `/analytics/drivers` request M18 was verified against).
+- 17 new repository tests covering lazy build, build-once-per-session, cross-session/cross-instance
+  isolation, ordering, and non-mutation of the cached frame.
+
+### Changed
+
+- None to any route, response model, or `TelemetryRepository` interface method — entirely internal
+  to `ParquetRepository`. No frontend, pipeline, schema, or dependency change.
+
+## M18 — Per-Session Parquet File Caching — 2026-08-18
+
+See `docs/m18-design-review.md` for the full design record.
+
+### Added
+
+- Four per-session file caches on `ParquetRepository` (`_drivers_cache`, `_laps_cache`,
+  `_telemetry_cache`, `_track_points_cache`) and a shared `_cached_read()` helper
+  (`app/repositories/parquet_repository.py`) — each of `drivers.parquet`, `laps.parquet`,
+  `telemetry.parquet`, `track.parquet` is now read at most once per session, per
+  `ParquetRepository` instance, regardless of how many times a method needing that file is called
+  or with what filter arguments. Extends M17's session-lookup index to the *contents* of a
+  session's own files, not just where they live.
+- 12 new repository tests covering lazy population, read-once-per-file, filter independence from
+  one shared cached frame, and cross-session/cross-instance isolation.
+
+### Changed
+
+- None to any route, response model, or `TelemetryRepository` interface method — entirely internal
+  to `ParquetRepository`. No frontend, pipeline, schema, or dependency change.
+
+## M17 — Cross-Season Driver Pace Trends — 2026-08-16
+
+See `docs/m17-design-review.md` for the full design record.
+
+### Added
+
+- `GET /drivers/{driver_id}/seasons/{season}/pace-trend` (`app/api/driver_trends.py`) — one
+  driver's race-pace trend across one season, reusing M8's `summarize_driver` unchanged with an
+  empty `telemetry_by_lap` (every field this endpoint exposes is computed purely from `Lap` data,
+  so telemetry is never fetched). New response models
+  (`app/models/driver_trends.py`): `SeasonPaceTrendResponse{driver_id, season, session_type,
+  points}`, `SeasonPaceTrendPoint` — a deliberate subset of M8's `DriverSummary` fields. Never
+  404s: neither `driver_id` nor `season` is a persisted, independently-checkable resource, matching
+  `/seasons/{season}/events`'s existing "aggregation key, not a catalogue row" reasoning.
+- `ParquetRepository._index()`/`_find_session()` (`app/repositories/parquet_repository.py`) — a
+  `session_id -> (session_dir, Session)` lookup memoized once per instance, replacing a full
+  directory re-scan on every session lookup. Every existing `session_id`-keyed method benefits
+  uniformly; no method beyond `_find_session`/`list_sessions` itself changed.
+- Frontend: `/drivers/:driverId/seasons/:season/pace-trend`
+  (`features/driver-trends/DriverSeasonPaceTrendPage`), reachable from `DriverSelectPage`.
+
+### Changed
+
+- None to any existing endpoint contract, `app/services/session_analytics/`, or any pre-existing
+  `ParquetRepository` method's return value/ordering/error behavior — all verified unchanged.
+
+## M16 — Documentation & Roadmap Reconciliation — 2026-08-16
+
+See `docs/m16-design-review.md` for the full design record.
+
+### Changed
+
+- `docs/prd.md` — added §3a recording M8–M15's real shipped milestone history, distinct from the
+  original V1 table; updated §5's deferred-features table with current shipped/unshipped status.
+- `docs/success-metrics.md` — corrected V2's cursor-sync description to the real M14 architecture
+  (Zustand stores, not `echarts.connect()`); added V3's M10/M11/M15 shipped status.
+- `README.md` — corrected "Current milestone," the milestone table, and the stale quickstart
+  cursor-sync line; added M13/M14/M15 paragraphs to "Current capabilities."
+- `CHANGELOG.md` — backfilled M13, M14, M15 entries; corrected the `[Unreleased]` blurb.
+- No application source, test, schema, migration, dependency, or data file touched.
 
 ## M15 — Cross-Session Stint & Tyre-Strategy Comparison — 2026-08-16
 

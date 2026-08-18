@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M15 — Cross-session stint & tyre-strategy comparison — complete.**
+**Current milestone: M19 — Telemetry lookup optimization — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -49,8 +49,12 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M13 | Cross-session lap & telemetry comparison | ✅ Done |
 | M14 | Synchronized telemetry cursor (V2) | ✅ Done |
 | M15 | Cross-session stint & tyre-strategy comparison | ✅ Done |
+| M16 | Documentation & roadmap reconciliation | ✅ Done |
+| M17 | Cross-season driver pace trends | ✅ Done |
+| M18 | Per-session Parquet file-level caching (performance) | ✅ Done |
+| M19 | Telemetry driver/lap positional index (performance) | ✅ Done |
 
-M8–M15 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M15
+M8–M19 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M19
 without implying they were part of the original V1–V5 schedule); each has its own design review
 under `docs/` (`m8-design-review.md` onward). See `docs/releases/` for per-milestone summaries
 (currently covering M1–M5; later milestones' records are their own design-review/implementation-plan
@@ -117,10 +121,10 @@ Parquet-backed session data. Also included: a controlled, real, historical inges
 the full batch-by-batch record.
 
 M13 generalizes lap/telemetry comparison (M6) from two drivers within one session to two
-**independently-selected sessions**: `/laps/compare` reads `sessionA`/`driverA`/`lapA`/`sessionB`/
-`driverB`/`lapB` query params, each side resolved via a modal `SessionPicker` (Season → Event →
-Session), and discloses — without blocking — when the two sessions are at different circuits. See
-[`docs/m13-design-review.md`](docs/m13-design-review.md).
+**independently-selected sessions**: `/laps/compare` reads `session_id_a`/`driver_a`/`lap_a`/
+`session_id_b`/`driver_b`/`lap_b` query params, each side resolved via a modal `SessionPicker`
+(Season → Event → Session), and discloses — without blocking — when the two sessions are at
+different circuits. See [`docs/m13-design-review.md`](docs/m13-design-review.md).
 
 M14 adds the synchronized telemetry cursor V2 named as its next milestone since M1: hovering the
 telemetry channel traces or the delta chart moves a shared cursor — backed by page-scoped Zustand
@@ -136,6 +140,24 @@ and pit-stop timing side by side — juxtaposed only, no computed strategy verdi
 `SessionPicker` unchanged and the same disclose-don't-block warning convention `/laps/compare`
 established. Reachable from a driver's Strategy page ("Compare Strategy"). See
 [`docs/m15-design-review.md`](docs/m15-design-review.md).
+
+M16 is a documentation-only reconciliation pass (no application code, no capability change) —
+see [`docs/m16-design-review.md`](docs/m16-design-review.md).
+
+M17 adds a **cross-season driver pace-trend** view: `/drivers/:driverId/seasons/:season/pace-trend`
+plots one driver's best/median/theoretical-best lap time and consistency across every session
+they entered in a season, reusing M8's session-analytics computation unchanged (no telemetry is
+fetched — every field is derived from lap data alone). Reachable from the driver selector. See
+[`docs/m17-design-review.md`](docs/m17-design-review.md).
+
+M18 and M19 are backend-only performance work, not new capabilities: M18 caches each session's
+own Parquet files in memory for the lifetime of one request (previously, a full-grid
+`/analytics/drivers` request could re-read `telemetry.parquet` hundreds of times); M19 adds a
+per-session driver/lap lookup index on top of that cache, removing a repeated full-frame scan on
+every lookup. Together they took a real full-grid session-analytics request from ~37.7s to the
+low single digits of seconds, with a byte-identical response. See
+[`docs/m18-design-review.md`](docs/m18-design-review.md) and
+[`docs/m19-design-review.md`](docs/m19-design-review.md).
 
 ## Roadmap
 

@@ -203,3 +203,37 @@ Discovery and persistence are two genuinely separate concerns here, deliberately
   session is already ingested. Once `ingest_session()` has written a session's Parquet (and, for
   stints/pit stops, Postgres) rows, that session is indistinguishable in storage from one ingested
   before M12 ever existed.
+
+## M13–M19: no new persisted schema
+
+None of M13 (cross-session lap comparison), M14 (synchronized cursor), M15 (cross-session stint
+comparison), M16 (documentation reconciliation), M17 (cross-season pace trend), M18 (per-session
+Parquet file caching), or M19 (telemetry driver/lap positional index) added a Parquet column, a
+PostgreSQL table or column, or a migration — re-verified directly against `pipeline/` at M20
+implementation time: zero changes to `pipeline/pitwall_pipeline/` (including
+`pipeline/pitwall_pipeline/migrations/`) across the entire M15→M19 commit range. The Parquet cache
+layout and PostgreSQL `stints`/`pit_stops` schema defined above (M1, M10) are exactly what every
+session on disk, and every row in Postgres, still looks like.
+
+**M14's cursor-sync is entirely frontend state** — page-scoped Zustand stores in the React app —
+with no backend or data-layer involvement at all; it has no entry in this document because there
+is nothing here for it to touch.
+
+**M17→M18→M19 added caches, not schema — and the distinction is load-bearing, not incidental.**
+`ParquetRepository` (`backend/app/repositories/parquet_repository.py`) now holds, per instance:
+
+- a session-lookup index (M17): `session_id -> (session_dir, Session)`,
+- four per-session file caches (M18): the unfiltered contents of `drivers.parquet`,
+  `laps.parquet`, `telemetry.parquet`, `track.parquet`, each read at most once per session,
+- a telemetry driver/lap positional index (M19): `(driver_id, lap_number) -> row positions` into
+  the M18 telemetry cache, built via one `groupby(...).indices` pass at most once per session.
+
+All three are **plain Python objects living on one `ParquetRepository` instance, for the lifetime
+of one request** — `app/dependencies.py` constructs a fresh instance per request, with no
+`@lru_cache` and no singleton, so none of this state ever exists in a database, on disk, or across
+more than one request. It is not a schema, not a migration, not a persistent index in the database
+sense of that word — it is exactly as ephemeral as a local variable, just one that happens to
+survive for the duration of one request's several repository calls instead of one function call.
+See `docs/architecture.md` §3 for the same lineage described at the architecture level, and
+`docs/m17-design-review.md`/`docs/m18-design-review.md`/`docs/m19-design-review.md` for the full
+design and correctness record of each stage.
