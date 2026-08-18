@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
+from app.repositories import parquet_repository
 from app.repositories.parquet_repository import ParquetRepository
 from tests.fixtures import SESSION_ID, write_minimal_session
 
@@ -743,3 +744,410 @@ def test_m18_regression_repeated_get_telemetry_across_a_grid_reads_the_file_once
 
     assert len(results) == 9
     assert all(len(samples) == 1 for samples in results)
+
+
+# --- M19 secondary telemetry index (docs/m19-design-review.md §4/§12) ------
+
+
+def _write_multi_lap_telemetry(
+    session_dir: Path, session_id: str, driver_ids: tuple[str, ...], lap_numbers: tuple[int, ...]
+) -> None:
+    """Multiple drivers x multiple laps, each lap with two samples written
+    to the file in non-distance-sorted order (100.0 then 50.0) -- exercises
+    both the grid access pattern get_telemetry's index targets and the
+    distance_m sort that must survive it (docs/m19-design-review.md §7,
+    §12.8)."""
+    telemetry_rows = []
+    for driver_id in driver_ids:
+        for lap_number in lap_numbers:
+            telemetry_rows.append(
+                {
+                    "session_id": session_id,
+                    "driver_id": driver_id,
+                    "lap_number": lap_number,
+                    "distance_m": 100.0,
+                    "time_seconds": 2.0,
+                    "speed_kph": 250.0,
+                    "throttle_pct": 100.0,
+                    "brake_active": False,
+                    "rpm": 11000.0,
+                    "gear": 6,
+                    "drs_active": False,
+                    "x": 10.0,
+                    "y": 20.0,
+                    "z": 0.0,
+                }
+            )
+            telemetry_rows.append(
+                {
+                    "session_id": session_id,
+                    "driver_id": driver_id,
+                    "lap_number": lap_number,
+                    "distance_m": 50.0,
+                    "time_seconds": 1.0,
+                    "speed_kph": 200.0,
+                    "throttle_pct": 80.0,
+                    "brake_active": False,
+                    "rpm": 10000.0,
+                    "gear": 5,
+                    "drs_active": True,
+                    "x": 5.0,
+                    "y": 10.0,
+                    "z": 0.0,
+                }
+            )
+    pd.DataFrame(telemetry_rows).to_parquet(session_dir / "telemetry.parquet", index=False)
+
+
+def test_telemetry_index_starts_empty_and_is_not_built_until_get_telemetry_is_called(
+    session_cache_dir: Path,
+) -> None:
+    repo = ParquetRepository(session_cache_dir)
+
+    assert repo._telemetry_index_cache == {}  # noqa: SLF001
+
+    repo.list_drivers(SESSION_ID)
+    repo.list_laps(SESSION_ID)
+
+    assert repo._telemetry_index_cache == {}  # noqa: SLF001
+
+    repo.get_telemetry(SESSION_ID, "VER", 1)
+
+    assert SESSION_ID in repo._telemetry_index_cache  # noqa: SLF001
+
+
+def test_telemetry_index_is_built_at_most_once_per_session_across_different_lookups(
+    tmp_path: Path,
+) -> None:
+    session_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(
+        session_dir, "2023_bahrain_grand_prix_race", ("VER", "LEC"), (1, 2, 3)
+    )
+    repo = ParquetRepository(tmp_path)
+
+    with patch.object(
+        parquet_repository,
+        "_group_telemetry_by_driver_lap",
+        wraps=parquet_repository._group_telemetry_by_driver_lap,
+    ) as groupby_spy:
+        repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1)
+        repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 2)
+        repo.get_telemetry("2023_bahrain_grand_prix_race", "LEC", 3)
+        repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1)  # repeated lookup
+
+        assert groupby_spy.call_count == 1
+
+
+def test_telemetry_index_reused_across_different_driver_lap_combinations_gives_correct_results(
+    tmp_path: Path,
+) -> None:
+    session_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(
+        session_dir, "2023_bahrain_grand_prix_race", ("VER", "LEC", "HAM"), (1, 2)
+    )
+    repo = ParquetRepository(tmp_path)
+
+    ver_lap1 = repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1)
+    ver_lap2 = repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 2)
+    lec_lap1 = repo.get_telemetry("2023_bahrain_grand_prix_race", "LEC", 1)
+    ham_lap2 = repo.get_telemetry("2023_bahrain_grand_prix_race", "HAM", 2)
+
+    for samples in (ver_lap1, ver_lap2, lec_lap1, ham_lap2):
+        assert len(samples) == 2
+
+
+def test_telemetry_index_missing_driver_returns_empty_list(tmp_path: Path) -> None:
+    session_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(session_dir, "2023_bahrain_grand_prix_race", ("VER",), (1,))
+    repo = ParquetRepository(tmp_path)
+
+    assert repo.get_telemetry("2023_bahrain_grand_prix_race", "NOBODY", 1) == []
+
+
+def test_telemetry_index_missing_lap_returns_empty_list(tmp_path: Path) -> None:
+    session_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(session_dir, "2023_bahrain_grand_prix_race", ("VER",), (1,))
+    repo = ParquetRepository(tmp_path)
+
+    assert repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 999) == []
+
+
+def test_telemetry_index_distance_m_ordering_survives_the_positional_lookup(
+    session_cache_dir: Path,
+) -> None:
+    """write_session_cache's VER/lap 1 rows are written 100.0-then-50.0 --
+    not distance-sorted on disk -- so this proves sort_values() still runs
+    on the iloc-selected subset, not just on the pre-M19 boolean-masked
+    one (docs/m19-design-review.md §7, §12.8)."""
+    repo = ParquetRepository(session_cache_dir)
+
+    samples = repo.get_telemetry(SESSION_ID, "VER", 1)
+
+    assert [s.distance_m for s in samples] == [50.0, 100.0]
+
+
+def test_telemetry_index_empty_telemetry_file_returns_empty_list_without_raising(
+    tmp_path: Path,
+) -> None:
+    write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+        include_telemetry=False,
+    )
+    repo = ParquetRepository(tmp_path)
+
+    assert repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1) == []
+    # groupby(...).indices on a zero-row frame must not raise, and the
+    # (empty) index is still cached -- not rebuilt on a second call.
+    assert "2023_bahrain_grand_prix_race" in repo._telemetry_index_cache  # noqa: SLF001
+
+
+def test_telemetry_index_two_sessions_never_share_an_index(tmp_path: Path) -> None:
+    session_a_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(session_a_dir, "2023_bahrain_grand_prix_race", ("VER",), (1,))
+
+    session_b_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_saudi_arabian_grand_prix_race",
+        season=2023,
+        event_slug="saudi_arabian_grand_prix",
+        session_type="race",
+        event_name="Saudi Arabian Grand Prix",
+        round_number=2,
+        location="Jeddah",
+        country="Saudi Arabia",
+        session_date="2023-03-19T17:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(session_b_dir, "2023_saudi_arabian_grand_prix_race", ("VER",), (1,))
+    repo = ParquetRepository(tmp_path)
+
+    with patch.object(
+        parquet_repository,
+        "_group_telemetry_by_driver_lap",
+        wraps=parquet_repository._group_telemetry_by_driver_lap,
+    ) as groupby_spy:
+        samples_a = repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1)
+        samples_b = repo.get_telemetry("2023_saudi_arabian_grand_prix_race", "VER", 1)
+
+        # One groupby build per session -- never a cache hit across session_ids.
+        assert groupby_spy.call_count == 2
+
+    assert len(samples_a) == 2
+    assert len(samples_b) == 2
+    assert set(repo._telemetry_index_cache.keys()) == {  # noqa: SLF001
+        "2023_bahrain_grand_prix_race",
+        "2023_saudi_arabian_grand_prix_race",
+    }
+    # Looking up a driver/lap that only exists in session B must not be
+    # satisfiable from session A's index.
+    assert repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 999) == []
+
+
+def test_telemetry_index_fresh_repository_instance_gets_its_own_empty_index(
+    tmp_path: Path,
+) -> None:
+    session_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(session_dir, "2023_bahrain_grand_prix_race", ("VER",), (1,))
+
+    repo_a = ParquetRepository(tmp_path)
+    repo_a.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1)
+    assert "2023_bahrain_grand_prix_race" in repo_a._telemetry_index_cache  # noqa: SLF001
+
+    repo_b = ParquetRepository(tmp_path)
+    assert repo_b._telemetry_index_cache == {}  # noqa: SLF001
+
+    with patch.object(
+        parquet_repository,
+        "_group_telemetry_by_driver_lap",
+        wraps=parquet_repository._group_telemetry_by_driver_lap,
+    ) as groupby_spy:
+        repo_b.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1)
+
+        assert groupby_spy.call_count == 1
+
+
+def test_telemetry_index_lookup_does_not_mutate_the_cached_flat_dataframe(
+    tmp_path: Path,
+) -> None:
+    session_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(session_dir, "2023_bahrain_grand_prix_race", ("VER", "LEC"), (1, 2))
+    repo = ParquetRepository(tmp_path)
+
+    repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1)
+    cached_frame = repo._telemetry_cache["2023_bahrain_grand_prix_race"]  # noqa: SLF001
+    snapshot = cached_frame.copy(deep=True)
+
+    # Multiple further lookups, including combinations that overlap and
+    # combinations that don't exist at all.
+    repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 2)
+    repo.get_telemetry("2023_bahrain_grand_prix_race", "LEC", 1)
+    repo.get_telemetry("2023_bahrain_grand_prix_race", "VER", 1)
+    repo.get_telemetry("2023_bahrain_grand_prix_race", "GHOST", 1)
+
+    # Same object identity (never reassigned) and unchanged contents.
+    assert repo._telemetry_cache["2023_bahrain_grand_prix_race"] is cached_frame  # noqa: SLF001
+    pd.testing.assert_frame_equal(cached_frame, snapshot)
+
+
+def test_telemetry_index_m18_file_read_once_contract_still_holds(tmp_path: Path) -> None:
+    """M19 must not regress M18's contract: the underlying telemetry.parquet
+    read count is unaffected by adding the secondary index on top of the
+    already-cached flat frame."""
+    session_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    _write_multi_lap_telemetry(
+        session_dir, "2023_bahrain_grand_prix_race", ("VER", "LEC", "HAM"), (1, 2, 3)
+    )
+    repo = ParquetRepository(tmp_path)
+
+    with patch.object(pd, "read_parquet", wraps=pd.read_parquet) as read_spy:
+        for driver_id in ("VER", "LEC", "HAM"):
+            for lap_number in (1, 2, 3):
+                repo.get_telemetry("2023_bahrain_grand_prix_race", driver_id, lap_number)
+
+        assert len(_read_calls(read_spy, "telemetry.parquet")) == 1
+
+
+def test_telemetry_index_regression_full_grid_pattern_builds_index_once_and_is_correct(
+    tmp_path: Path,
+) -> None:
+    """Reproduces session_analytics.py's exact access pattern (one
+    get_telemetry call per lap, per driver, docs/m19-design-review.md §2)
+    across a representative small grid, asserting both the M18 read-once
+    contract and the new M19 index-build-once contract hold together, and
+    that every individual result is still correct."""
+    session_dir = write_minimal_session(
+        tmp_path,
+        session_id="2023_bahrain_grand_prix_race",
+        season=2023,
+        event_slug="bahrain_grand_prix",
+        session_type="race",
+        event_name="Bahrain Grand Prix",
+        round_number=1,
+        location="Sakhir",
+        country="Bahrain",
+        session_date="2023-03-05T15:00:00+00:00",
+    )
+    driver_ids = ("VER", "LEC", "HAM", "NOR")
+    lap_numbers = (1, 2, 3, 4, 5)
+    _write_multi_lap_telemetry(session_dir, "2023_bahrain_grand_prix_race", driver_ids, lap_numbers)
+    repo = ParquetRepository(tmp_path)
+
+    with (
+        patch.object(pd, "read_parquet", wraps=pd.read_parquet) as read_spy,
+        patch.object(
+            parquet_repository,
+            "_group_telemetry_by_driver_lap",
+            wraps=parquet_repository._group_telemetry_by_driver_lap,
+        ) as groupby_spy,
+    ):
+        results = {
+            (driver_id, lap_number): repo.get_telemetry(
+                "2023_bahrain_grand_prix_race", driver_id, lap_number
+            )
+            for driver_id in driver_ids
+            for lap_number in lap_numbers
+        }
+
+        assert len(_read_calls(read_spy, "telemetry.parquet")) == 1
+        assert groupby_spy.call_count == 1
+
+    assert len(results) == len(driver_ids) * len(lap_numbers)
+    for samples in results.values():
+        assert len(samples) == 2
+        assert [s.distance_m for s in samples] == [50.0, 100.0]

@@ -11,6 +11,8 @@ from collections.abc import Hashable, Iterator, Mapping
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 # pyarrow ships no type stubs/py.typed marker (unlike pandas, covered by the
@@ -21,6 +23,38 @@ import pyarrow.parquet as pq  # type: ignore[import-untyped]
 from app.models import Driver, Lap, Session, SessionType, TelemetrySample, TrackPoint
 from app.repositories.base import TelemetryRepository
 from app.utils.ids import make_event_id
+
+# `DataFrameGroupBy.indices` (pandas-stubs 2.3.3.260113) types its values as
+# `Index | np_ndarray_int64 | list[int]` -- a union covering pandas' several
+# possible internal representations, not a single concrete type. Normalizing
+# every value to a plain int64 ndarray via np.asarray() at build time (once,
+# not per lookup -- see _telemetry_positions) collapses that union into one
+# concrete type this module owns, instead of importing pandas-stubs' private
+# _typing aliases or weakening this file's mypy --strict typing with Any.
+_TelemetryPositions = dict[Hashable, npt.NDArray[np.int64]]
+
+
+def _group_telemetry_by_driver_lap(df: pd.DataFrame) -> _TelemetryPositions:
+    """(driver_id, lap_number) -> row positions into `df`, via one groupby
+    pass over the already-cached, unfiltered telemetry frame. A plain
+    module-level function -- like every other row/frame helper in this
+    file (`_telemetry_row_count`, `_driver_from_row`, etc.) -- rather than
+    inlined into `ParquetRepository._telemetry_positions`, specifically so
+    it can be spied on directly in tests (`patch.object(parquet_repository,
+    "_group_telemetry_by_driver_lap", wraps=...)`), the same way
+    `pd.read_parquet` is spied on for M18's read-count tests. Patching
+    `pd.DataFrame.groupby` itself doesn't work for this: `unittest.mock`
+    replaces the class attribute with a plain `MagicMock`, which isn't a
+    descriptor, so `df.groupby(...)` stops auto-binding `self` to `df` and
+    the call fails with "You have to supply one of 'by' and 'level'"
+    (verified during M19 implementation, docs/m19-design-review.md §12).
+    `sort=False`: this function only ever looks up by exact key, never
+    iterates groups in key order, so sorting group keys buys nothing.
+    """
+    return {
+        key: np.asarray(positions, dtype=np.int64)
+        for key, positions in df.groupby(["driver_id", "lap_number"], sort=False).indices.items()
+    }
 
 
 def _optional_str(value: Any) -> str | None:
@@ -134,6 +168,18 @@ class ParquetRepository(TelemetryRepository):
     never the cached frame itself, so multiple filtered reads of the same session
     (e.g. two drivers' laps, or many drivers' many laps' telemetry -- the M8
     full-grid access pattern the index alone doesn't help with) share one file read.
+
+    `_telemetry_positions()` (M19, docs/m19-design-review.md §4) goes one layer
+    further for `get_telemetry` specifically: M18 stops repeated *file reads*, but
+    every call still re-scanned the cached, unfiltered telemetry frame with a fresh
+    `(driver_id, lap_number)` boolean mask over every row. This adds a second,
+    per-session cache -- `(driver_id, lap_number) -> row positions` into the
+    already-cached telemetry frame, built via one `groupby(...).indices` pass the
+    first time a session's telemetry is looked up, then reused by every subsequent
+    `get_telemetry` call for that session regardless of which driver/lap it asks
+    for. It stores row *positions*, not row *data*, so it coexists with
+    `_telemetry_cache` rather than replacing it -- the flat frame is still the only
+    place the actual data lives; this index only says where to find it.
     """
 
     def __init__(self, base_dir: Path) -> None:
@@ -143,6 +189,7 @@ class ParquetRepository(TelemetryRepository):
         self._laps_cache: dict[str, pd.DataFrame] = {}
         self._telemetry_cache: dict[str, pd.DataFrame] = {}
         self._track_points_cache: dict[str, pd.DataFrame] = {}
+        self._telemetry_index_cache: dict[str, _TelemetryPositions] = {}
 
     def _iter_session_dirs(self) -> Iterator[tuple[Path, Session]]:
         for session_file in sorted(self._base_dir.glob("*/*/*/session.parquet")):
@@ -174,6 +221,19 @@ class ParquetRepository(TelemetryRepository):
         if session_id not in cache:
             cache[session_id] = pd.read_parquet(session_dir / filename)
         return cache[session_id]
+
+    def _telemetry_positions(self, session_id: str, df: pd.DataFrame) -> _TelemetryPositions:
+        """(driver_id, lap_number) -> row positions into `df`, built via one
+        groupby pass at most once per session, per instance
+        (docs/m19-design-review.md §4). `df` is the already-cached, unfiltered
+        telemetry frame from `_cached_read` -- this never triggers a second
+        file read, only a second, cheaper pass over data already in memory.
+        Scoped to `get_telemetry` alone, not folded into `_cached_read`:
+        no other method calls `get_telemetry`'s per-item-loop access pattern
+        (docs/m19-design-review.md §4.3)."""
+        if session_id not in self._telemetry_index_cache:
+            self._telemetry_index_cache[session_id] = _group_telemetry_by_driver_lap(df)
+        return self._telemetry_index_cache[session_id]
 
     def list_sessions(self) -> list[Session]:
         # dict preserves insertion order (3.7+), and the index is built by
@@ -221,9 +281,19 @@ class ParquetRepository(TelemetryRepository):
             return []
         session_dir, _ = found
         df = self._cached_read(self._telemetry_cache, session_id, session_dir, "telemetry.parquet")
-        df = df[(df["driver_id"] == driver_id) & (df["lap_number"] == lap_number)]
-        df = df.sort_values("distance_m")
-        return [_telemetry_sample_from_row(row) for row in df.to_dict("records")]
+        positions = self._telemetry_positions(session_id, df).get((driver_id, lap_number))
+        if positions is None:
+            return []
+        # Fancy (non-contiguous) integer indexing -- df.iloc[positions] always
+        # returns a new DataFrame, never a view, so the cached frame above is
+        # never mutated by this or the sort_values() below (docs/m19-design-
+        # review.md §7). Row order from `positions` follows the cached frame's
+        # own row order, not distance_m -- sort_values() is still required, not
+        # redundant (two other modules depend on this ordering by name: see
+        # app/services/lap_comparison/validation.py and
+        # app/services/session_analytics/driving_style.py).
+        matched = df.iloc[positions].sort_values("distance_m")
+        return [_telemetry_sample_from_row(row) for row in matched.to_dict("records")]
 
     def list_track_points(self, session_id: str) -> list[TrackPoint]:
         found = self._find_session(session_id)
