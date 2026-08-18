@@ -125,11 +125,24 @@ class ParquetRepository(TelemetryRepository):
     concurrently-mutated index can't occur under the current dependency-injection
     model. This is a documented dependency on that model continuing to hold, not an
     assumption made silently (docs/m17-design-review.md §3).
+
+    `_cached_read()` (M18, docs/m18-design-review.md §4) extends the same lifecycle
+    to each session's own data files: `drivers.parquet`, `laps.parquet`,
+    `telemetry.parquet`, and `track.parquet` are each read at most once per session,
+    per instance, and cached *unfiltered* -- `list_laps`/`get_telemetry` filter and
+    `list_track_points`/`get_telemetry` sort a value derived from the cached frame,
+    never the cached frame itself, so multiple filtered reads of the same session
+    (e.g. two drivers' laps, or many drivers' many laps' telemetry -- the M8
+    full-grid access pattern the index alone doesn't help with) share one file read.
     """
 
     def __init__(self, base_dir: Path) -> None:
         self._base_dir = base_dir
         self._session_index: dict[str, tuple[Path, Session]] | None = None
+        self._drivers_cache: dict[str, pd.DataFrame] = {}
+        self._laps_cache: dict[str, pd.DataFrame] = {}
+        self._telemetry_cache: dict[str, pd.DataFrame] = {}
+        self._track_points_cache: dict[str, pd.DataFrame] = {}
 
     def _iter_session_dirs(self) -> Iterator[tuple[Path, Session]]:
         for session_file in sorted(self._base_dir.glob("*/*/*/session.parquet")):
@@ -150,6 +163,17 @@ class ParquetRepository(TelemetryRepository):
 
     def _find_session(self, session_id: str) -> tuple[Path, Session] | None:
         return self._index().get(session_id)
+
+    def _cached_read(
+        self, cache: dict[str, pd.DataFrame], session_id: str, session_dir: Path, filename: str
+    ) -> pd.DataFrame:
+        """Read `session_dir / filename` at most once per `session_id`, per cache,
+        per instance. Always the unfiltered file contents -- callers filter/sort
+        the returned frame themselves; nothing filtered is ever written back here
+        (docs/m18-design-review.md §4.1)."""
+        if session_id not in cache:
+            cache[session_id] = pd.read_parquet(session_dir / filename)
+        return cache[session_id]
 
     def list_sessions(self) -> list[Session]:
         # dict preserves insertion order (3.7+), and the index is built by
@@ -176,7 +200,7 @@ class ParquetRepository(TelemetryRepository):
         if found is None:
             return []
         session_dir, _ = found
-        df = pd.read_parquet(session_dir / "drivers.parquet")
+        df = self._cached_read(self._drivers_cache, session_id, session_dir, "drivers.parquet")
         return [_driver_from_row(row) for row in df.to_dict("records")]
 
     def list_laps(self, session_id: str, driver_id: str | None = None) -> list[Lap]:
@@ -184,7 +208,7 @@ class ParquetRepository(TelemetryRepository):
         if found is None:
             return []
         session_dir, _ = found
-        df = pd.read_parquet(session_dir / "laps.parquet")
+        df = self._cached_read(self._laps_cache, session_id, session_dir, "laps.parquet")
         if driver_id is not None:
             df = df[df["driver_id"] == driver_id]
         return [_lap_from_row(row) for row in df.to_dict("records")]
@@ -196,7 +220,7 @@ class ParquetRepository(TelemetryRepository):
         if found is None:
             return []
         session_dir, _ = found
-        df = pd.read_parquet(session_dir / "telemetry.parquet")
+        df = self._cached_read(self._telemetry_cache, session_id, session_dir, "telemetry.parquet")
         df = df[(df["driver_id"] == driver_id) & (df["lap_number"] == lap_number)]
         df = df.sort_values("distance_m")
         return [_telemetry_sample_from_row(row) for row in df.to_dict("records")]
@@ -206,6 +230,6 @@ class ParquetRepository(TelemetryRepository):
         if found is None:
             return []
         session_dir, _ = found
-        df = pd.read_parquet(session_dir / "track.parquet")
+        df = self._cached_read(self._track_points_cache, session_id, session_dir, "track.parquet")
         df = df.sort_values("distance_m")
         return [_track_point_from_row(row) for row in df.to_dict("records")]
