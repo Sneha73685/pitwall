@@ -1,33 +1,47 @@
-"""Cross-season driver pace-trend endpoint (M17). See
-docs/m17-design-review.md.
+"""Cross-season driver trend endpoints: pace (M17) and stint/tyre-strategy
+(M21). See docs/m17-design-review.md and docs/m21-design-review.md.
 
 GET, not POST -- matching every other multi-parameter read in this API
 (`compare_laps`, `compare_stints`, `list_laps`).
 
-This route is a thin adapter, as thin as `laps_compare.py`/
-`stints_compare.py`/`session_analytics.py`'s own routes: it filters
-`repository.list_sessions()` via the new pure
-`list_sessions_for_driver_season` (§5.3), checks each matching session's
-roster, and calls `summarize_driver` (M8, `app/services/session_analytics/
-aggregation.py`) **unchanged**, with an empty `telemetry_by_lap` dict --
-every field this endpoint exposes is computed purely from `Lap` data
-(docs/m17-design-review.md §1.3), so telemetry is never fetched at all.
+Both routes are thin adapters, as thin as `laps_compare.py`/
+`stints_compare.py`/`session_analytics.py`'s own routes, sharing the same
+`list_sessions_for_driver_season` (§5.3) filtering step and roster-check
+pattern. `get_driver_season_pace_trend` calls `summarize_driver` (M8,
+`app/services/session_analytics/aggregation.py`) **unchanged**, with an
+empty `telemetry_by_lap` dict -- every field it exposes is computed purely
+from `Lap` data (docs/m17-design-review.md §1.3), so telemetry is never
+fetched at all. `get_driver_season_tyre_trend` calls
+`driver_strategy_summary` (M11, `app/services/tyre_performance/
+strategy_summary.py`) **unchanged** -- it needs only `stints`, so it never
+touches `laps.parquet` at all beyond the roster check both routes share
+(docs/m21-design-review.md §5).
 
-Never 404s: neither `driver_id` nor `season` is a persisted resource this
-route could check existence against, matching `app/api/seasons.py`'s own
-documented reasoning for why `/seasons/{season}/events` doesn't 404 either
--- both are aggregation keys over `list_sessions()`, not rows in a
-catalogue.
+Neither route 404s: neither `driver_id` nor `season` is a persisted
+resource either route could check existence against, matching
+`app/api/seasons.py`'s own documented reasoning for why
+`/seasons/{season}/events` doesn't 404 either -- both are aggregation keys
+over `list_sessions()`, not rows in a catalogue.
 """
 
 from fastapi import APIRouter, Depends, Query
 
-from app.dependencies import get_telemetry_repository
-from app.models.driver_trends import SeasonPaceTrendPoint, SeasonPaceTrendResponse
+from app.dependencies import get_race_context_repository, get_telemetry_repository
+from app.models.driver_trends import (
+    SeasonPaceTrendPoint,
+    SeasonPaceTrendResponse,
+    SeasonTyreTrendPoint,
+    SeasonTyreTrendResponse,
+)
 from app.models.telemetry import Session, SessionType
-from app.repositories import TelemetryRepository
+from app.models.tyre_performance import DriverStrategySummary
+from app.repositories import RaceContextRepository, TelemetryRepository
 from app.services.session_analytics.aggregation import summarize_driver
 from app.services.session_discovery import list_sessions_for_driver_season
+from app.services.tyre_performance.strategy_summary import (
+    DriverStrategySummary as DriverStrategySummaryResult,
+)
+from app.services.tyre_performance.strategy_summary import driver_strategy_summary
 
 router = APIRouter(prefix="/drivers", tags=["driver-trends"])
 
@@ -88,6 +102,75 @@ def get_driver_season_pace_trend(
         points.append(_to_trend_point(session, repository, driver_id))
 
     return SeasonPaceTrendResponse(
+        driver_id=driver_id,
+        season=season,
+        session_type=session_type,
+        points=points,
+    )
+
+
+def _to_driver_strategy_summary(result: DriverStrategySummaryResult) -> DriverStrategySummary:
+    """Mirrors app/api/tyre_performance.py's and app/api/stints_compare.py's
+    own identically-named mapper exactly -- not imported from either since
+    both are private, unexported helpers. A third copy is a deliberate,
+    disclosed choice (docs/m21-design-review.md §6.5), not an oversight:
+    extracting a shared helper would be an unrelated cleanup outside this
+    milestone's approved scope."""
+    return DriverStrategySummary(
+        driver_id=result.driver_id,
+        stint_count=result.stint_count,
+        compound_sequence=result.compound_sequence,
+        stint_lengths=result.stint_lengths,
+    )
+
+
+def _to_tyre_trend_point(
+    session: Session, race_context_repository: RaceContextRepository, driver_id: str
+) -> SeasonTyreTrendPoint:
+    stints = race_context_repository.list_stints(session.session_id, driver_id)
+    strategy = _to_driver_strategy_summary(driver_strategy_summary(driver_id, stints))
+    return SeasonTyreTrendPoint(
+        session_id=session.session_id,
+        event_id=session.event_id,
+        event_name=session.event_name,
+        round_number=session.round_number,
+        session_date=session.session_date,
+        strategy=strategy,
+    )
+
+
+@router.get(
+    "/{driver_id}/seasons/{season}/tyre-trend",
+    response_model=SeasonTyreTrendResponse,
+    summary="One driver's stint/tyre-strategy trend across one season",
+)
+def get_driver_season_tyre_trend(
+    driver_id: str,
+    season: int,
+    session_type: SessionType = Query(
+        default=SessionType.RACE,
+        description="Session type to trend -- defaults to race strategy",
+    ),
+    telemetry_repository: TelemetryRepository = Depends(get_telemetry_repository),
+    race_context_repository: RaceContextRepository = Depends(get_race_context_repository),
+) -> SeasonTyreTrendResponse:
+    sessions = list_sessions_for_driver_season(
+        telemetry_repository.list_sessions(), season, session_type
+    )
+
+    points: list[SeasonTyreTrendPoint] = []
+    for session in sessions:
+        drivers = telemetry_repository.list_drivers(session.session_id)
+        # Roster-absent: same convention as get_driver_season_pace_trend
+        # above. Distinct from "entered but zero stints," handled below by
+        # driver_strategy_summary([]) naturally producing a point with
+        # stint_count=0 and empty arrays -- no special-casing needed
+        # (docs/m21-design-review.md §3).
+        if not any(driver.driver_id == driver_id for driver in drivers):
+            continue
+        points.append(_to_tyre_trend_point(session, race_context_repository, driver_id))
+
+    return SeasonTyreTrendResponse(
         driver_id=driver_id,
         season=season,
         session_type=session_type,

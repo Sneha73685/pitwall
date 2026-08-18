@@ -23,6 +23,11 @@ import styles from "./DriverSelectPage.module.css";
  * this page's already-fetched session context rather than adding a new
  * navigation surface. Fetches the session's own `season` (one additional
  * call this page didn't make before) since the trend route needs it.
+ *
+ * M21 adds a second, sibling entry point per driver card: a "Tyre Trend"
+ * link to /drivers/:driverId/seasons/:season/tyre-trend
+ * (docs/m21-design-review.md §7) -- reusing the same already-fetched
+ * `season` value, no new API call.
  */
 export function DriverSelectPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -90,9 +95,17 @@ export function DriverSelectPage() {
                 {season !== null && (
                   <Link
                     to={`/drivers/${driver.driver_id}/seasons/${season}/pace-trend?fromSession=${sessionId}`}
-                    className={styles.paceTrendLink}
+                    className={styles.trendLink}
                   >
                     Pace Trend
+                  </Link>
+                )}
+                {season !== null && (
+                  <Link
+                    to={`/drivers/${driver.driver_id}/seasons/${season}/tyre-trend?fromSession=${sessionId}`}
+                    className={styles.trendLink}
+                  >
+                    Tyre Trend
                   </Link>
                 )}
               </div>

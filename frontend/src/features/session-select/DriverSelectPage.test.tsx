@@ -88,6 +88,45 @@ describe("DriverSelectPage", () => {
     );
   });
 
+  // --- M21 discoverability (docs/m21-design-review.md §7) ---
+
+  it("adds a Tyre Trend link per driver, pre-filled with this session's season", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue([
+      {
+        driver_id: "VER",
+        driver_number: 1,
+        full_name: "Max Verstappen",
+        team_name: "Red Bull Racing",
+      },
+    ]);
+    vi.spyOn(client, "getSession").mockResolvedValue({
+      session_id: "2023_monza_race",
+      season: 2023,
+      event_name: "Italian Grand Prix",
+      event_id: "2023_italian_grand_prix",
+      round_number: 16,
+      location: "Monza",
+      country: "Italy",
+      session_type: "race",
+      session_date: null,
+      has_telemetry: true,
+    });
+
+    renderAt("/sessions/2023_monza_race");
+
+    const tyreTrendLink = await screen.findByRole("link", { name: "Tyre Trend" });
+    expect(tyreTrendLink).toHaveAttribute(
+      "href",
+      "/drivers/VER/seasons/2023/tyre-trend?fromSession=2023_monza_race",
+    );
+    // Both trend links coexist per driver card, alongside the driver's own link.
+    expect(screen.getByRole("link", { name: "Pace Trend" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /max verstappen/i })).toHaveAttribute(
+      "href",
+      "/sessions/2023_monza_race/drivers/VER",
+    );
+  });
+
   it("omits the Pace Trend link while the session's season hasn't loaded yet", async () => {
     vi.spyOn(client, "listDrivers").mockResolvedValue([
       {
@@ -103,6 +142,7 @@ describe("DriverSelectPage", () => {
 
     await waitFor(() => expect(screen.getByText(/max verstappen/i)).toBeInTheDocument());
     expect(screen.queryByRole("link", { name: "Pace Trend" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Tyre Trend" })).not.toBeInTheDocument();
   });
 
   it("still renders the driver list when the season lookup fails", async () => {

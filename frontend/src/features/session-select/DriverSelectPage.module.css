@@ -59,7 +59,7 @@
   transform: translateY(-2px);
 }
 
-.paceTrendLink {
+.trendLink {
   padding: var(--pw-space-1) var(--pw-space-2);
   background: var(--pw-accent-muted);
   color: var(--pw-accent);
@@ -70,7 +70,7 @@
   white-space: nowrap;
 }
 
-.paceTrendLink:hover {
+.trendLink:hover {
   background: var(--pw-accent);
   color: var(--pw-bg-canvas);
 }

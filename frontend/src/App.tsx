@@ -4,6 +4,7 @@ import { getHealth } from "./api/client";
 import { AppShell } from "./components/AppShell";
 import { StatusChip } from "./components/StatusChip";
 import { DriverSeasonPaceTrendPage } from "./features/driver-trends/DriverSeasonPaceTrendPage";
+import { DriverSeasonTyreTrendPage } from "./features/driver-trends/DriverSeasonTyreTrendPage";
 import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
 import { StrategyPage } from "./features/race-context/StrategyPage";
 import { SessionAnalyticsPage } from "./features/session-analytics/SessionAnalyticsPage";
@@ -62,6 +63,10 @@ type BackendStatus = "checking" | "online" | "offline";
  * not session-scoped; mirrors the same "doesn't fit the /sessions/:sessionId
  * nesting" reasoning M13/M15 already established for their own top-level
  * routes.
+ *
+ * M21 adds the sibling standalone "/drivers/:driverId/seasons/:season/tyre-trend"
+ * (docs/m21-design-review.md §7) -- same top-level, season-scoped reasoning
+ * as M17's pace-trend route.
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -122,6 +127,10 @@ function App() {
         <Route
           path="/drivers/:driverId/seasons/:season/pace-trend"
           element={<DriverSeasonPaceTrendPage />}
+        />
+        <Route
+          path="/drivers/:driverId/seasons/:season/tyre-trend"
+          element={<DriverSeasonTyreTrendPage />}
         />
       </Routes>
     </AppShell>

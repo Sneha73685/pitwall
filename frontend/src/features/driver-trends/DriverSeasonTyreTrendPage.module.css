@@ -1,0 +1,41 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-5);
+}
+
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--pw-space-3);
+}
+
+.heading {
+  font-size: var(--pw-text-lg);
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-space-2);
+}
+
+.filterLabel {
+  font-size: var(--pw-text-sm);
+  color: var(--pw-text-secondary);
+}
+
+.filterSelect {
+  padding: var(--pw-space-1) var(--pw-space-2);
+  background: var(--pw-bg-surface-raised);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-sm);
+  color: var(--pw-text-primary);
+}
+
+.backLink {
+  color: var(--pw-text-secondary);
+  font-size: var(--pw-text-sm);
+}

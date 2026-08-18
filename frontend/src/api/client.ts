@@ -556,3 +556,43 @@ export async function getDriverSeasonPaceTrend(
     `/drivers/${encodeURIComponent(driverId)}/seasons/${season}/pace-trend${query}`,
   );
 }
+
+/**
+ * M21 (docs/m21-design-review.md §3): one driver's stint/tyre-strategy
+ * trend across one season. `strategy` reuses the existing
+ * `DriverStrategySummary` interface (M15) unchanged -- every field this
+ * point exposes beyond identity is that one nested object, never a
+ * per-stint consistency figure, raw lap, or pit-stop timing. `points` is
+ * already ordered by the backend; the frontend does not re-sort.
+ */
+export interface SeasonTyreTrendPoint {
+  session_id: string;
+  event_id: string;
+  event_name: string;
+  round_number: number;
+  session_date: string | null;
+  strategy: DriverStrategySummary;
+}
+
+export interface SeasonTyreTrendResponse {
+  driver_id: string;
+  season: number;
+  session_type: SessionType;
+  points: SeasonTyreTrendPoint[];
+}
+
+/**
+ * M21: cross-season driver tyre/stint-strategy trend. `sessionType`
+ * defaults to `"race"` server-side when omitted, mirrored the same way
+ * `getDriverSeasonPaceTrend` already does.
+ */
+export async function getDriverSeasonTyreTrend(
+  driverId: string,
+  season: number,
+  sessionType?: SessionType,
+): Promise<SeasonTyreTrendResponse> {
+  const query = sessionType ? `?session_type=${encodeURIComponent(sessionType)}` : "";
+  return getJson<SeasonTyreTrendResponse>(
+    `/drivers/${encodeURIComponent(driverId)}/seasons/${season}/tyre-trend${query}`,
+  );
+}

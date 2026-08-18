@@ -1,17 +1,22 @@
-"""PitWall API response models for cross-season driver pace trends (M17).
-See docs/m17-design-review.md §5.
+"""PitWall API response models for cross-season driver trends: pace (M17)
+and stint/tyre-strategy (M21). See docs/m17-design-review.md §5 and
+docs/m21-design-review.md §3.
 
 Anti-corruption boundary, same as every other models module (docs/adr/0009).
-Deliberately a subset of `app.models.session_analytics.DriverSummary`'s
-fields (M8), not a new metric shape: `full_throttle_pct` is omitted
-entirely (docs/m17-design-review.md §2 -- the route never fetches
-telemetry, so that field would always be null; a field that's always null
-is misleading, not just unused) and so are `outlier_lap_count`/
-`lap_times_ms`/`laps` (per-session detail not meaningful at trend-point
-granularity). Kept intentionally small, per the design's own instruction.
+`SeasonPaceTrendPoint` is deliberately a subset of
+`app.models.session_analytics.DriverSummary`'s fields (M8), not a new
+metric shape: `full_throttle_pct` is omitted entirely (docs/m17-design-
+review.md §2 -- the route never fetches telemetry, so that field would
+always be null; a field that's always null is misleading, not just
+unused) and so are `outlier_lap_count`/`lap_times_ms`/`laps` (per-session
+detail not meaningful at trend-point granularity). `SeasonTyreTrendPoint`
+reuses `app.models.tyre_performance.DriverStrategySummary` (M11) in full,
+nested rather than flattened -- see that class's own docstring for why.
+Both kept intentionally small, per each milestone's own instruction.
 """
 
 from app.models.telemetry import ApiModel, SessionType
+from app.models.tyre_performance import DriverStrategySummary
 
 
 class SeasonPaceTrendPoint(ApiModel):
@@ -51,3 +56,48 @@ class SeasonPaceTrendResponse(ApiModel):
     season: int
     session_type: SessionType
     points: list[SeasonPaceTrendPoint]
+
+
+class SeasonTyreTrendPoint(ApiModel):
+    """One session's stint/tyre-strategy shape within a driver's season
+    trend (M21, docs/m21-design-review.md §3).
+
+    Carries the same identity fields as `SeasonPaceTrendPoint`
+    (`session_id`/`event_id`/`event_name`/`round_number`/`session_date`),
+    for the same reason. `strategy` is `DriverStrategySummary` (M11)
+    reused unchanged and nested, not flattened -- this point reuses all of
+    that model's fields, not a subset, matching the nesting precedent
+    `app.models.stint_comparison.DriverStintComparisonSide` already
+    established (M15) rather than M17's own flattening (M17 exposed only a
+    subset of `DriverSummary`'s fields, so flattening made sense there;
+    here every field is reused, so nesting the existing model is simpler
+    than restating its fields). Deliberately excludes per-stint pace
+    consistency, raw laps, and pit-stop timing -- see
+    docs/m21-design-review.md §3 for why each was considered and rejected.
+    """
+
+    session_id: str
+    event_id: str
+    event_name: str
+    round_number: int
+    session_date: str | None
+    strategy: DriverStrategySummary
+
+
+class SeasonTyreTrendResponse(ApiModel):
+    """`GET /drivers/{driver_id}/seasons/{season}/tyre-trend`.
+
+    `points` ordering, never-404, and roster-absent-omission semantics are
+    identical to `SeasonPaceTrendResponse` (see that class's docstring) --
+    the only behavioral difference is that a session where the driver is
+    on the roster but has zero recorded stints still produces a point
+    (`strategy.stint_count == 0`, empty `compound_sequence`/
+    `stint_lengths`) rather than being omitted, since
+    `driver_strategy_summary([])` already produces exactly that shape with
+    no special-casing needed (docs/m21-design-review.md §3).
+    """
+
+    driver_id: str
+    season: int
+    session_type: SessionType
+    points: list[SeasonTyreTrendPoint]
