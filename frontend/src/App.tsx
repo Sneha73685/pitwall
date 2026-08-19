@@ -6,6 +6,7 @@ import { StatusChip } from "./components/StatusChip";
 import { DriverPaceTrendComparisonPage } from "./features/driver-trends/DriverPaceTrendComparisonPage";
 import { DriverSeasonPaceTrendPage } from "./features/driver-trends/DriverSeasonPaceTrendPage";
 import { DriverSeasonTyreTrendPage } from "./features/driver-trends/DriverSeasonTyreTrendPage";
+import { DriverTyreTrendComparisonPage } from "./features/driver-trends/DriverTyreTrendComparisonPage";
 import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
 import { StrategyPage } from "./features/race-context/StrategyPage";
 import { SessionAnalyticsPage } from "./features/session-analytics/SessionAnalyticsPage";
@@ -73,6 +74,10 @@ type BackendStatus = "checking" | "online" | "offline";
  * two-driver cross-season pace-trend comparison, identical path string to
  * the backend route it calls (matching /laps/compare's and /stints/compare's
  * own frontend/backend path-identity precedent).
+ *
+ * M26 adds the sibling "/drivers/tyre-trend/compare" (docs/m26-design-
+ * review.md §7) -- two-driver cross-season tyre-trend comparison, same
+ * path-identity convention as M25's own route.
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -139,6 +144,7 @@ function App() {
           element={<DriverSeasonTyreTrendPage />}
         />
         <Route path="/drivers/pace-trend/compare" element={<DriverPaceTrendComparisonPage />} />
+        <Route path="/drivers/tyre-trend/compare" element={<DriverTyreTrendComparisonPage />} />
       </Routes>
     </AppShell>
   );

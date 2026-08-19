@@ -106,6 +106,38 @@ describe("Sidebar", () => {
     expect(screen.queryByRole("link", { name: "Compare Pace Trends" })).not.toBeInTheDocument();
   });
 
+  // M26 (docs/m26-design-review.md §7): identical gating/seeding pattern
+  // to M25's own "Compare Pace Trends" link.
+  it("shows the Compare Tyre Trends link once a driver is selected, seeding only side A", () => {
+    useSelectionStore.setState({
+      ...DEFAULTS,
+      season: 2024,
+      eventId: "2024_bahrain_grand_prix",
+      sessionId: "2024_bahrain_grand_prix_race",
+      driverId: "VER",
+    });
+
+    renderSidebar();
+
+    expect(screen.getByRole("link", { name: "Compare Tyre Trends" })).toHaveAttribute(
+      "href",
+      "/drivers/tyre-trend/compare?driverA=VER&seasonA=2024",
+    );
+  });
+
+  it("does not show the Compare Tyre Trends link before a driver is selected", () => {
+    useSelectionStore.setState({
+      ...DEFAULTS,
+      season: 2024,
+      eventId: "2024_bahrain_grand_prix",
+      sessionId: "2024_bahrain_grand_prix_race",
+    });
+
+    renderSidebar();
+
+    expect(screen.queryByRole("link", { name: "Compare Tyre Trends" })).not.toBeInTheDocument();
+  });
+
   it("still shows Drivers once a session is selected, alongside the season/event trail", () => {
     useSelectionStore.setState({
       ...DEFAULTS,

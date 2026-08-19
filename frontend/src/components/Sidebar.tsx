@@ -13,6 +13,11 @@ import styles from "./Sidebar.module.css";
  * link, gated on `driverId && season` and seeding only side A -- mirrors
  * "Compare Sessions"' own seed-one-side-only pattern exactly. No existing
  * link is reordered or modified.
+ *
+ * M26 (docs/m26-design-review.md §7): one sibling "Compare Tyre Trends"
+ * link, identical gating/seeding pattern, placed immediately after
+ * "Compare Pace Trends" to group the two trend-comparison entry points
+ * together. No existing link is reordered or modified.
  */
 export function Sidebar() {
   const season = useSelectionStore((state) => state.season);
@@ -66,6 +71,14 @@ export function Sidebar() {
               className={linkClass}
             >
               Compare Pace Trends
+            </NavLink>
+          )}
+          {driverId && season && (
+            <NavLink
+              to={`/drivers/tyre-trend/compare?driverA=${driverId}&seasonA=${season}`}
+              className={linkClass}
+            >
+              Compare Tyre Trends
             </NavLink>
           )}
           <NavLink to={`/sessions/${sessionId}/analytics`} className={linkClass}>

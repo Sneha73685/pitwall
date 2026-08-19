@@ -633,3 +633,36 @@ export async function getDriverSeasonTyreTrend(
     `/drivers/${encodeURIComponent(driverId)}/seasons/${season}/tyre-trend${query}`,
   );
 }
+
+/**
+ * M26 (docs/m26-design-review.md §4): two complete, unmodified
+ * `SeasonTyreTrendResponse` sides -- mirrors `SeasonPaceTrendComparisonResponse`
+ * exactly, one trend over. No `warnings` field, for the identical reason
+ * that response has none.
+ */
+export interface SeasonTyreTrendComparisonResponse {
+  a: SeasonTyreTrendResponse;
+  b: SeasonTyreTrendResponse;
+}
+
+export interface CompareTyreTrendsParams {
+  driverA: string;
+  seasonA: number;
+  driverB: string;
+  seasonB: number;
+  sessionType?: SessionType;
+}
+
+/**
+ * M26: two-driver cross-season tyre/stint-strategy trend comparison.
+ * Mirrors comparePaceTrends' query-string construction pattern exactly.
+ */
+export async function compareTyreTrends(
+  params: CompareTyreTrendsParams,
+): Promise<SeasonTyreTrendComparisonResponse> {
+  const query =
+    `?driver_a=${encodeURIComponent(params.driverA)}&season_a=${params.seasonA}` +
+    `&driver_b=${encodeURIComponent(params.driverB)}&season_b=${params.seasonB}` +
+    (params.sessionType ? `&session_type=${encodeURIComponent(params.sessionType)}` : "");
+  return getJson<SeasonTyreTrendComparisonResponse>(`/drivers/tyre-trend/compare${query}`);
+}

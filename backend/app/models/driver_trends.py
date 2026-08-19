@@ -121,3 +121,21 @@ class SeasonPaceTrendComparisonResponse(ApiModel):
 
     a: SeasonPaceTrendResponse
     b: SeasonPaceTrendResponse
+
+
+class SeasonTyreTrendComparisonResponse(ApiModel):
+    """`GET /drivers/tyre-trend/compare` (M26, docs/m26-design-review.md §4).
+
+    Mirrors `SeasonPaceTrendComparisonResponse` exactly, one trend over:
+    `a`/`b` are two complete, unmodified `SeasonTyreTrendResponse` sides --
+    not a new flattened shape, not a computed-metric shape, no cross-side
+    computation, alignment, or comparative field of any kind. Deliberately
+    no `warnings` field, for the identical reason
+    `SeasonPaceTrendComparisonResponse` has none: a season-granularity
+    comparison has no single-session "different circuit" concern, and an
+    empty side's `points` list already self-describes "no data for this
+    driver/season."
+    """
+
+    a: SeasonTyreTrendResponse
+    b: SeasonTyreTrendResponse
