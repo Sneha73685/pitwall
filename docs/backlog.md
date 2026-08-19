@@ -10,29 +10,28 @@ Items are removed once fixed, not marked done — this list should always reflec
 
 ## Security / dependencies
 
-- **`frontend/`: 13 known `npm audit` vulnerabilities (6 high, 6 moderate, 1 critical).** Found
-  during the M1 release audit (2026-07-30); `react-router`/`react-router-dom` added during M3
-  (2026-07-30). Breakdown:
-  - `vitest`/`@vitest/mocker` (**critical**) — arbitrary file read/execute when the Vitest UI server
-    is listening. Dev/test tooling only, not shipped to users, but should be resolved before
-    inviting outside contributors to run the test suite locally.
-  - `eslint`/`@eslint/config-array`/`@eslint/eslintrc`/`minimatch`/`brace-expansion` (**high**) —
-    all transitive dev-tooling (lint chain), DoS-class issue in `brace-expansion`.
-  - `vite` (**high**) — path traversal in optimized-deps `.map` handling; dev server only.
-  - `echarts` (**moderate**) — XSS advisory. This one is a genuine **runtime** dependency, actively
-    used since M5's telemetry charts, unlike the rest which are dev-only — worth prioritizing over
-    the others for that reason.
-  - `react-router`/`react-router-dom` (**moderate**) — open redirect via backslash in `<Link>`/
-    `useNavigate` (CVE-2025-68470 bypass), and an arbitrary constructor injection in SSR hydration's
-    `deserializeErrors()`. Also a genuine **runtime** dependency (added in M3). The SSR advisory
-    doesn't apply here (PitWall is a client-rendered Vite SPA, no React Router SSR usage); the
-    open-redirect surface is low today since every `<Link to=...>` target is built from our own API
-    data (`session_id`/`driver_id`), not user-supplied URLs, but worth fixing alongside `echarts`
-    rather than leaving indefinitely.
-  - `esbuild`/`vite-node` (**moderate**) — dev server request-forwarding issue.
-  - Fixing requires `npm audit fix --force`, which pulls breaking major-version bumps (ESLint 9→10,
-    Vite 5→8, ECharts 5→6, React Router 6→7). Treat as a deliberate dependency-upgrade task (verify
-    lint config, chart code, and routes still work after the bump), not a drive-by patch.
+- **`frontend/`: 2 known `npm audit` vulnerabilities remain (both moderate), down from 13 after
+  M30's dependency remediation (2026-08-20, `docs/m30-design-review.md`).** Originally found during
+  the M1 release audit (2026-07-30); `react-router`/`react-router-dom` added during M3
+  (2026-07-30). M30 resolved the critical `vitest`/`@vitest/mocker` issue, the high-severity
+  `eslint`-chain/`brace-expansion`/`vite`/`js-yaml`/`nanoid` issues, and the moderate `echarts` XSS
+  advisory, via `vite` 5→6.4.3, `vitest` 2→3.2.7, `@vitejs/plugin-react` →4.7.0, `echarts` 5.6.0→6.1.0,
+  and a plain (non-`--force`) `npm audit fix` for the transitive patch-level fixes. ESLint needed no
+  change at all — the `eslint`-chain vulnerability had already been resolved transitively before M30
+  started.
+  - `react-router`/`react-router-dom` (**moderate**, remaining) — open redirect via backslash in
+    `<Link>`/`useNavigate` (CVE-2025-68470 bypass) and an arbitrary constructor injection in SSR
+    hydration's `deserializeErrors()`. **Not resolved by M30**: contrary to M30 Stage B's initial
+    assumption, the advisory's fixed range is `>=7.18.0` — there is no patch within the 6.x line:
+    6.30.6 (the latest 6.x) is still inside the vulnerable range. Fixing this requires the React
+    Router 6→7 major migration, explicitly out of M30's approved scope (PitWall's usage is classic
+    declarative-mode `<BrowserRouter>`/`Routes`/`Route`, not the v7 data-router API, so a future
+    migration would be a real, non-trivial redesign, not a drop-in bump). The open-redirect surface
+    remains low today since every `<Link to=...>`/`useNavigate` target in this codebase is built
+    from our own API data (`session_id`/`driver_id`/`season`), never a user-supplied or external
+    URL; the SSR advisory doesn't apply at all (PitWall is a client-rendered Vite SPA, no SSR usage).
+    Worth its own future milestone once a React Router 7 migration is deliberately scoped, not a
+    drive-by patch.
 - **`.github/workflows/ci.yml` doesn't declare a top-level `permissions:` block.** Found during the
   pre-M6 engineering audit (2026-08-01). The workflow only lints/type-checks/tests (no releases, no
   PR comments, no pushes), so it doesn't need the default `GITHUB_TOKEN` write access most repos
