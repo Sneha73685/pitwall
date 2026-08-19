@@ -85,7 +85,7 @@ Sequencing note: M1 and M2 can't be meaningfully parallelized (API needs real ca
 
 ---
 
-## 3a. Milestone History Beyond V1 (M8–M19)
+## 3a. Milestone History Beyond V1 (M8–M27)
 
 The table above (§3) is the original, dated V1 schedule and is not edited by later milestones.
 Everything from M8 onward was added after V1 shipped, each with its own design review under `docs/`
@@ -110,9 +110,14 @@ relates to the themes §5 already named, not as a retroactive edit to §3:
 | M20 | Documentation & roadmap reconciliation (`docs/m20-design-review.md`) | Documentation-only reconciliation pass; not itself V-scoped |
 | M21 | Cross-season driver tyre/stint-strategy trend analytics (`/drivers/{driver_id}/seasons/{season}/tyre-trend`) | Not itself named in the original roadmap; extends V3's stint/pit-stop deliverable (§5) to the cross-season case, mirroring M17's cross-season pace-trend pattern |
 | M22 | Corner highlighting on the track map and synchronized charts (`markArea`, client-side geometry detection) | Delivers V2's corner-highlighting criterion (§5) — completes the one V2 criterion M14 explicitly left as a non-goal |
+| M23 | Documentation & roadmap reconciliation (`docs/m23-design-review.md`) | Documentation-only reconciliation pass; not itself V-scoped |
+| M24 | Comparison URL persistence/shareability for `/laps/compare` and `/stints/compare` | Not itself named in the original roadmap; repairs a gap named but not fixed in M17's/M21's own design reviews — not a new V-criterion |
+| M25 | Two-driver cross-season pace-trend comparison (`/drivers/pace-trend/compare`) | Not itself named in the original roadmap; the multi-driver case M17 explicitly deferred (§11) |
+| M26 | Two-driver cross-season tyre-trend comparison (`/drivers/tyre-trend/compare`) | Not itself named in the original roadmap; the multi-driver case M21 explicitly deferred (§7), handed off again by M25 (§13) |
+| M27 | Comparison-surface consistency pass — shared URL helpers, "Compare Stints" navigation | Documentation/maintainability-adjacent cleanup; not itself V-scoped |
 
-See `docs/m16-design-review.md`, `docs/m20-design-review.md`, and `docs/m23-design-review.md` for
-the reconciliation passes this table is part of.
+See `docs/m16-design-review.md`, `docs/m20-design-review.md`, `docs/m23-design-review.md`, and
+`docs/m28-design-review.md` for the reconciliation passes this table is part of.
 
 ---
 
@@ -162,3 +167,4 @@ originally written, describing the reasoning at V1 design time.
 - v3 (M16, `docs/m16-design-review.md`): added §3a recording M8–M15's shipped milestone history, distinct from the original V1 table; updated §5's deferred-features table with current shipped/unshipped status for V2/V3. No scope or architecture change — documentation reconciliation only.
 - v4 (M20, `docs/m20-design-review.md`): extended §3a through M19 (M16 docs reconciliation, M17 cross-season pace trends, M18/M19 repository performance work). §5 re-verified against current source with no edit needed — every row's status is still accurate. No scope or architecture change — documentation reconciliation only.
 - v5 (M23, `docs/m23-design-review.md`): extended §3a through M22 (M20 docs reconciliation, M21 cross-season tyre-strategy trends, M22 corner highlighting). Corrected §5's corner-highlighting row, false since M22 shipped. No scope or architecture change — documentation reconciliation only.
+- v6 (M28, `docs/m28-design-review.md`): extended §3a through M27 (M23 docs reconciliation, M24 comparison URL persistence, M25 two-driver pace-trend comparison, M26 two-driver tyre-trend comparison, M27 comparison-surface consistency pass). Corrected §3a's own heading range (M8–M19 → M8–M27, stale since before M23). §5 re-verified against current source with no edit needed. No scope or architecture change — documentation reconciliation only.

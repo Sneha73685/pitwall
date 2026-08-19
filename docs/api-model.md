@@ -167,6 +167,26 @@ omitted — differs from the roster-absent case, since `driver_strategy_summary(
 produces exactly that shape with no special-casing needed. **Never 404s**, same reasoning as M17's
 pace-trend route.
 
+## M25 addition: two-driver cross-season pace-trend comparison
+
+`GET /drivers/pace-trend/compare?driver_a=&season_a=&driver_b=&season_b=&session_type=` (defaults
+to `race`) returns `SeasonPaceTrendComparisonResponse` (`app/models/driver_trends.py`): `a`, `b`,
+each a complete, unmodified `SeasonPaceTrendResponse` (see the M17 addition above for that shape).
+No `warnings` field — a season-granularity comparison has no single-session "different circuit"
+concern. Implemented by calling `get_driver_season_pace_trend` (the M17 route function) directly,
+twice — not a reimplementation, so per-side behavior cannot silently diverge from the single-driver
+route's own. **Never 404s** on either side independently, same reasoning as the M17 addition above.
+
+## M26 addition: two-driver cross-season tyre-trend comparison
+
+`GET /drivers/tyre-trend/compare?driver_a=&season_a=&driver_b=&season_b=&session_type=` (defaults
+to `race`) returns `SeasonTyreTrendComparisonResponse` (`app/models/driver_trends.py`): `a`, `b`,
+each a complete, unmodified `SeasonTyreTrendResponse` (see the M21 addition above). Implemented by
+calling `get_driver_season_tyre_trend` directly, twice, threading both `TelemetryRepository` and
+`RaceContextRepository` through to each side — the one signature difference from the M25 addition,
+forced by `get_driver_season_tyre_trend`'s own dependencies. **Never 404s**, same reasoning as
+above.
+
 ## Why the backend re-reads Parquet directly (not via the pipeline package)
 
 `TelemetryRepository` (ADR-0006) is defined by the API's own read patterns, not by importing
@@ -275,6 +295,8 @@ value on every list item for no reason — a plain response-shaping choice, not 
 | GET | `/stints/compare?session_id_a=&driver_a=&session_id_b=&driver_b=` (M15, `app/api/stints_compare.py`) | `StintComparisonResponse` | 404 if either session doesn't exist; empty stints/pit-stops (plus a warning) if a side's driver has no stint data |
 | GET | `/drivers/{driver_id}/seasons/{season}/pace-trend?session_type=` (M17, `app/api/driver_trends.py`) | `SeasonPaceTrendResponse` | Never 404s — see the M17 addition above |
 | GET | `/drivers/{driver_id}/seasons/{season}/tyre-trend?session_type=` (M21, `app/api/driver_trends.py`) | `SeasonTyreTrendResponse` | Never 404s — see the M21 addition above |
+| GET | `/drivers/pace-trend/compare?driver_a=&season_a=&driver_b=&season_b=&session_type=` (M25, `app/api/driver_trends_compare.py`) | `SeasonPaceTrendComparisonResponse` | Never 404s — see the M25 addition above |
+| GET | `/drivers/tyre-trend/compare?driver_a=&season_a=&driver_b=&season_b=&session_type=` (M26, `app/api/driver_trends_compare.py`) | `SeasonTyreTrendComparisonResponse` | Never 404s — see the M26 addition above |
 
 `driver_id` and `lap_number` are both required query parameters on `/telemetry` — fetching a whole
 session's telemetry in one response isn't a V1 read pattern (PRD's success criteria and

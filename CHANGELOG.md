@@ -8,8 +8,91 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing in progress — M22 is the most recently completed milestone (see `README.md`'s Project
+Nothing in progress — M27 is the most recently completed milestone (see `README.md`'s Project
 status).
+
+## M27 — Comparison-Surface Consistency Pass — 2026-08-19
+
+See `docs/m27-design-review.md` for the full design record.
+
+### Added
+
+- `frontend/src/components/urlSearchParams.ts` — shared `getParam`/`setOrDelete` helpers,
+  extracted from four byte-identical/near-identical local copies previously duplicated across
+  `ComparisonPage.tsx`, `StintComparisonPage.tsx`, `DriverPaceTrendComparisonPage.tsx`, and
+  `DriverTyreTrendComparisonPage.tsx`.
+- "Compare Stints" Sidebar entry (gated on `driverId`, seeding `sessionA`/`driverA`) — the one
+  comparison surface (`/stints/compare`, shipped M15) that previously had no global navigation
+  entry point.
+
+### Changed
+
+- No behavioral change to any of the four comparison pages — pure extraction; all four pages'
+  existing tests pass unmodified. No backend, API, schema, or data change.
+
+## M26 — Two-Driver Tyre-Trend Comparison — 2026-08-19
+
+See `docs/m26-design-review.md` for the full design record.
+
+### Added
+
+- `GET /drivers/tyre-trend/compare` (`backend/app/api/driver_trends_compare.py`) — delegates
+  directly to M21's `get_driver_season_tyre_trend`, called twice, threading both
+  `TelemetryRepository` and `RaceContextRepository` through to each side.
+- `SeasonTyreTrendComparisonResponse` (`backend/app/models/driver_trends.py`): `a`, `b`, each a
+  complete, unmodified `SeasonTyreTrendResponse`.
+- `/drivers/tyre-trend/compare` page (`DriverTyreTrendComparisonPage.tsx`), URL-persisted from the
+  start, reusing `SeasonTyreTrendList` unchanged for both sides — no chart-alignment concern,
+  since the underlying component is a plain ordered list.
+- "Compare Tyre Trends" Sidebar entry.
+
+### Changed
+
+- None to any existing route, response model, or repository method — purely additive.
+
+## M25 — Two-Driver Pace-Trend Comparison — 2026-08-19
+
+See `docs/m25-design-review.md` for the full design record.
+
+### Added
+
+- `GET /drivers/pace-trend/compare` (`backend/app/api/driver_trends_compare.py`, new file) —
+  delegates directly to M17's `get_driver_season_pace_trend`, called twice.
+- `SeasonPaceTrendComparisonResponse` (`backend/app/models/driver_trends.py`): `a`, `b`, each a
+  complete, unmodified `SeasonPaceTrendResponse`.
+- `/drivers/pace-trend/compare` page (`DriverPaceTrendComparisonPage.tsx`), URL-persisted from the
+  start, reusing `SeasonPaceTrendChart` unchanged for both sides.
+- "Compare Pace Trends" Sidebar entry.
+
+### Changed
+
+- None to any existing route, response model, or repository method — purely additive.
+
+## M24 — Comparison URL Persistence — 2026-08-19
+
+See `docs/m24-design-review.md` for the full design record.
+
+### Added
+
+- URL-as-source-of-truth state for `ComparisonPage.tsx` (`/laps/compare`) and
+  `StintComparisonPage.tsx` (`/stints/compare`) — every picker interaction now writes the resolved
+  selection back via `setSearchParams(..., { replace: true })`.
+
+### Changed
+
+- Refresh, deep-link, and copy/paste now reproduce an identical comparison on both pages, closing
+  a gap named but not fixed in M17's and M21's own design reviews. No backend or API change.
+
+## M23 — Documentation & Roadmap Reconciliation — 2026-08-19
+
+See `docs/m23-design-review.md` for the full design record.
+
+### Changed
+
+- Reconciled `README.md`, `CHANGELOG.md`, `docs/prd.md`, `docs/api-model.md`,
+  `docs/architecture.md`, and `docs/success-metrics.md` through M22.
+- Corrected an active false statement: `docs/prd.md` and `docs/success-metrics.md` both still said
+  corner highlighting was "not yet built" after M22 had already shipped it.
 
 ## M22 — Corner Highlighting — 2026-08-19
 
