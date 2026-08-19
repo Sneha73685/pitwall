@@ -93,6 +93,17 @@ an empty `telemetry_by_lap` (every field it exposes is computed from `Lap` data 
 telemetry is never fetched) — again no new diagram node, and no new repository method beyond the
 session-lookup index described in §3 below.
 
+M21 adds a cross-season driver tyre/stint-strategy trend endpoint alongside M17's pace-trend
+route, reusing M11's `driver_strategy_summary` unchanged (the same "no new diagram node, no new
+repository method" pattern M17's own addition above already established).
+
+M22 extends M14's synchronized-cursor surfaces (above) with static corner-region highlighting
+(`markArea`), computed by a new pure client-side function (`detectCorners.ts`) over `TrackPoint`
+data the `/sessions/{session_id}/track` route already returned before this milestone. **M22
+introduces no new backend route, repository method, schema field, or diagram node** — it is
+entirely a frontend rendering extension of an existing API response, on the same two surfaces
+M14's coverage already named (single-lap track map, M13 cross-session lap comparison).
+
 ## 2. Layering Principle
 
 Every layer depends only on the layer directly below it in the diagram above. Concretely:

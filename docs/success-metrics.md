@@ -15,9 +15,10 @@ Explicitly not required for V1: hover-driven synchronization, cursor-follows-car
 
 ## V2 — Interactive Engineering Dashboard
 
-**Status (M16 reconciliation, `docs/m16-design-review.md`): mostly shipped, in M14.** The criteria
-below are the original success definition; each is annotated with what actually shipped, verified
-against current source rather than restated from memory.
+**Status (M16 reconciliation, `docs/m16-design-review.md`; corner-highlighting status corrected
+M23, `docs/m23-design-review.md`): all four criteria below are shipped, across M14 and M22.** The
+criteria below are the original success definition; each is annotated with what actually shipped,
+verified against current source rather than restated from memory.
 
 Success looks like:
 - Hovering any telemetry chart moves a synchronized cursor across all other charts for the same
@@ -32,7 +33,10 @@ Success looks like:
     analytics and tyre-performance charts are not yet part of this synchronized surface.
 - The car marker on the track map moves to match the hovered point. **Shipped in M14.**
 - Corners can be highlighted (via `markArea`) with the corresponding chart region highlighting in
-  sync. **Not yet built** — explicit M14 non-goal.
+  sync. **Shipped in M22** — a geometry-derived corner detector run client-side over existing
+  track-point data; highlights the same regions on both the track map and the synchronized
+  telemetry/delta charts. Same coverage boundary as M14 (single-lap track map, M13 cross-session
+  comparison) — not session-analytics or tyre-performance charts.
 - The delta graph updates live as the cursor moves, not just as a static end-of-lap number.
   **Shipped in M14** — `DeltaChart` participates in the same cursor-sync mechanism.
 

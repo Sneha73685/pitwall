@@ -8,10 +8,83 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing in progress — M19 is the most recently completed milestone (see `README.md`'s Project
-status). M20 is a documentation-only reconciliation pass (`docs/m20-design-review.md`) backfilling
-this file's M16–M19 entries below and correcting stale statements elsewhere; it touches no
-application code.
+Nothing in progress — M22 is the most recently completed milestone (see `README.md`'s Project
+status).
+
+## M22 — Corner Highlighting — 2026-08-19
+
+See `docs/m22-design-review.md` for the full design record.
+
+### Added
+
+- `detectCorners()` (`frontend/src/features/track-map/detectCorners.ts`) — a pure, deterministic,
+  geometry-derived corner detector run entirely client-side over the `TrackPoint` data
+  `/sessions/{session_id}/track` already returned before this milestone. Computes local curvature
+  from an arc-length-windowed heading (chord-based, `windowM=40`), thresholds it
+  (`curvatureThreshold=0.008`), merges contiguous flagged regions across small gaps
+  (`mergeGapM=25`), and drops any region shorter than `minRegionLengthM=15`. Output is
+  `{start_distance_m, end_distance_m}` pairs only — no apex, direction, corner number, or severity
+  is exposed. Validated against real track geometry for Bahrain/Monaco/Monza/Spa and 9 synthetic
+  edge cases (straight, single left/right turn, hairpin, chicane, noisy geometry, insufficient/
+  empty points, two-close-corners) before integration.
+- Corner-region rendering on the track map (`TrackMap.tsx`) as subtle shaded arcs along the track
+  outline, and as `markArea` regions on the synchronized telemetry charts (`chartOptions.ts`) and
+  delta chart (`deltaChartOptions.ts`) — the same `corners` array, computed once, passed to all
+  three consumers so the highlighted regions are guaranteed identical across surfaces.
+- `trackPoints` fetch lifted from `TrackMapDelta` up to `ComparisonPage`, matching
+  `TrackMapPage`'s existing "fetch once at page level" pattern, so the same corner list reaches
+  `DeltaChart`/`ChannelOverlayPanel` on the lap-comparison page without a duplicate fetch.
+- Test coverage: `detectCorners.test.ts` (synthetic geometry), plus updated/added tests across
+  `TrackMap`, `TrackMapPage`, `ComparisonPage`, `TrackMapDelta`, `DeltaChart`, `ChannelOverlayPanel`,
+  `TelemetryCharts`, `chartOptions`, `deltaChartOptions`.
+
+### Changed
+
+- None to any backend route, response model, or repository method — `/sessions/{session_id}/track`'s
+  contract is unchanged. This milestone is frontend-only: it extends M14's existing synchronized
+  cursor surfaces (single-lap track map, M13 cross-session lap comparison) with static
+  corner-region highlighting; it does not add a new synchronized surface, a new store, or any
+  backend/schema architecture.
+
+## M21 — Cross-Season Tyre Strategy Trends — 2026-08-19
+
+See `docs/m21-design-review.md` for the full design record.
+
+### Added
+
+- `GET /drivers/{driver_id}/seasons/{season}/tyre-trend?session_type=` (defaults to `race`)
+  (`backend/app/api/driver_trends.py`) — one driver's stint/tyre-strategy shape across every
+  session of a season, mirroring M17's pace-trend route's shape and conventions exactly (same
+  `list_sessions_for_driver_season` filtering step, same roster-absent-omission semantics, never
+  404s). Calls M11's `driver_strategy_summary` unchanged — needs only `stints`, so it never touches
+  `laps.parquet` beyond the shared roster check.
+- `SeasonTyreTrendResponse`/`SeasonTyreTrendPoint` (`backend/app/models/driver_trends.py`) — each
+  point nests M11's `DriverStrategySummary` unchanged (not flattened, since every field is reused)
+  alongside the same session-identity fields M17's pace-trend point already exposes.
+- Frontend: `/drivers/:driverId/seasons/:season/tyre-trend` route, `DriverSeasonTyreTrendPage`,
+  `SeasonTyreTrendList`, `useDriverSeasonTyreTrend` hook, and a new trend link on
+  `DriverSelectPage` (renamed the pre-existing `.paceTrendLink` CSS class to `.trendLink` since it
+  now backs both the pace-trend and tyre-trend links).
+- 411 lines of new backend route tests (`test_driver_tyre_trend_route.py`) plus new frontend tests
+  for the page, list component, and hook.
+
+### Changed
+
+- None to any existing route, response model, or repository method — purely additive.
+
+## M20 — Documentation & Roadmap Reconciliation — 2026-08-19
+
+See `docs/m20-design-review.md` for the full design record.
+
+### Added
+
+- Backfilled this file's M16–M19 entries (above) and corrected stale statements across
+  `README.md`, `docs/prd.md`, `docs/architecture.md`, `docs/api-model.md`, `docs/data-model.md`,
+  and `docs/backlog.md`, reconciling documentation that had drifted since M13.
+
+### Changed
+
+- Documentation only — no application code, schema, or API contract changed.
 
 ## M19 — Telemetry Positional Index — 2026-08-19
 

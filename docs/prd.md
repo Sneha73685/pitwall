@@ -107,9 +107,12 @@ relates to the themes §5 already named, not as a retroactive edit to §3:
 | M17 | Cross-season driver pace-trend analytics (`/drivers/{driver_id}/seasons/{season}/pace-trend`) | Not itself named in the original roadmap; a new cross-season capability building on M8's session-analytics pattern, not a V1–V5 criterion |
 | M18 | Per-session Parquet file-level caching (performance) | Infrastructure; not itself V-scoped |
 | M19 | Telemetry driver/lap positional index (performance) | Infrastructure; not itself V-scoped |
+| M20 | Documentation & roadmap reconciliation (`docs/m20-design-review.md`) | Documentation-only reconciliation pass; not itself V-scoped |
+| M21 | Cross-season driver tyre/stint-strategy trend analytics (`/drivers/{driver_id}/seasons/{season}/tyre-trend`) | Not itself named in the original roadmap; extends V3's stint/pit-stop deliverable (§5) to the cross-season case, mirroring M17's cross-season pace-trend pattern |
+| M22 | Corner highlighting on the track map and synchronized charts (`markArea`, client-side geometry detection) | Delivers V2's corner-highlighting criterion (§5) — completes the one V2 criterion M14 explicitly left as a non-goal |
 
-See `docs/m16-design-review.md` and `docs/m20-design-review.md` for the reconciliation passes this
-table is part of.
+See `docs/m16-design-review.md`, `docs/m20-design-review.md`, and `docs/m23-design-review.md` for
+the reconciliation passes this table is part of.
 
 ---
 
@@ -140,7 +143,7 @@ originally written, describing the reasoning at V1 design time.
 | Feature | Deferred to | Why not now (at V1 design time) | Status |
 |---|---|---|---|
 | Synchronized hover / cursor-follows-car | V2 | Needs a shared time-cursor architecture across every chart; doing it half-built in V1 undermines the "small but professional" goal | **Shipped — M14**, via page-scoped Zustand cursor stores (not `echarts.connect()`/cross-instance `axisPointer.link` as ADR-0008 originally anticipated — that mechanism can't reach the SVG track map). Covers the single-lap track-map and M13 cross-session comparison pages; session-analytics and tyre-performance charts are not yet part of this synchronized surface. |
-| Corner highlighting (via `markArea`) | V2 | Same as above | Not yet built — explicit M14 non-goal. |
+| Corner highlighting (via `markArea`) | V2 | Same as above | **Shipped — M22**, via a geometry-derived, client-side curvature detector (`frontend/src/features/track-map/detectCorners.ts`) over existing track-point data — no new backend route, repository method, or persisted field. Covers the same two synchronized surfaces as M14's cursor-sync (single-lap track map, M13 cross-session lap comparison); does not extend coverage to session-analytics or tyre-performance charts, matching M14's own coverage boundary. Distinct from, and not to be confused with, fitted degradation curves or strategy recommendations — neither was ever part of this criterion's scope and both remain unbuilt (see the engineering-insight-generation and AI/NL-query rows below). |
 | Tire strategy, stints, pit stops (single-session) | V3 | Needs relational data (a real reason to introduce Postgres) | **Shipped — M10/M11**, sourced from FastF1 session data via a second, independent repository (`RaceContextRepository`, ADR-0011). |
 | Cross-session stint/tyre-strategy comparison | V3 | Not specified in the original V1 text | **Shipped — M15**, generalizing M13's cross-session comparison pattern to stints/pit-stops. |
 | Weather, position history, gaps | V3 | Needs different source data (Ergast/Jolpica, weather feeds) | Not yet built — no ingestion, provider method, or schema exists for any of these. |
@@ -158,3 +161,4 @@ originally written, describing the reasoning at V1 design time.
 - v2: architecture, tech stack, and repository structure extracted to `docs/architecture.md` following the design freeze at the end of the architecture discussion phase; tech stack updated to reflect ADR-0007 (Zustand) and ADR-0008 (ECharts), which superseded this document's original Context/uPlot recommendations.
 - v3 (M16, `docs/m16-design-review.md`): added §3a recording M8–M15's shipped milestone history, distinct from the original V1 table; updated §5's deferred-features table with current shipped/unshipped status for V2/V3. No scope or architecture change — documentation reconciliation only.
 - v4 (M20, `docs/m20-design-review.md`): extended §3a through M19 (M16 docs reconciliation, M17 cross-season pace trends, M18/M19 repository performance work). §5 re-verified against current source with no edit needed — every row's status is still accurate. No scope or architecture change — documentation reconciliation only.
+- v5 (M23, `docs/m23-design-review.md`): extended §3a through M22 (M20 docs reconciliation, M21 cross-season tyre-strategy trends, M22 corner highlighting). Corrected §5's corner-highlighting row, false since M22 shipped. No scope or architecture change — documentation reconciliation only.

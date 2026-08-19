@@ -152,6 +152,21 @@ independently-checkable resource — both are aggregation keys over
 `TelemetryRepository.list_sessions()`, the same reasoning already given above for why
 `/seasons/{season}/events` doesn't 404 either.
 
+## M21 addition: cross-season tyre/stint-strategy trend
+
+`GET /drivers/{driver_id}/seasons/{season}/tyre-trend?session_type=` (defaults to `race`) returns
+`SeasonTyreTrendResponse` (`app/models/driver_trends.py`): `driver_id`, `season`, `session_type`,
+`points: list[SeasonTyreTrendPoint]`. Each point (`session_id`, `event_id`, `event_name`,
+`round_number`, `session_date`, `strategy: DriverStrategySummary`) nests M11's
+`DriverStrategySummary` unchanged rather than flattening it, since every one of that model's
+fields is reused (unlike M17's pace-trend point, which flattens a deliberate subset of
+`DriverSummary`). A round the driver didn't compete in is omitted from `points` entirely, same
+roster-absent convention as M17. A round where the driver has zero recorded stints still produces
+a point (`strategy.stint_count == 0`, empty `compound_sequence`/`stint_lengths`) rather than being
+omitted — differs from the roster-absent case, since `driver_strategy_summary([])` already
+produces exactly that shape with no special-casing needed. **Never 404s**, same reasoning as M17's
+pace-trend route.
+
 ## Why the backend re-reads Parquet directly (not via the pipeline package)
 
 `TelemetryRepository` (ADR-0006) is defined by the API's own read patterns, not by importing
@@ -259,6 +274,7 @@ value on every list item for no reason — a plain response-shaping choice, not 
 | GET | `/laps/compare?session_id_a=&driver_a=&lap_a=&session_id_b=&driver_b=&lap_b=` (M13, `app/api/laps_compare.py`) | `LapComparisonResponse` | 404 if either session doesn't exist, or either side's driver/lap has no telemetry |
 | GET | `/stints/compare?session_id_a=&driver_a=&session_id_b=&driver_b=` (M15, `app/api/stints_compare.py`) | `StintComparisonResponse` | 404 if either session doesn't exist; empty stints/pit-stops (plus a warning) if a side's driver has no stint data |
 | GET | `/drivers/{driver_id}/seasons/{season}/pace-trend?session_type=` (M17, `app/api/driver_trends.py`) | `SeasonPaceTrendResponse` | Never 404s — see the M17 addition above |
+| GET | `/drivers/{driver_id}/seasons/{season}/tyre-trend?session_type=` (M21, `app/api/driver_trends.py`) | `SeasonTyreTrendResponse` | Never 404s — see the M21 addition above |
 
 `driver_id` and `lap_number` are both required query parameters on `/telemetry` — fetching a whole
 session's telemetry in one response isn't a V1 read pattern (PRD's success criteria and

@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M19 — Telemetry lookup optimization — complete.**
+**Current milestone: M22 — Corner highlighting — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -53,8 +53,11 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M17 | Cross-season driver pace trends | ✅ Done |
 | M18 | Per-session Parquet file-level caching (performance) | ✅ Done |
 | M19 | Telemetry driver/lap positional index (performance) | ✅ Done |
+| M20 | Documentation & roadmap reconciliation (M13–M19) | ✅ Done |
+| M21 | Cross-season tyre-strategy trends | ✅ Done |
+| M22 | Corner highlighting (V2 completion) | ✅ Done |
 
-M8–M19 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M19
+M8–M22 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M22
 without implying they were part of the original V1–V5 schedule); each has its own design review
 under `docs/` (`m8-design-review.md` onward). See `docs/releases/` for per-milestone summaries
 (currently covering M1–M5; later milestones' records are their own design-review/implementation-plan
