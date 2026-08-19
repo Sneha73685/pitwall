@@ -1,5 +1,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+} from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as client from "../../api/client";
 import { useComparisonStore, type ComparisonChannelKey } from "./comparisonStore";
@@ -75,6 +82,60 @@ function renderAt(path: string) {
       </Routes>
     </MemoryRouter>,
   );
+}
+
+// M24 (docs/m24-design-review.md §11): test-only siblings, rendered inside
+// the same MemoryRouter as the page, for the URL-persistence tests below
+// that need to assert on the resulting search string, on replace-vs-push
+// semantics, or drive a Back navigation -- none of which the page itself
+// exposes. (A `createMemoryRouter`/`RouterProvider` data router would give
+// the same information via `router.state`, but its internal navigation
+// path constructs a `Request`/`AbortSignal` that this Vitest/jsdom/undici
+// combination can't construct -- a known environment incompatibility, not
+// a defect in the page. Plain `MemoryRouter` doesn't hit that path.)
+function LocationProbe() {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  return (
+    <div
+      data-testid="location-probe"
+      data-search={location.search}
+      data-nav-type={navigationType}
+    />
+  );
+}
+
+function BackButton() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(-1)}>
+      go back (test helper)
+    </button>
+  );
+}
+
+function renderWithProbe(initialEntries: string | string[]) {
+  const entries = Array.isArray(initialEntries) ? initialEntries : [initialEntries];
+  return render(
+    <MemoryRouter
+      initialEntries={entries}
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
+      <LocationProbe />
+      <BackButton />
+      <Routes>
+        <Route path="/laps/compare" element={<ComparisonPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+function currentSearch() {
+  return screen.getByTestId("location-probe").dataset.search ?? "";
+}
+
+function currentNavType() {
+  return screen.getByTestId("location-probe").dataset.navType;
 }
 
 const drivers: client.Driver[] = [
@@ -444,6 +505,175 @@ describe("ComparisonPage", () => {
       await selectDriverAndLap(1, "LEC");
 
       expect(client.listLaps).toHaveBeenLastCalledWith("2024_spa_grand_prix_race", "LEC");
+    });
+  });
+
+  // --- M24 URL persistence/shareability (docs/m24-design-review.md) ---
+
+  describe("M24 URL persistence/shareability", () => {
+    it("resolves the comparison from a fully specified URL with no interaction", async () => {
+      vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+      renderAt(
+        "/laps/compare?sessionA=2023_monza_race&driverA=VER&lapA=1" +
+          "&sessionB=2023_monza_race&driverB=LEC&lapB=1",
+      );
+
+      await waitFor(() => expect(screen.getByTestId("lap-a-summary")).toHaveTextContent("VER"));
+      expect(screen.getByTestId("lap-b-summary")).toHaveTextContent("LEC");
+      expect(client.compareLaps).toHaveBeenCalledWith({
+        sessionIdA: "2023_monza_race",
+        driverA: "VER",
+        lapA: 1,
+        sessionIdB: "2023_monza_race",
+        driverB: "LEC",
+        lapB: 1,
+        resolution: undefined,
+      });
+    });
+
+    it("writes each resolved selection to the URL as it's picked, with replace semantics", async () => {
+      vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+      renderWithProbe("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+      await waitFor(() =>
+        expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+      );
+
+      await selectDriverAndLap(0, "VER");
+      expect(currentSearch()).toContain("driverA=VER");
+      expect(currentSearch()).toContain("lapA=1");
+      expect(currentNavType()).toBe("REPLACE");
+
+      await selectDriverAndLap(1, "LEC");
+      expect(currentSearch()).toContain("driverB=LEC");
+      expect(currentSearch()).toContain("lapB=1");
+      expect(currentNavType()).toBe("REPLACE");
+      // Side A's params from the earlier pick are still present -- each
+      // write uses the updater-function form, which only ever touches the
+      // keys it's setting/deleting.
+      expect(currentSearch()).toContain("driverA=VER");
+    });
+
+    it("clears the stale driver/lap params for a side when its session changes", async () => {
+      vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+      vi.spyOn(client, "listSeasons").mockResolvedValue([{ season: 2024, event_count: 1 }]);
+      vi.spyOn(client, "listEventsForSeason").mockResolvedValue([
+        {
+          event_id: "2024_spa_grand_prix",
+          season: 2024,
+          event_name: "Belgian Grand Prix",
+          round_number: 12,
+          location: "Spa",
+          country: "Belgium",
+          session_types: ["race"],
+          session_count: 1,
+        },
+      ]);
+      vi.spyOn(client, "listSessionsForEvent").mockResolvedValue([
+        {
+          session_id: "2024_spa_grand_prix_race",
+          season: 2024,
+          event_name: "Belgian Grand Prix",
+          round_number: 12,
+          location: "Spa",
+          country: "Belgium",
+          session_type: "race",
+          session_date: null,
+          event_id: "2024_spa_grand_prix",
+          has_telemetry: true,
+        },
+      ]);
+      renderWithProbe("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+      await waitFor(() =>
+        expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+      );
+
+      await selectDriverAndLap(1, "LEC");
+      expect(currentSearch()).toContain("driverB=LEC");
+
+      fireEvent.click(screen.getAllByRole("button", { name: /change/i })[1]);
+      const dialog = await screen.findByRole("dialog", { name: /select session b/i });
+      fireEvent.click(await within(dialog).findByText(/2024 — 1 event/i));
+      fireEvent.click(await within(dialog).findByText("Belgian Grand Prix"));
+      fireEvent.click(await screen.findByText("Race"));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+      expect(currentSearch()).toContain("sessionB=2024_spa_grand_prix_race");
+      expect(currentSearch()).not.toContain("driverB=");
+      expect(currentSearch()).not.toContain("lapB=");
+      expect(currentNavType()).toBe("REPLACE");
+    });
+
+    it("swaps the complete URL state atomically on the swap button", async () => {
+      const compareLapsSpy = vi.spyOn(client, "compareLaps").mockImplementation((params) =>
+        Promise.resolve({
+          ...sampleComparison,
+          lap_a: params.driverA === "LEC" ? lecLaps[0] : verLaps[0],
+          lap_b: params.driverB === "LEC" ? lecLaps[0] : verLaps[0],
+        }),
+      );
+      renderWithProbe("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+      await waitFor(() =>
+        expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+      );
+      await selectDriverAndLap(0, "VER");
+      await selectDriverAndLap(1, "LEC");
+      await waitFor(() => expect(compareLapsSpy).toHaveBeenCalled());
+
+      fireEvent.click(screen.getByRole("button", { name: /swap a\/b/i }));
+
+      await waitFor(() => expect(currentSearch()).toContain("driverA=LEC"));
+      expect(currentSearch()).toContain("driverB=VER");
+      expect(currentSearch()).toContain("lapA=1");
+      expect(currentSearch()).toContain("lapB=1");
+      expect(currentNavType()).toBe("REPLACE");
+    });
+
+    it("treats an empty query value the same as an absent one", () => {
+      renderAt("/laps/compare?sessionA=&sessionB=2023_monza_race");
+
+      // sessionA="" is normalized to absent -- Session A's slot shows "No
+      // session selected," not a blank value, and the lap pair selector
+      // doesn't render (mirrors the "sessions absent" case, not "sessions
+      // present but blank").
+      expect(screen.getByText("No session selected")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Driver")).not.toBeInTheDocument();
+    });
+
+    it("preserves an unrelated query parameter across a picker-driven URL write", async () => {
+      vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+      renderWithProbe(
+        "/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race&utm_source=test",
+      );
+      await waitFor(() =>
+        expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+      );
+
+      await selectDriverAndLap(0, "VER");
+
+      expect(currentSearch()).toContain("utm_source=test");
+      expect(currentSearch()).toContain("driverA=VER");
+    });
+
+    it("re-resolves the comparison across a session-changing Back navigation", async () => {
+      vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+      renderWithProbe([
+        "/laps/compare?sessionA=2023_monza_race&driverA=VER&lapA=1&sessionB=2023_monza_race&driverB=LEC&lapB=1",
+        "/laps/compare",
+      ]);
+      // Second (current) history entry: a bare mount, no sessions.
+      // Simulates the MemoryRouter starting one step past the
+      // fully-specified comparison.
+      await waitFor(() => expect(screen.getAllByText("No session selected")).toHaveLength(2));
+
+      fireEvent.click(screen.getByRole("button", { name: /go back \(test helper\)/i }));
+
+      // The session-changing Back navigation force-remounts both
+      // session-keyed DriverLapPickers (docs/m24-design-review.md §7),
+      // which re-applies the URL's driver/lap through the existing,
+      // unmodified validated-initial-selection path -- the comparison
+      // resolves again without any manual re-picking.
+      await waitFor(() => expect(screen.getByTestId("lap-a-summary")).toHaveTextContent("VER"));
+      expect(screen.getByTestId("lap-b-summary")).toHaveTextContent("LEC");
     });
   });
 });

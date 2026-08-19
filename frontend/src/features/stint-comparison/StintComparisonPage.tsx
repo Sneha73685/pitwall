@@ -32,19 +32,26 @@ const WARNING_LABELS: Record<StintComparisonWarningCode, string> = {
  * established (Strategy -> Stint Detail -> Pit stops), duplicated into two
  * columns instead of rendered once.
  *
- * Reads optional sessionA/driverA/sessionB/driverB query params as an
- * initial deep-link (populated by StrategyPage's "Compare Strategy" link),
- * matching M13's exact read-once-on-mount convention -- not written back as
- * selections change (§17: this intentionally doesn't fix ComparisonPage's
- * pre-existing stale-URL gap, for consistency with the pattern being
- * mirrored).
+ * M24 (docs/m24-design-review.md §5): sessionA/sessionB/driverA/driverB
+ * query params are the comparison's canonical, shareable representation.
+ * sessionIdA/sessionIdB are read directly from the URL every render -- no
+ * local state mirror, since SessionPicker's onSelect sets them immediately
+ * with no async roster check in between. driverIdA/driverIdB remain local
+ * useState, populated only through DriverPicker's own existing, unmodified
+ * roster-validation (its `initialDriverId` prop, computed from the URL
+ * exactly as before); this milestone preserves that validation rather than
+ * bypassing it. The URL is written to (one-way, local->URL) only at the
+ * three already-atomic state-change call sites below -- never from a
+ * watching useEffect -- mirroring ComparisonPage's identical treatment
+ * (docs/m24-design-review.md §2.2 records why the two pages' state shapes
+ * differ enough not to share an abstraction, §9).
  */
 export function StintComparisonPage() {
-  const [searchParams] = useSearchParams();
-  const [sessionIdA, setSessionIdA] = useState<string | null>(searchParams.get("sessionA"));
-  const [sessionIdB, setSessionIdB] = useState<string | null>(searchParams.get("sessionB"));
-  const [driverIdA, setDriverIdA] = useState<string | null>(searchParams.get("driverA"));
-  const [driverIdB, setDriverIdB] = useState<string | null>(searchParams.get("driverB"));
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sessionIdA = getParam(searchParams, "sessionA");
+  const sessionIdB = getParam(searchParams, "sessionB");
+  const [driverIdA, setDriverIdA] = useState<string | null>(getParam(searchParams, "driverA"));
+  const [driverIdB, setDriverIdB] = useState<string | null>(getParam(searchParams, "driverB"));
   const [pickingSession, setPickingSession] = useState<"a" | "b" | null>(null);
 
   const { comparison, error } = useStintComparison(
@@ -54,15 +61,57 @@ export function StintComparisonPage() {
     driverIdB ?? undefined,
   );
 
+  // M24 (docs/m24-design-review.md §5): session picks are never gated by
+  // validation, so the URL is the sole source of truth for them -- set the
+  // new session and clear that side's now-stale driver param in the same
+  // call, atomically with the local driver-state clear.
   function handleSessionPicked(sessionId: string) {
-    if (pickingSession === "a") {
-      setSessionIdA(sessionId);
+    const side = pickingSession;
+    setSearchParams(
+      (params) => {
+        if (side === "a") {
+          params.set("sessionA", sessionId);
+          params.delete("driverA");
+        } else if (side === "b") {
+          params.set("sessionB", sessionId);
+          params.delete("driverB");
+        }
+        return params;
+      },
+      { replace: true },
+    );
+    if (side === "a") {
       setDriverIdA(null);
-    } else if (pickingSession === "b") {
-      setSessionIdB(sessionId);
+    } else if (side === "b") {
       setDriverIdB(null);
     }
     setPickingSession(null);
+  }
+
+  // M24 (docs/m24-design-review.md §5): the only two places driverIdA/
+  // driverIdB change outside a session pick -- write the resolved value (or
+  // its absence) to the URL in the same handler, never from a watching
+  // effect.
+  function handleSelectA(driverId: string | null) {
+    setDriverIdA(driverId);
+    setSearchParams(
+      (params) => {
+        setOrDelete(params, "driverA", driverId);
+        return params;
+      },
+      { replace: true },
+    );
+  }
+
+  function handleSelectB(driverId: string | null) {
+    setDriverIdB(driverId);
+    setSearchParams(
+      (params) => {
+        setOrDelete(params, "driverB", driverId);
+        return params;
+      },
+      { replace: true },
+    );
   }
 
   return (
@@ -93,15 +142,15 @@ export function StintComparisonPage() {
             key={`a-${sessionIdA}`}
             sessionId={sessionIdA}
             label="Driver A"
-            onSelect={setDriverIdA}
-            initialDriverId={driverIdA ?? undefined}
+            onSelect={handleSelectA}
+            initialDriverId={getParam(searchParams, "driverA") ?? undefined}
           />
           <DriverPicker
             key={`b-${sessionIdB}`}
             sessionId={sessionIdB}
             label="Driver B"
-            onSelect={setDriverIdB}
-            initialDriverId={driverIdB ?? undefined}
+            onSelect={handleSelectB}
+            initialDriverId={getParam(searchParams, "driverB") ?? undefined}
           />
         </div>
       )}
@@ -162,4 +211,24 @@ function SessionSlot({
       </button>
     </div>
   );
+}
+
+// M24 (docs/m24-design-review.md §3): "" is a legitimate URLSearchParams
+// value for a bare "?key=" -- normalized to absent here so it behaves
+// identically to a missing param everywhere this is read.
+function getParam(searchParams: URLSearchParams, key: string): string | null {
+  return searchParams.get(key) || null;
+}
+
+// M24 (docs/m24-design-review.md §3/§9): sets `key` when `value` is
+// present, deletes it otherwise -- never writes an empty-string value.
+// Duplicated identically in ComparisonPage.tsx rather than shared
+// (docs/m24-design-review.md §9): two call sites, three lines, matching
+// this project's own rule-of-three convention.
+function setOrDelete(params: URLSearchParams, key: string, value: string | null) {
+  if (value) {
+    params.set(key, value);
+  } else {
+    params.delete(key);
+  }
 }

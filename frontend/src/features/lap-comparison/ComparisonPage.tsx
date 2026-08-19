@@ -22,19 +22,26 @@ import styles from "./ComparisonPage.module.css";
  * that design: neither side is privileged once both are independently
  * selectable).
  *
- * Owns sessionIdA/sessionIdB alongside the existing selectionA/selectionB
- * driver+lap state, all as local useState -- not in selectionStore, which
- * stays scoped to the primary Season->Event->Session->Driver->Lap trail
- * (docs/m13-design-review.md §6: this page already isolated A/B state
- * locally before M13; the only change is one more field per side). The
- * primary navigation workflow (Sidebar, every other route) is unaffected.
+ * M24 (docs/m24-design-review.md §5/§7): sessionIdA/sessionIdB are read
+ * directly from the URL every render -- no local state mirror -- since
+ * nothing validates them before use (SessionPicker's onSelect sets them
+ * immediately, no async roster check in between). selectionA/selectionB
+ * remain local useState, not in selectionStore (which stays scoped to the
+ * primary Season->Event->Session->Driver->Lap trail): they're only ever
+ * populated through DriverLapPicker's own existing, unmodified
+ * roster/lap-existence validation, which this milestone preserves rather
+ * than bypasses. The URL is written to (one-way, local->URL) only at the
+ * four already-atomic state-change call sites below -- never from a
+ * watching useEffect -- so no local-state<->URL loop is possible.
  *
- * Reads optional sessionA/driverA/lapA/sessionB/driverB/lapB query params
- * as an initial selection: LapSelectPage's "Compare Selected" entry point
- * links here with sessionA=sessionB=<current session> plus driver/lap for
- * both sides so the comparison loads immediately; Sidebar's "Lap
- * Comparison" link sets only sessionA= (session B still needs picking).
- * Both are additive uses of the same mechanism M6 Phase 9 established.
+ * Reads sessionA/driverA/lapA/sessionB/driverB/lapB query params as the
+ * comparison's canonical, shareable representation: LapSelectPage's
+ * "Compare Selected" entry point links here with sessionA=sessionB=<current
+ * session> plus driver/lap for both sides so the comparison loads
+ * immediately; Sidebar's "Lap Comparison" link sets only sessionA= (session
+ * B still needs picking). Every picker interaction now writes the resolved
+ * state back (M24), so the address bar always reflects what's on screen,
+ * survives a refresh, and reproduces identically from a copied URL.
  *
  * M22 (docs/m22-design-review.md §7, §17): fetches session A's track
  * geometry once at this page level (lifted from `TrackMapDelta`'s own
@@ -50,9 +57,9 @@ import styles from "./ComparisonPage.module.css";
  * was made before, never zero, never two.
  */
 export function ComparisonPage() {
-  const [searchParams] = useSearchParams();
-  const [sessionIdA, setSessionIdA] = useState<string | null>(searchParams.get("sessionA"));
-  const [sessionIdB, setSessionIdB] = useState<string | null>(searchParams.get("sessionB"));
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sessionIdA = getParam(searchParams, "sessionA");
+  const sessionIdB = getParam(searchParams, "sessionB");
   const [selectionA, setSelectionA] = useState<DriverLapSelection | null>(null);
   const [selectionB, setSelectionB] = useState<DriverLapSelection | null>(null);
   const [pickingSession, setPickingSession] = useState<"a" | "b" | null>(null);
@@ -96,22 +103,89 @@ export function ComparisonPage() {
 
   const corners = useMemo(() => (trackPoints ? detectCorners(trackPoints) : []), [trackPoints]);
 
+  // M24 (docs/m24-design-review.md §8): one setSearchParams call swaps all
+  // six URL fields atomically; the two setSelection* calls below swap the
+  // matching local state in the same event-handler tick. React 18's
+  // automatic batching commits both as one render, so no half-swapped URL
+  // is ever written or visible.
   function handleSwap() {
-    setSessionIdA(sessionIdB);
-    setSessionIdB(sessionIdA);
+    setSearchParams(
+      (params) => {
+        const nextSessionA = params.get("sessionB");
+        const nextSessionB = params.get("sessionA");
+        const nextDriverA = params.get("driverB");
+        const nextLapA = params.get("lapB");
+        const nextDriverB = params.get("driverA");
+        const nextLapB = params.get("lapA");
+        setOrDelete(params, "sessionA", nextSessionA);
+        setOrDelete(params, "sessionB", nextSessionB);
+        setOrDelete(params, "driverA", nextDriverA);
+        setOrDelete(params, "lapA", nextLapA);
+        setOrDelete(params, "driverB", nextDriverB);
+        setOrDelete(params, "lapB", nextLapB);
+        return params;
+      },
+      { replace: true },
+    );
     setSelectionA(selectionB);
     setSelectionB(selectionA);
   }
 
+  // M24 (docs/m24-design-review.md §5): session picks are never gated by
+  // validation, so the URL is the sole source of truth for them -- set the
+  // new session and clear that side's now-stale driver/lap params in the
+  // same call, atomically with the local selection clear.
   function handleSessionPicked(sessionId: string) {
-    if (pickingSession === "a") {
-      setSessionIdA(sessionId);
+    const side = pickingSession;
+    setSearchParams(
+      (params) => {
+        if (side === "a") {
+          params.set("sessionA", sessionId);
+          params.delete("driverA");
+          params.delete("lapA");
+        } else if (side === "b") {
+          params.set("sessionB", sessionId);
+          params.delete("driverB");
+          params.delete("lapB");
+        }
+        return params;
+      },
+      { replace: true },
+    );
+    if (side === "a") {
       setSelectionA(null);
-    } else if (pickingSession === "b") {
-      setSessionIdB(sessionId);
+    } else if (side === "b") {
       setSelectionB(null);
     }
     setPickingSession(null);
+  }
+
+  // M24 (docs/m24-design-review.md §5): the only two places selectionA/
+  // selectionB change outside a session pick -- write the resolved pair (or
+  // its absence) to the URL in the same handler, never from a watching
+  // effect.
+  function handleSelectA(selection: DriverLapSelection | null) {
+    setSelectionA(selection);
+    setSearchParams(
+      (params) => {
+        setOrDelete(params, "driverA", selection?.driverId ?? null);
+        setOrDelete(params, "lapA", selection ? String(selection.lapNumber) : null);
+        return params;
+      },
+      { replace: true },
+    );
+  }
+
+  function handleSelectB(selection: DriverLapSelection | null) {
+    setSelectionB(selection);
+    setSearchParams(
+      (params) => {
+        setOrDelete(params, "driverB", selection?.driverId ?? null);
+        setOrDelete(params, "lapB", selection ? String(selection.lapNumber) : null);
+        return params;
+      },
+      { replace: true },
+    );
   }
 
   return (
@@ -140,8 +214,8 @@ export function ComparisonPage() {
         <LapPairSelector
           sessionIdA={sessionIdA}
           sessionIdB={sessionIdB}
-          onSelectA={setSelectionA}
-          onSelectB={setSelectionB}
+          onSelectA={handleSelectA}
+          onSelectB={handleSelectB}
           initialSelectionA={selectionFromParams(searchParams, "driverA", "lapA")}
           initialSelectionB={selectionFromParams(searchParams, "driverB", "lapB")}
         />
@@ -188,12 +262,33 @@ function SessionSlot({
   );
 }
 
+// M24 (docs/m24-design-review.md §3): "" is a legitimate URLSearchParams
+// value for a bare "?key=" -- normalized to absent here so it behaves
+// identically to a missing param everywhere this is read.
+function getParam(searchParams: URLSearchParams, key: string): string | null {
+  return searchParams.get(key) || null;
+}
+
+// M24 (docs/m24-design-review.md §3/§9): sets `key` when `value` is
+// present, deletes it otherwise -- never writes an empty-string value.
+// Duplicated identically in StintComparisonPage.tsx rather than shared
+// (docs/m24-design-review.md §9): two call sites, three lines, matching
+// this project's own rule-of-three convention.
+function setOrDelete(params: URLSearchParams, key: string, value: string | null) {
+  if (value) {
+    params.set(key, value);
+  } else {
+    params.delete(key);
+  }
+}
+
 function selectionFromParams(
   searchParams: URLSearchParams,
   driverKey: string,
   lapKey: string,
 ): DriverLapSelection | undefined {
-  const driverId = searchParams.get(driverKey);
-  const lapNumber = Number(searchParams.get(lapKey));
+  const driverId = getParam(searchParams, driverKey);
+  const lapParam = getParam(searchParams, lapKey);
+  const lapNumber = lapParam !== null ? Number(lapParam) : NaN;
   return driverId && Number.isFinite(lapNumber) ? { driverId, lapNumber } : undefined;
 }
