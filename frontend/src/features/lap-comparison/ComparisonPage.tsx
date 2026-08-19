@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getTrackPoints, type TrackPoint } from "../../api/client";
 import { ErrorState } from "../../components/ErrorState";
+import { getParam, setOrDelete } from "../../components/urlSearchParams";
 import { detectCorners } from "../track-map/detectCorners";
 import { useLapComparison } from "./hooks/useLapComparison";
 import { LapPairSelector } from "./components/LapPairSelector";
@@ -260,26 +261,6 @@ function SessionSlot({
       </button>
     </div>
   );
-}
-
-// M24 (docs/m24-design-review.md §3): "" is a legitimate URLSearchParams
-// value for a bare "?key=" -- normalized to absent here so it behaves
-// identically to a missing param everywhere this is read.
-function getParam(searchParams: URLSearchParams, key: string): string | null {
-  return searchParams.get(key) || null;
-}
-
-// M24 (docs/m24-design-review.md §3/§9): sets `key` when `value` is
-// present, deletes it otherwise -- never writes an empty-string value.
-// Duplicated identically in StintComparisonPage.tsx rather than shared
-// (docs/m24-design-review.md §9): two call sites, three lines, matching
-// this project's own rule-of-three convention.
-function setOrDelete(params: URLSearchParams, key: string, value: string | null) {
-  if (value) {
-    params.set(key, value);
-  } else {
-    params.delete(key);
-  }
 }
 
 function selectionFromParams(

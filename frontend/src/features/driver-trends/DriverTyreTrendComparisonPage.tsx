@@ -11,6 +11,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { SESSION_TYPE_LABELS } from "../../components/sessionTypeLabels";
+import { getParam, setOrDelete } from "../../components/urlSearchParams";
 import { SeasonTyreTrendList } from "./components/SeasonTyreTrendList";
 import { useDriverTyreTrendComparison } from "./hooks/useDriverTyreTrendComparison";
 import styles from "./DriverTyreTrendComparisonPage.module.css";
@@ -241,22 +242,4 @@ function DriverSeasonFields({
       </div>
     </Card>
   );
-}
-
-// M26 (docs/m26-design-review.md §8, mirrors docs/m25-design-review.md §6):
-// "" is a legitimate URLSearchParams value for a bare "?key=" -- normalized
-// to absent here so it behaves identically to a missing param. Not shared
-// with DriverPaceTrendComparisonPage.tsx's (or ComparisonPage.tsx's/
-// StintComparisonPage.tsx's) own identical copies -- explicitly not
-// extracted this milestone (docs/m26-design-review.md §8/§13).
-function getParam(searchParams: URLSearchParams, key: string): string | null {
-  return searchParams.get(key) || null;
-}
-
-function setOrDelete(params: URLSearchParams, key: string, value: string) {
-  if (value) {
-    params.set(key, value);
-  } else {
-    params.delete(key);
-  }
 }

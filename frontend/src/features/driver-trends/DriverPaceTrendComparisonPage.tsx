@@ -11,6 +11,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
 import { SESSION_TYPE_LABELS } from "../../components/sessionTypeLabels";
+import { getParam, setOrDelete } from "../../components/urlSearchParams";
 import { SeasonPaceTrendChart } from "./components/SeasonPaceTrendChart";
 import { useDriverPaceTrendComparison } from "./hooks/useDriverPaceTrendComparison";
 import styles from "./DriverPaceTrendComparisonPage.module.css";
@@ -250,25 +251,4 @@ function DriverSeasonFields({
       </div>
     </Card>
   );
-}
-
-// M25 (docs/m25-design-review.md §6, mirrors docs/m24-design-review.md §3):
-// "" is a legitimate URLSearchParams value for a bare "?key=" -- normalized
-// to absent here so it behaves identically to a missing param.
-function getParam(searchParams: URLSearchParams, key: string): string | null {
-  return searchParams.get(key) || null;
-}
-
-// M25 (mirrors docs/m24-design-review.md §3/§9): sets `key` when `value` is
-// present, deletes it otherwise -- never writes an empty-string value. Not
-// shared with ComparisonPage.tsx/StintComparisonPage.tsx's own identical
-// copies (docs/m25-design-review.md §13): a third copy is a real
-// rule-of-three trigger, deliberately not pulled in as an unrelated
-// refactor during this milestone.
-function setOrDelete(params: URLSearchParams, key: string, value: string) {
-  if (value) {
-    params.set(key, value);
-  } else {
-    params.delete(key);
-  }
 }

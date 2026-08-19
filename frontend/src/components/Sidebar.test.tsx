@@ -72,6 +72,60 @@ describe("Sidebar", () => {
     expect(screen.queryByRole("link", { name: "Lap Comparison" })).not.toBeInTheDocument();
   });
 
+  // M27 (docs/m27-design-review.md §10): gated on driverId alone -- not
+  // season, since /stints/compare has no season concept in its URL
+  // contract -- seeding both sessionA and driverA (mirrors StrategyPage's
+  // own "Compare Strategy" link, the only pre-existing entry point to this
+  // route).
+  it("shows the Compare Stints link once a driver is selected, seeding session and driver", () => {
+    useSelectionStore.setState({
+      ...DEFAULTS,
+      season: 2024,
+      eventId: "2024_bahrain_grand_prix",
+      sessionId: "2024_bahrain_grand_prix_race",
+      driverId: "VER",
+    });
+
+    renderSidebar();
+
+    expect(screen.getByRole("link", { name: "Compare Stints" })).toHaveAttribute(
+      "href",
+      "/stints/compare?sessionA=2024_bahrain_grand_prix_race&driverA=VER",
+    );
+  });
+
+  it("does not show the Compare Stints link before a driver is selected", () => {
+    useSelectionStore.setState({
+      ...DEFAULTS,
+      season: 2024,
+      eventId: "2024_bahrain_grand_prix",
+      sessionId: "2024_bahrain_grand_prix_race",
+    });
+
+    renderSidebar();
+
+    expect(screen.queryByRole("link", { name: "Compare Stints" })).not.toBeInTheDocument();
+  });
+
+  // Confirms season is genuinely not part of the gating condition (unlike
+  // the two trend-comparison links below) -- the link still appears with
+  // season explicitly absent, as long as a driver is selected.
+  it("shows the Compare Stints link even when season is not set", () => {
+    useSelectionStore.setState({
+      ...DEFAULTS,
+      season: null,
+      sessionId: "2024_bahrain_grand_prix_race",
+      driverId: "VER",
+    });
+
+    renderSidebar();
+
+    expect(screen.getByRole("link", { name: "Compare Stints" })).toHaveAttribute(
+      "href",
+      "/stints/compare?sessionA=2024_bahrain_grand_prix_race&driverA=VER",
+    );
+  });
+
   // M25 (docs/m25-design-review.md §8/§15): gated on driverId && season,
   // not sessionId -- season is the dimension this comparison spans, so the
   // link should appear as soon as a driver is selected, not only once a

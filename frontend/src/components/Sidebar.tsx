@@ -18,6 +18,16 @@ import styles from "./Sidebar.module.css";
  * link, identical gating/seeding pattern, placed immediately after
  * "Compare Pace Trends" to group the two trend-comparison entry points
  * together. No existing link is reordered or modified.
+ *
+ * M27 (docs/m27-design-review.md §10): one new "Compare Stints" link,
+ * gated on `driverId` alone -- not `season`, since /stints/compare has no
+ * season concept in its URL contract at all -- seeding both `sessionA` and
+ * `driverA` (mirroring StrategyPage's own "Compare Strategy" link, the
+ * only pre-existing entry point to that route, rather than "Compare
+ * Sessions"' narrower session-only seed). Placed immediately after
+ * "Compare Sessions": both are session/driver-paired comparisons, grouped
+ * together ahead of the two driver/season-paired trend links. No existing
+ * link is reordered or modified.
  */
 export function Sidebar() {
   const season = useSelectionStore((state) => state.season);
@@ -65,6 +75,14 @@ export function Sidebar() {
           <NavLink to={`/laps/compare?sessionA=${sessionId}`} className={linkClass}>
             Compare Sessions
           </NavLink>
+          {driverId && (
+            <NavLink
+              to={`/stints/compare?sessionA=${sessionId}&driverA=${driverId}`}
+              className={linkClass}
+            >
+              Compare Stints
+            </NavLink>
+          )}
           {driverId && season && (
             <NavLink
               to={`/drivers/pace-trend/compare?driverA=${driverId}&seasonA=${season}`}
