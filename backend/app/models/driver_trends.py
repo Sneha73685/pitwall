@@ -101,3 +101,23 @@ class SeasonTyreTrendResponse(ApiModel):
     season: int
     session_type: SessionType
     points: list[SeasonTyreTrendPoint]
+
+
+class SeasonPaceTrendComparisonResponse(ApiModel):
+    """`GET /drivers/pace-trend/compare` (M25, docs/m25-design-review.md §4).
+
+    `a`/`b` are two complete, unmodified `SeasonPaceTrendResponse` sides --
+    not a new flattened shape, not a computed-metric shape. Each side is
+    resolved fully independently (own driver, own season, shared
+    `session_type`); there is no cross-side computation, alignment, or
+    comparative field of any kind, matching `StintComparisonResponse`'s own
+    "disclose, don't judge" precedent (M15). Deliberately no `warnings`
+    field: unlike a single-session stint comparison, a season-granularity
+    comparison has no equivalent "different circuit" concern -- a season
+    already spans every circuit on the calendar by definition, and an empty
+    side's `points` list already self-describes "no data for this
+    driver/season" exactly as it does for the single-driver endpoint.
+    """
+
+    a: SeasonPaceTrendResponse
+    b: SeasonPaceTrendResponse

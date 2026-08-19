@@ -1,0 +1,114 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-5);
+}
+
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--pw-space-3);
+}
+
+.heading {
+  font-size: var(--pw-text-lg);
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--pw-space-2);
+}
+
+.filterLabel {
+  font-size: var(--pw-text-sm);
+  color: var(--pw-text-secondary);
+}
+
+.filterSelect {
+  padding: var(--pw-space-1) var(--pw-space-2);
+  background: var(--pw-bg-surface-raised);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-sm);
+  color: var(--pw-text-primary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-4);
+}
+
+.sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pw-space-4);
+}
+
+@media (max-width: 1024px) {
+  .sides,
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fields {
+  display: flex;
+  gap: var(--pw-space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-1);
+  flex: 1;
+}
+
+.fieldLabel {
+  font-size: var(--pw-text-sm);
+  font-weight: 600;
+  color: var(--pw-text-secondary);
+}
+
+.input,
+.select {
+  padding: var(--pw-space-1) var(--pw-space-2);
+  background: var(--pw-bg-surface-raised);
+  border: 1px solid var(--pw-border-subtle);
+  border-radius: var(--pw-radius-sm);
+  color: var(--pw-text-primary);
+}
+
+.compareButton {
+  align-self: flex-start;
+  padding: var(--pw-space-2) var(--pw-space-4);
+  background: var(--pw-accent);
+  color: var(--pw-bg-canvas);
+  border: none;
+  border-radius: var(--pw-radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.compareButton:hover {
+  opacity: 0.9;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pw-space-4);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pw-space-3);
+}
+
+.columnHeading {
+  font-size: var(--pw-text-md);
+  color: var(--pw-text-secondary);
+}

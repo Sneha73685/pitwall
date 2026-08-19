@@ -3,6 +3,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import { getHealth } from "./api/client";
 import { AppShell } from "./components/AppShell";
 import { StatusChip } from "./components/StatusChip";
+import { DriverPaceTrendComparisonPage } from "./features/driver-trends/DriverPaceTrendComparisonPage";
 import { DriverSeasonPaceTrendPage } from "./features/driver-trends/DriverSeasonPaceTrendPage";
 import { DriverSeasonTyreTrendPage } from "./features/driver-trends/DriverSeasonTyreTrendPage";
 import { ComparisonPage } from "./features/lap-comparison/ComparisonPage";
@@ -67,6 +68,11 @@ type BackendStatus = "checking" | "online" | "offline";
  * M21 adds the sibling standalone "/drivers/:driverId/seasons/:season/tyre-trend"
  * (docs/m21-design-review.md §7) -- same top-level, season-scoped reasoning
  * as M17's pace-trend route.
+ *
+ * M25 adds "/drivers/pace-trend/compare" (docs/m25-design-review.md §6) --
+ * two-driver cross-season pace-trend comparison, identical path string to
+ * the backend route it calls (matching /laps/compare's and /stints/compare's
+ * own frontend/backend path-identity precedent).
  */
 function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>("checking");
@@ -132,6 +138,7 @@ function App() {
           path="/drivers/:driverId/seasons/:season/tyre-trend"
           element={<DriverSeasonTyreTrendPage />}
         />
+        <Route path="/drivers/pace-trend/compare" element={<DriverPaceTrendComparisonPage />} />
       </Routes>
     </AppShell>
   );

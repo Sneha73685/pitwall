@@ -8,6 +8,11 @@ import styles from "./Sidebar.module.css";
  * to that same store in M12 Phase 5, not a new one) so users can jump
  * between Seasons/Events/Sessions/Drivers/Laps/Track Map/Compare/Analytics/
  * Tyre Performance for their current selection without losing context.
+ *
+ * M25 (docs/m25-design-review.md §8/§15): one new "Compare Pace Trends"
+ * link, gated on `driverId && season` and seeding only side A -- mirrors
+ * "Compare Sessions"' own seed-one-side-only pattern exactly. No existing
+ * link is reordered or modified.
  */
 export function Sidebar() {
   const season = useSelectionStore((state) => state.season);
@@ -55,6 +60,14 @@ export function Sidebar() {
           <NavLink to={`/laps/compare?sessionA=${sessionId}`} className={linkClass}>
             Compare Sessions
           </NavLink>
+          {driverId && season && (
+            <NavLink
+              to={`/drivers/pace-trend/compare?driverA=${driverId}&seasonA=${season}`}
+              className={linkClass}
+            >
+              Compare Pace Trends
+            </NavLink>
+          )}
           <NavLink to={`/sessions/${sessionId}/analytics`} className={linkClass}>
             Session Analytics
           </NavLink>

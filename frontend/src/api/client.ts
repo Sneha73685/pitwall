@@ -558,6 +558,43 @@ export async function getDriverSeasonPaceTrend(
 }
 
 /**
+ * M25 (docs/m25-design-review.md §4): two complete, unmodified
+ * `SeasonPaceTrendResponse` sides -- not a new flattened shape, not a
+ * computed-metric shape. No `warnings` field: a season-granularity
+ * comparison has no equivalent of `/stints/compare`'s "different circuit"
+ * concern.
+ */
+export interface SeasonPaceTrendComparisonResponse {
+  a: SeasonPaceTrendResponse;
+  b: SeasonPaceTrendResponse;
+}
+
+export interface ComparePaceTrendsParams {
+  driverA: string;
+  seasonA: number;
+  driverB: string;
+  seasonB: number;
+  sessionType?: SessionType;
+}
+
+/**
+ * M25: two-driver cross-season pace-trend comparison. Mirrors
+ * compareStints' query-string construction pattern; `sessionType` is
+ * shared by both sides and omitted (server default "race") the same way
+ * getDriverSeasonPaceTrend already omits it when unset (docs/m25-design-
+ * review.md §3.1).
+ */
+export async function comparePaceTrends(
+  params: ComparePaceTrendsParams,
+): Promise<SeasonPaceTrendComparisonResponse> {
+  const query =
+    `?driver_a=${encodeURIComponent(params.driverA)}&season_a=${params.seasonA}` +
+    `&driver_b=${encodeURIComponent(params.driverB)}&season_b=${params.seasonB}` +
+    (params.sessionType ? `&session_type=${encodeURIComponent(params.sessionType)}` : "");
+  return getJson<SeasonPaceTrendComparisonResponse>(`/drivers/pace-trend/compare${query}`);
+}
+
+/**
  * M21 (docs/m21-design-review.md §3): one driver's stint/tyre-strategy
  * trend across one season. `strategy` reuses the existing
  * `DriverStrategySummary` interface (M15) unchanged -- every field this
