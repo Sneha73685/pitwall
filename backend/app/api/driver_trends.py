@@ -26,6 +26,7 @@ over `list_sessions()`, not rows in a catalogue.
 
 from fastapi import APIRouter, Depends, Query
 
+from app.api._mappers import to_driver_strategy_summary
 from app.dependencies import get_race_context_repository, get_telemetry_repository
 from app.models.driver_trends import (
     SeasonPaceTrendPoint,
@@ -34,13 +35,9 @@ from app.models.driver_trends import (
     SeasonTyreTrendResponse,
 )
 from app.models.telemetry import Session, SessionType
-from app.models.tyre_performance import DriverStrategySummary
 from app.repositories import RaceContextRepository, TelemetryRepository
 from app.services.session_analytics.aggregation import summarize_driver
 from app.services.session_discovery import list_sessions_for_driver_season
-from app.services.tyre_performance.strategy_summary import (
-    DriverStrategySummary as DriverStrategySummaryResult,
-)
 from app.services.tyre_performance.strategy_summary import driver_strategy_summary
 
 router = APIRouter(prefix="/drivers", tags=["driver-trends"])
@@ -109,26 +106,11 @@ def get_driver_season_pace_trend(
     )
 
 
-def _to_driver_strategy_summary(result: DriverStrategySummaryResult) -> DriverStrategySummary:
-    """Mirrors app/api/tyre_performance.py's and app/api/stints_compare.py's
-    own identically-named mapper exactly -- not imported from either since
-    both are private, unexported helpers. A third copy is a deliberate,
-    disclosed choice (docs/m21-design-review.md §6.5), not an oversight:
-    extracting a shared helper would be an unrelated cleanup outside this
-    milestone's approved scope."""
-    return DriverStrategySummary(
-        driver_id=result.driver_id,
-        stint_count=result.stint_count,
-        compound_sequence=result.compound_sequence,
-        stint_lengths=result.stint_lengths,
-    )
-
-
 def _to_tyre_trend_point(
     session: Session, race_context_repository: RaceContextRepository, driver_id: str
 ) -> SeasonTyreTrendPoint:
     stints = race_context_repository.list_stints(session.session_id, driver_id)
-    strategy = _to_driver_strategy_summary(driver_strategy_summary(driver_id, stints))
+    strategy = to_driver_strategy_summary(driver_strategy_summary(driver_id, stints))
     return SeasonTyreTrendPoint(
         session_id=session.session_id,
         event_id=session.event_id,

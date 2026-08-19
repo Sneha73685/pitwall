@@ -26,6 +26,7 @@ know "session" or "circuit" is a concept.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.api._mappers import to_driver_strategy_summary
 from app.dependencies import get_race_context_repository, get_telemetry_repository
 from app.models.race_context import Stint
 from app.models.stint_comparison import (
@@ -35,13 +36,10 @@ from app.models.stint_comparison import (
     StintComparisonWarningCode,
 )
 from app.models.telemetry import Session
-from app.models.tyre_performance import DriverStrategySummary, StintPace
+from app.models.tyre_performance import StintPace
 from app.repositories import RaceContextRepository, TelemetryRepository
 from app.services.tyre_performance.orchestration import build_driver_stint_pace
 from app.services.tyre_performance.stint_consistency import StintConsistency
-from app.services.tyre_performance.strategy_summary import (
-    DriverStrategySummary as DriverStrategySummaryResult,
-)
 from app.services.tyre_performance.strategy_summary import driver_strategy_summary
 
 router = APIRouter(prefix="/stints", tags=["stint-comparison"])
@@ -94,26 +92,12 @@ def _build_side(
     return DriverStintComparisonSide(
         session_id=session_id,
         driver_id=driver_id,
-        strategy=_to_driver_strategy_summary(driver_strategy_summary(driver_id, stints)),
+        strategy=to_driver_strategy_summary(driver_strategy_summary(driver_id, stints)),
         stints=[
             _to_stint_pace(stint, result.consistency_by_stint)
             for stint in sorted(stints, key=lambda s: s.stint_number)
         ],
         pit_stops=pit_stops,
-    )
-
-
-def _to_driver_strategy_summary(
-    result: DriverStrategySummaryResult,
-) -> DriverStrategySummary:
-    """Mirrors app/api/tyre_performance.py's own `_to_driver_strategy_summary`
-    mapping exactly -- not imported from there since that module's version
-    is a private, unexported helper."""
-    return DriverStrategySummary(
-        driver_id=result.driver_id,
-        stint_count=result.stint_count,
-        compound_sequence=result.compound_sequence,
-        stint_lengths=result.stint_lengths,
     )
 
 

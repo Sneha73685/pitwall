@@ -23,6 +23,7 @@ SQL or across storage engines (docs/m11-design-review.md §6.2).
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.api._mappers import to_driver_strategy_summary
 from app.dependencies import get_race_context_repository, get_telemetry_repository
 from app.models.race_context import Stint
 from app.models.tyre_performance import (
@@ -30,7 +31,6 @@ from app.models.tyre_performance import (
     CompoundLapIndexAggregate,
     CompoundUsageCount,
     DriverStintPaceResponse,
-    DriverStrategySummary,
     RawLapTimeByCompound,
     StintPace,
     StintPaceLap,
@@ -56,9 +56,6 @@ from app.services.tyre_performance.orchestration import (
 from app.services.tyre_performance.stint_consistency import StintConsistency
 from app.services.tyre_performance.strategy_summary import (
     CompoundUsageCount as CompoundUsageCountResult,
-)
-from app.services.tyre_performance.strategy_summary import (
-    DriverStrategySummary as DriverStrategySummaryResult,
 )
 
 router = APIRouter(prefix="/sessions", tags=["tyre-performance"])
@@ -90,15 +87,6 @@ def _to_stint_pace(stint: Stint, consistency_by_stint: dict[int, StintConsistenc
         eligible_lap_count=consistency.eligible_lap_count if consistency else 0,
         consistency_ms=consistency.consistency_ms if consistency else None,
         consistency_cv=consistency.consistency_cv if consistency else None,
-    )
-
-
-def _to_driver_strategy_summary(result: DriverStrategySummaryResult) -> DriverStrategySummary:
-    return DriverStrategySummary(
-        driver_id=result.driver_id,
-        stint_count=result.stint_count,
-        compound_sequence=result.compound_sequence,
-        stint_lengths=result.stint_lengths,
     )
 
 
@@ -162,7 +150,7 @@ def _to_tyre_performance_response(
 ) -> TyrePerformanceResponse:
     return TyrePerformanceResponse(
         session_id=session_id,
-        driver_strategies=[_to_driver_strategy_summary(s) for s in result.driver_strategies],
+        driver_strategies=[to_driver_strategy_summary(s) for s in result.driver_strategies],
         compound_usage=[_to_compound_usage_count(c) for c in result.compound_usage],
         compound_aggregates=[_to_compound_aggregate(c) for c in result.compound_aggregates],
         compound_lap_index_aggregates=[
