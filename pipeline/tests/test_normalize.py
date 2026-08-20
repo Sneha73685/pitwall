@@ -9,6 +9,7 @@ from pitwall_pipeline.normalize import (
 )
 from tests.fixtures import (
     build_laps_df,
+    build_practice_laps_df,
     build_practice_results_df,
     build_results_df,
     build_telemetry_df,
@@ -99,6 +100,24 @@ def test_normalize_laps_handles_missing_lap_time() -> None:
     laps = normalize_laps(laps_df, session_id="2023_monza_race")
 
     assert laps[0].lap_time_seconds is None
+
+
+def test_normalize_laps_maps_position() -> None:
+    """M35 (docs/m35-design-review.md §3/§4)."""
+    laps = normalize_laps(build_laps_df(), session_id="2023_monza_race")
+
+    assert laps[0].position == 1
+    assert laps[1].position == 2
+
+
+def test_normalize_laps_handles_non_applicable_position() -> None:
+    """Practice sessions: FastF1 still returns the Position column, but NaN
+    for every lap (docs/m35-design-review.md §3) -- must normalize to None,
+    not raise or fabricate a value.
+    """
+    laps = normalize_laps(build_practice_laps_df(), session_id="2023_monza_practice_1")
+
+    assert laps[0].position is None
 
 
 def test_normalize_telemetry_converts_units_and_drs() -> None:

@@ -96,6 +96,7 @@ def build_laps_df() -> pd.DataFrame:
                 "TyreLife": 2.0,
                 "PitInTime": pd.NaT,
                 "PitOutTime": pd.NaT,
+                "Position": 1.0,
             },
             {
                 "Driver": "HAM",
@@ -111,6 +112,29 @@ def build_laps_df() -> pd.DataFrame:
                 "TyreLife": 1.0,
                 "PitInTime": pd.NaT,
                 "PitOutTime": pd.NaT,
+                "Position": 2.0,
+            },
+        ]
+    )
+
+
+def build_practice_laps_df() -> pd.DataFrame:
+    """Practice-shaped: FastF1 leaves `Position` NaN for every lap in a
+    session type outside `_RACE_LIKE_SESSIONS` (M35,
+    docs/m35-design-review.md §3) -- the column is present, not absent.
+    """
+    return pd.DataFrame(
+        [
+            {
+                "Driver": "VER",
+                "LapNumber": 1,
+                "LapTime": pd.Timedelta(seconds=91.234),
+                "Sector1Time": pd.Timedelta(seconds=30.1),
+                "Sector2Time": pd.Timedelta(seconds=31.0),
+                "Sector3Time": pd.Timedelta(seconds=30.134),
+                "IsPersonalBest": True,
+                "IsAccurate": True,
+                "Position": float("nan"),
             },
         ]
     )

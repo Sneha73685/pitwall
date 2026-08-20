@@ -47,6 +47,16 @@ class SessionAnalyticsWarning(ApiModel):
     detail: str | None = None
 
 
+class LapPosition(ApiModel):
+    """One lap's running-order position (M35, docs/m35-design-review.md
+    §5). `position` is `None` for session types FastF1 doesn't populate it
+    for (Qualifying/Practice) and for any session ingested before M35.
+    """
+
+    lap_number: int
+    position: int | None
+
+
 class DriverSummary(ApiModel):
     """One driver's session-wide summary row (plan §0.4).
 
@@ -56,6 +66,11 @@ class DriverSummary(ApiModel):
     `consistency_ms`) so the frontend boxplot can use ECharts' own quartile
     transform over raw arrays, per the design doc's B5 decision -- a
     backend-computed five-number summary was explicitly rejected there.
+
+    `positions` is an M35 addition (docs/m35-design-review.md §5) feeding
+    `PositionTrendChart` -- every lap the driver has, valid or not, same
+    population as `DriverLapMetrics` would use, not the yellow-flag-excluded
+    aggregate-stats population `lap_times_ms` uses.
     """
 
     driver: str
@@ -69,6 +84,7 @@ class DriverSummary(ApiModel):
     full_throttle_pct: float | None
     outlier_lap_count: int
     lap_times_ms: list[float]
+    positions: list[LapPosition]
 
 
 class SessionAnalyticsResponse(ApiModel):

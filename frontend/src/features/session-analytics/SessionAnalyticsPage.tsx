@@ -8,6 +8,7 @@ import { DriverDrillDown } from "./components/DriverDrillDown";
 import { DriverRankingChart } from "./components/DriverRankingChart";
 import { DriverSummaryTable } from "./components/DriverSummaryTable";
 import { PaceDistributionChart } from "./components/PaceDistributionChart";
+import { PositionTrendChart } from "./components/PositionTrendChart";
 import { SessionAnalyticsHeader } from "./components/SessionAnalyticsHeader";
 import { useSessionAnalytics } from "./hooks/useSessionAnalytics";
 import styles from "./SessionAnalyticsPage.module.css";
@@ -35,6 +36,15 @@ import styles from "./SessionAnalyticsPage.module.css";
  *
  * M9 adds DriverRankingChart -- fed by the same `analytics.drivers` array
  * already passed to PaceDistributionChart, zero new fetches.
+ *
+ * M35 adds PositionTrendChart -- also fed by `analytics.drivers`, zero new
+ * fetches (docs/m35-design-review.md §9). Rendered as its own full-width
+ * row, not inside `.chartRow` (a 20-driver line chart needs more width
+ * than that fixed two-column grid gives PaceDistributionChart/
+ * DriverRankingChart), and only when at least one driver has a non-null
+ * position -- Qualifying/Practice sessions and any session ingested before
+ * M35 (no historical backfill) have none, so the row is omitted entirely
+ * rather than showing an empty chart.
  */
 export function SessionAnalyticsPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -94,6 +104,11 @@ export function SessionAnalyticsPage() {
           <DriverRankingChart drivers={analytics.drivers} />
         </Card>
       </div>
+      {analytics.drivers.some((driver) => driver.positions?.some((p) => p.position !== null)) && (
+        <Card title="Position by Lap">
+          <PositionTrendChart drivers={analytics.drivers} />
+        </Card>
+      )}
       {selectedDriver && <DriverDrillDown sessionId={sessionId} driver={selectedDriver} />}
     </section>
   );

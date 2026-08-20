@@ -1,6 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
 import type { RawLapTimeByCompound } from "../../../api/client";
-import { driverColor } from "../driverColor";
+import { driverColor } from "../../../components/driverColor";
 
 interface ComparisonPoint {
   value: [number, number];

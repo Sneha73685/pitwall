@@ -170,6 +170,52 @@ def test_list_laps_without_filter_returns_every_driver(session_cache_dir: Path) 
     assert len(laps) == 3
 
 
+def test_list_laps_maps_position_when_present(tmp_path: Path) -> None:
+    """M35 (docs/m35-design-review.md §5/§10): a laps.parquet written with
+    the new position column deserializes it correctly -- the positive-case
+    complement to `session_cache_dir`'s shared fixture (deliberately left
+    without this column, the backward-compatibility proof for pre-M35 rows,
+    exercised by test_list_laps_without_filter_returns_every_driver above)."""
+    session_dir = tmp_path / "2023" / "monza" / "race"
+    session_dir.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2023_monza_race",
+                "driver_id": "VER",
+                "lap_number": 1,
+                "lap_time_seconds": 91.0,
+                "sector_1_seconds": 30.0,
+                "sector_2_seconds": 30.0,
+                "sector_3_seconds": 31.0,
+                "is_personal_best": True,
+                "is_accurate": True,
+                "position": 1,
+            }
+        ]
+    ).to_parquet(session_dir / "laps.parquet", index=False)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2023_monza_race",
+                "season": 2023,
+                "event_name": "Italian Grand Prix",
+                "round_number": 16,
+                "location": "Monza",
+                "country": "Italy",
+                "session_type": "race",
+                "session_date": "2023-09-03T13:00:00+00:00",
+            }
+        ]
+    ).to_parquet(session_dir / "session.parquet", index=False)
+    repo = ParquetRepository(tmp_path)
+
+    laps = repo.list_laps("2023_monza_race")
+
+    assert len(laps) == 1
+    assert laps[0].position == 1
+
+
 def test_list_laps_handles_missing_lap_time(session_cache_dir: Path) -> None:
     repo = ParquetRepository(session_cache_dir)
 

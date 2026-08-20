@@ -144,6 +144,13 @@ class Lap(DomainModel):
     is_accurate: bool
     # None where FastF1 doesn't report it (older seasons, some session types)
     compound: str | None = None
+    # M35 addition: lap-by-lap running-order position (source:
+    # ff1_session.laps' Position column, docs/m35-design-review.md §3). A
+    # FastF1-derived rank, only populated for Race/Sprint/pre-2024 Sprint
+    # Qualifying sessions; None for Qualifying/Practice and for any session
+    # ingested before M35 (Option B -- no historical backfill,
+    # docs/m35-design-review.md §7).
+    position: int | None = None
 
 
 class Stint(DomainModel):

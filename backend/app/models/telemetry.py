@@ -87,6 +87,12 @@ class Lap(ApiModel):
     # Additive M10 field (docs/adr/0011-hybrid-storage-architecture.md):
     # None for pre-M10 ingested sessions, or where FastF1 doesn't report it.
     compound: str | None = None
+    # M35 addition: lap-by-lap running-order position (source:
+    # ff1_session.laps' Position column, docs/m35-design-review.md §3). None
+    # for session types FastF1 doesn't populate it for (Qualifying/
+    # Practice), and for any session ingested before M35 (Option B -- no
+    # historical backfill, docs/m35-design-review.md §7).
+    position: int | None = None
 
 
 class TelemetrySample(ApiModel):

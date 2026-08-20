@@ -261,6 +261,23 @@ def test_get_session_analytics_computes_the_two_valid_lap_driver_s_summary(
     assert ver["full_throttle_pct"] == pytest.approx(75.0)
 
 
+def test_get_session_analytics_includes_positions_for_every_lap(
+    analytics_client: TestClient,
+) -> None:
+    """M35 (docs/m35-design-review.md §5/§10): proves the mapper wiring
+    end-to-end, not just the service layer in isolation. This fixture's
+    laps.parquet predates M35 and has no `position` column at all --
+    `positions` must still appear, with the correct `lap_number`s and
+    `None` for every value, exactly as a pre-M35-ingested real session
+    would (Option B, no historical backfill)."""
+    response = analytics_client.get(f"/sessions/{SESSION_ID}/analytics/drivers")
+    body = response.json()
+    ver = next(driver for driver in body["drivers"] if driver["driver"] == "VER")
+
+    assert [p["lap_number"] for p in ver["positions"]] == [1, 2, 3]
+    assert all(p["position"] is None for p in ver["positions"])
+
+
 def test_get_session_analytics_flags_the_one_valid_lap_driver_with_a_warning(
     analytics_client: TestClient,
 ) -> None:

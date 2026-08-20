@@ -54,6 +54,19 @@ class DriverLapMetrics:
 
 
 @dataclass(frozen=True)
+class LapPosition:
+    """One lap's running-order position (M35, docs/m35-design-review.md
+    §5). A plain passthrough of `Lap.position`, not a computed analytics
+    value -- deliberately not part of `DriverLapMetrics`, which the M35
+    design review found is never reached by the full-grid response
+    `SessionAnalyticsPage` actually consumes.
+    """
+
+    lap_number: int
+    position: int | None
+
+
+@dataclass(frozen=True)
 class DriverSummary:
     """One driver's session-wide summary row plus its full per-lap list
     (M8 §3). `laps` includes every lap the driver has, valid or not (§3's
@@ -69,6 +82,12 @@ class DriverSummary:
     than a backend-computed five-number summary. Not the same population
     as `valid_lap_count` (which stays `is_accurate`-only, per the note
     below).
+
+    `positions` (M35, docs/m35-design-review.md §5) is built from every lap
+    the driver has -- not the yellow-flag-excluded `aggregate_laps`
+    population `best_lap_ms`/etc. use -- since a position trend's most
+    informative moments (a pit stop, a lap under yellow) are exactly what
+    that filter would remove.
     """
 
     driver_id: str
@@ -83,6 +102,7 @@ class DriverSummary:
     outlier_lap_count: int
     lap_times_ms: list[float] = field(default_factory=list)
     laps: list[DriverLapMetrics] = field(default_factory=list)
+    positions: list[LapPosition] = field(default_factory=list)
 
 
 def _lap_time_ms(lap: Lap) -> float | None:
@@ -184,6 +204,8 @@ def summarize_driver(
         for lap in laps
     ]
 
+    positions = [LapPosition(lap_number=lap.lap_number, position=lap.position) for lap in laps]
+
     return DriverSummary(
         driver_id=driver_id,
         valid_lap_count=len(valid_laps),
@@ -197,4 +219,5 @@ def summarize_driver(
         outlier_lap_count=len(outlier_lap_numbers),
         lap_times_ms=aggregate_lap_times_ms,
         laps=lap_metrics,
+        positions=positions,
     )

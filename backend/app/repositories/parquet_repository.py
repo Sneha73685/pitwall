@@ -125,6 +125,9 @@ def _lap_from_row(row: Mapping[Hashable, Any]) -> Lap:
         # .get(), not row["compound"]: a pre-M10 laps.parquet has no
         # compound column at all, and must deserialize to None, not raise.
         compound=_optional_str(row.get("compound")),
+        # Same reasoning for M35's position: a pre-M35 laps.parquet has no
+        # position column at all (docs/m35-design-review.md §5).
+        position=_optional_int(row.get("position")),
     )
 
 

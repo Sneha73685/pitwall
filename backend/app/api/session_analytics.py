@@ -29,6 +29,7 @@ from app.models.session_analytics import (
     DriverLapMetrics,
     DriverLapsResponse,
     DriverSummary,
+    LapPosition,
     SessionAnalyticsResponse,
     SessionAnalyticsWarning,
     SessionAnalyticsWarningCode,
@@ -74,6 +75,9 @@ def _to_driver_summary_model(summary: DriverSummaryResult) -> DriverSummary:
         full_throttle_pct=summary.full_throttle_pct,
         outlier_lap_count=summary.outlier_lap_count,
         lap_times_ms=summary.lap_times_ms,
+        positions=[
+            LapPosition(lap_number=p.lap_number, position=p.position) for p in summary.positions
+        ],
     )
 
 

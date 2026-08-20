@@ -108,6 +108,15 @@ export interface Lap {
    * would anyway.
    */
   compound?: string | null;
+  /**
+   * M35 addition. Optional+nullable for the same reason as `compound`
+   * above: the backend always sends the key, but making it required would
+   * force every existing `Lap`-literal test fixture across the app to add
+   * it just to keep compiling. `null` for session types FastF1 doesn't
+   * populate it for (Qualifying/Practice) and for any session ingested
+   * before M35 (no historical backfill, docs/m35-design-review.md §7).
+   */
+  position?: number | null;
 }
 
 export interface TelemetrySample {
@@ -206,6 +215,20 @@ export interface DriverSummary {
    * five-number summary (design doc B5 decision).
    */
   lap_times_ms: number[];
+  /**
+   * M35 addition (docs/m35-design-review.md §9). Optional -- unlike
+   * lap_times_ms, several pre-existing test files construct `DriverSummary`
+   * literals unrelated to this milestone (DriverRankingChart,
+   * PaceDistributionChart, DriverSummaryTable and their chart-options
+   * tests); making this required would force all of them to add it just to
+   * keep compiling.
+   */
+  positions?: LapPosition[];
+}
+
+export interface LapPosition {
+  lap_number: number;
+  position: number | null;
 }
 
 export interface SessionAnalyticsResponse {

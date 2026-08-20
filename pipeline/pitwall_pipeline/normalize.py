@@ -405,6 +405,13 @@ def normalize_laps(laps: pd.DataFrame, *, session_id: str) -> list[Lap]:
     Sector3Time, IsPersonalBest, IsAccurate, Compound (see
     fastf1.core.Laps._COLUMNS; Compound verified present -- M10, see
     docs/m10-implementation-plan.md Phase 2 §2.0).
+
+    M35 (docs/m35-design-review.md §3/§4) additionally reads Position from
+    the same DataFrame -- no new FastF1 call. Position is a FastF1-derived
+    running-order rank, populated only for Race/Sprint/pre-2024 Sprint
+    Qualifying sessions (FastF1's own `_RACE_LIKE_SESSIONS`, resolved
+    entirely internally); NaN for Qualifying/Practice, which normalizes to
+    None like any other missing value here -- never fabricated.
     """
     result = []
     for _, row in laps.iterrows():
@@ -420,6 +427,7 @@ def normalize_laps(laps: pd.DataFrame, *, session_id: str) -> list[Lap]:
                 is_personal_best=bool(row.get("IsPersonalBest", False)),
                 is_accurate=bool(row.get("IsAccurate", False)),
                 compound=_optional_str(row.get("Compound")),
+                position=_optional_int(row.get("Position")),
             )
         )
     return result

@@ -178,3 +178,21 @@ def test_summarize_driver_with_no_laps_at_all() -> None:
     assert summary.valid_lap_count == 0
     assert summary.laps == []
     assert summary.best_lap_ms is None
+
+
+def test_summarize_driver_builds_positions_from_every_lap() -> None:
+    """M35 (docs/m35-design-review.md §5/§10): `positions` uses the full
+    lap list, not the yellow-flag-excluded aggregate-stats population --
+    and preserves a `None` position (e.g. a lap FastF1 didn't rank) rather
+    than fabricating one.
+    """
+    laps = [
+        lap(lap_number=1, position=3),
+        lap(lap_number=2, position=2),
+        lap(lap_number=3, position=None),
+    ]
+
+    summary = summarize_driver("VER", laps, {})
+
+    assert [p.lap_number for p in summary.positions] == [1, 2, 3]
+    assert [p.position for p in summary.positions] == [3, 2, None]
