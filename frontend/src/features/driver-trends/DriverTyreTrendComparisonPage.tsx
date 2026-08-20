@@ -10,21 +10,11 @@ import { Card } from "../../components/Card";
 import { EmptyState } from "../../components/EmptyState";
 import { ErrorState } from "../../components/ErrorState";
 import { LoadingState } from "../../components/LoadingState";
-import { SESSION_TYPE_LABELS } from "../../components/sessionTypeLabels";
+import { FILTERABLE_SESSION_TYPES, SESSION_TYPE_LABELS } from "../../components/sessionTypeLabels";
 import { getParam, setOrDelete } from "../../components/urlSearchParams";
 import { SeasonTyreTrendList } from "./components/SeasonTyreTrendList";
 import { useDriverTyreTrendComparison } from "./hooks/useDriverTyreTrendComparison";
 import styles from "./DriverTyreTrendComparisonPage.module.css";
-
-const FILTERABLE_SESSION_TYPES: SessionType[] = [
-  "race",
-  "sprint",
-  "qualifying",
-  "sprint_qualifying",
-  "practice_1",
-  "practice_2",
-  "practice_3",
-];
 
 /**
  * /drivers/tyre-trend/compare (M26, docs/m26-design-review.md): two
