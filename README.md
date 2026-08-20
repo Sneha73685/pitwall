@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M27 — Comparison-surface consistency pass — complete.**
+**Current milestone: M32 — Shared session-type filter constant — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -61,8 +61,13 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M25 | Two-driver cross-season pace-trend comparison | ✅ Done |
 | M26 | Two-driver cross-season tyre-trend comparison | ✅ Done |
 | M27 | Comparison-surface consistency pass | ✅ Done |
+| M28 | Documentation & roadmap reconciliation (M23–M27) | ✅ Done |
+| M29 | Shared driver-strategy mapper extraction (backend) | ✅ Done |
+| M30 | Frontend dependency & security remediation | ✅ Done |
+| M31 | React Router 6→7 migration | ✅ Done |
+| M32 | Shared session-type filter constant (frontend) | ✅ Done |
 
-M8–M27 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M27
+M8–M32 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M32
 without implying they were part of the original V1–V5 schedule); each has its own design review
 under `docs/` (`m8-design-review.md` onward). See `docs/releases/` for per-milestone summaries
 (currently covering M1–M5; later milestones' records are their own design-review/implementation-plan

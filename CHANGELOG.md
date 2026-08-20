@@ -8,8 +8,77 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing in progress — M27 is the most recently completed milestone (see `README.md`'s Project
+Nothing in progress — M32 is the most recently completed milestone (see `README.md`'s Project
 status).
+
+## M32 — Shared Session-Type Filter Constant — 2026-08-20
+
+See `docs/m32-design-review.md` for the full design record.
+
+### Added
+
+- `FILTERABLE_SESSION_TYPES` exported from `frontend/src/components/sessionTypeLabels.ts`, alongside
+  the existing `SESSION_TYPE_LABELS` — extracted from four byte-identical local copies previously
+  duplicated across `DriverSeasonPaceTrendPage.tsx`, `DriverSeasonTyreTrendPage.tsx`,
+  `DriverPaceTrendComparisonPage.tsx`, and `DriverTyreTrendComparisonPage.tsx`.
+
+### Changed
+
+- The four driver-trends pages now import `FILTERABLE_SESSION_TYPES` from the shared module instead
+  of each declaring a local copy. No API, data, or behavioral change — the constant's value and
+  order are unchanged, and all four pages' existing tests pass unmodified.
+
+## M31 — React Router 6→7 Migration — 2026-08-20
+
+See `docs/m31-design-review.md` for the full design record.
+
+### Changed
+
+- `react-router-dom` upgraded `6.30.4` → `7.18.2` (`react-router` and `react-router-dom` collapse
+  into one dependency at v7). Removed the now-invalid `future={{ v7_startTransition: true,
+  v7_relativeSplatPath: true }}` prop from `frontend/src/main.tsx` and 17 test files' `MemoryRouter`
+  usages — both flags are unconditional default behavior in 7.18.2, so this is a zero-behavior-change
+  cleanup, not a functional change.
+- `npm audit`: 2 vulnerabilities (both moderate, React Router) → **0**. No route, hook, or
+  URL-contract change of any kind; every existing route path, query-parameter name, and
+  replace-vs-push semantic (M24) is unaffected.
+
+## M30 — Frontend Dependency / Security Remediation — 2026-08-20
+
+See `docs/m30-design-review.md` for the full design record.
+
+### Changed
+
+- `vite` `5.4.0` → `6.4.3`, `vitest` `2.0.0` → `3.2.7`, `@vitejs/plugin-react` `4.3.0` → `4.7.0`,
+  `echarts` `5.5.0` → `6.1.0`, plus transitive patch-level fixes applied via plain `npm audit fix`
+  (no `--force`).
+- `npm audit`: 13 vulnerabilities (6 high, 6 moderate, 1 critical) → 2 remaining (both moderate).
+  The 2 residual vulnerabilities are both React Router — **not resolved by this milestone**; the
+  advisories' fixed range (`>=7.18.0`) has no patch within the 6.x line. Resolved separately in M31.
+
+## M29 — Shared Driver-Strategy Mapper — 2026-08-19
+
+See `docs/m29-design-review.md` for the full design record.
+
+### Added
+
+- `backend/app/api/_mappers.py` — `to_driver_strategy_summary(...)`, extracted from three
+  near-identical `_to_driver_strategy_summary` copies previously duplicated across
+  `driver_trends.py`, `stints_compare.py`, and `tyre_performance.py`.
+
+### Changed
+
+- All three route files now import the shared mapper instead of each defining its own copy. No API
+  or response-contract change — the response shape is byte-identical, verified by each of the three
+  routes' existing tests passing unmodified.
+
+## M28 — Documentation & Roadmap Reconciliation (M23–M27) — 2026-08-19
+
+See `docs/m28-design-review.md` for the full design record.
+
+### Changed
+
+- Reconciled `README.md`, `CHANGELOG.md`, `docs/prd.md`, and `docs/api-model.md` through M27.
 
 ## M27 — Comparison-Surface Consistency Pass — 2026-08-19
 

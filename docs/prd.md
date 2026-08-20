@@ -85,7 +85,7 @@ Sequencing note: M1 and M2 can't be meaningfully parallelized (API needs real ca
 
 ---
 
-## 3a. Milestone History Beyond V1 (M8–M27)
+## 3a. Milestone History Beyond V1 (M8–M32)
 
 The table above (§3) is the original, dated V1 schedule and is not edited by later milestones.
 Everything from M8 onward was added after V1 shipped, each with its own design review under `docs/`
@@ -115,9 +115,15 @@ relates to the themes §5 already named, not as a retroactive edit to §3:
 | M25 | Two-driver cross-season pace-trend comparison (`/drivers/pace-trend/compare`) | Not itself named in the original roadmap; the multi-driver case M17 explicitly deferred (§11) |
 | M26 | Two-driver cross-season tyre-trend comparison (`/drivers/tyre-trend/compare`) | Not itself named in the original roadmap; the multi-driver case M21 explicitly deferred (§7), handed off again by M25 (§13) |
 | M27 | Comparison-surface consistency pass — shared URL helpers, "Compare Stints" navigation | Documentation/maintainability-adjacent cleanup; not itself V-scoped |
+| M28 | Documentation & roadmap reconciliation (`docs/m28-design-review.md`) | Documentation-only reconciliation pass; not itself V-scoped |
+| M29 | Shared `to_driver_strategy_summary` backend mapper extraction | Not itself named in the original roadmap; maintainability-only, no capability change |
+| M30 | Frontend dependency/security remediation (Vite, Vitest, `@vitejs/plugin-react`, ECharts) | Not itself named in the original roadmap; security/maintainability debt, no capability change |
+| M31 | React Router 6→7 migration | Not itself named in the original roadmap; closes the security debt M30 left open, no capability change |
+| M32 | Shared `FILTERABLE_SESSION_TYPES` frontend constant | Not itself named in the original roadmap; maintainability-only, no capability change |
 
-See `docs/m16-design-review.md`, `docs/m20-design-review.md`, `docs/m23-design-review.md`, and
-`docs/m28-design-review.md` for the reconciliation passes this table is part of.
+See `docs/m16-design-review.md`, `docs/m20-design-review.md`, `docs/m23-design-review.md`,
+`docs/m28-design-review.md`, and `docs/m33-design-review.md` for the reconciliation passes this
+table is part of.
 
 ---
 
@@ -168,3 +174,4 @@ originally written, describing the reasoning at V1 design time.
 - v4 (M20, `docs/m20-design-review.md`): extended §3a through M19 (M16 docs reconciliation, M17 cross-season pace trends, M18/M19 repository performance work). §5 re-verified against current source with no edit needed — every row's status is still accurate. No scope or architecture change — documentation reconciliation only.
 - v5 (M23, `docs/m23-design-review.md`): extended §3a through M22 (M20 docs reconciliation, M21 cross-season tyre-strategy trends, M22 corner highlighting). Corrected §5's corner-highlighting row, false since M22 shipped. No scope or architecture change — documentation reconciliation only.
 - v6 (M28, `docs/m28-design-review.md`): extended §3a through M27 (M23 docs reconciliation, M24 comparison URL persistence, M25 two-driver pace-trend comparison, M26 two-driver tyre-trend comparison, M27 comparison-surface consistency pass). Corrected §3a's own heading range (M8–M19 → M8–M27, stale since before M23). §5 re-verified against current source with no edit needed. No scope or architecture change — documentation reconciliation only.
+- v7 (M33, `docs/m33-design-review.md`): extended §3a through M32 (M28 docs reconciliation, M29 shared strategy-mapper extraction, M30 dependency/security remediation, M31 React Router 7 migration, M32 shared session-type filter constant). §5 re-verified against current source with no edit needed. No scope or architecture change — documentation reconciliation only.
