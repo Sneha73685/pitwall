@@ -37,6 +37,65 @@ describe("DriverSelectPage", () => {
     expect(useSelectionStore.getState().sessionId).toBe("2023_monza_race");
   });
 
+  // --- M34 classification (docs/m34-design-review.md §8/§9) --------------
+
+  it("shows classification info when present", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue([
+      {
+        driver_id: "VER",
+        driver_number: 1,
+        full_name: "Max Verstappen",
+        team_name: "Red Bull Racing",
+        classified_position: "1",
+        grid_position: 1,
+        status: "Finished",
+        points: 25,
+      },
+    ]);
+
+    renderAt("/sessions/2023_monza_race");
+
+    await waitFor(() => expect(screen.getByText("P1")).toBeInTheDocument());
+    expect(screen.getByText("Started P1")).toBeInTheDocument();
+    expect(screen.getByText("Finished")).toBeInTheDocument();
+    expect(screen.getByText("25 pts")).toBeInTheDocument();
+  });
+
+  it("renders a non-numeric classified position as-is", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue([
+      {
+        driver_id: "VER",
+        driver_number: 1,
+        full_name: "Max Verstappen",
+        team_name: "Red Bull Racing",
+        classified_position: "R",
+        status: "Crash",
+      },
+    ]);
+
+    renderAt("/sessions/2023_monza_race");
+
+    await waitFor(() => expect(screen.getByText("R")).toBeInTheDocument());
+    expect(screen.getByText("Crash")).toBeInTheDocument();
+  });
+
+  it("omits classification info when absent (Practice sessions, pre-M34 data)", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue([
+      {
+        driver_id: "VER",
+        driver_number: 1,
+        full_name: "Max Verstappen",
+        team_name: "Red Bull Racing",
+      },
+    ]);
+
+    renderAt("/sessions/2023_monza_practice_1");
+
+    await waitFor(() => expect(screen.getByText(/max verstappen/i)).toBeInTheDocument());
+    expect(screen.queryByText(/^P\d/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/started p/i)).not.toBeInTheDocument();
+  });
+
   it("shows an error message when the request fails", async () => {
     vi.spyOn(client, "listDrivers").mockRejectedValue(new Error("network error"));
 

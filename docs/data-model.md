@@ -37,7 +37,11 @@ already a transitive dependency of `fastf1` and is now a direct one).
   `round_number`, `location`, `country`, `session_type`, `session_date` (UTC, optional — some
   historic/testing events lack it).
 - **`Driver`** — `driver_id` (FastF1 3-letter `Abbreviation`, e.g. `VER`), `driver_number`,
-  `full_name`, `team_name`.
+  `full_name`, `team_name`, plus four additive M34 fields sourced from the same
+  `ff1_session.results` FastF1 already loads: `classified_position`, `grid_position`, `status`,
+  `points` (all `None` for session types FastF1 doesn't populate them for, e.g. Practice, and for
+  any session ingested before M34 — no historical backfill was performed, see
+  `docs/m34-design-review.md` §6).
 - **`Lap`** — `session_id`, `driver_id`, `lap_number`, `lap_time_seconds` (`None` for an
   incomplete/invalid lap), `sector_1_seconds`, `sector_2_seconds`, `sector_3_seconds` (each
   `None`-able for the same reason), `is_personal_best`, `is_accurate` (FastF1's own

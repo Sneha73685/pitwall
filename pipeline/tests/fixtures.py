@@ -11,6 +11,11 @@ import pandas as pd
 
 
 def build_results_df() -> pd.DataFrame:
+    """Race-classification-shaped: mirrors a real Race session's results
+    frame, where ClassifiedPosition/GridPosition/Status/Points (M34,
+    docs/m34-design-review.md §2) are populated. See build_practice_results_df
+    below for the "columns present but not applicable" (Practice) shape.
+    """
     return pd.DataFrame(
         [
             {
@@ -20,6 +25,10 @@ def build_results_df() -> pd.DataFrame:
                 "FirstName": "Max",
                 "LastName": "Verstappen",
                 "TeamName": "Red Bull Racing",
+                "ClassifiedPosition": "1",
+                "GridPosition": 1.0,
+                "Status": "Finished",
+                "Points": 25.0,
             },
             {
                 "DriverNumber": "44",
@@ -28,6 +37,35 @@ def build_results_df() -> pd.DataFrame:
                 "FirstName": "Lewis",
                 "LastName": "Hamilton",
                 "TeamName": "Mercedes",
+                "ClassifiedPosition": "2",
+                "GridPosition": 3.0,
+                "Status": "Finished",
+                "Points": 18.0,
+            },
+        ]
+    )
+
+
+def build_practice_results_df() -> pd.DataFrame:
+    """Practice-shaped: FastF1 populates ClassifiedPosition/GridPosition/
+    Status/Points columns for every session type (SessionResults' own
+    "all dataframe columns will always exist" guarantee), but leaves them
+    NaN for session types it doesn't compute a classification for -- e.g.
+    Practice (M34, docs/m34-design-review.md §4).
+    """
+    return pd.DataFrame(
+        [
+            {
+                "DriverNumber": "1",
+                "Abbreviation": "VER",
+                "FullName": "Max Verstappen",
+                "FirstName": "Max",
+                "LastName": "Verstappen",
+                "TeamName": "Red Bull Racing",
+                "ClassifiedPosition": float("nan"),
+                "GridPosition": float("nan"),
+                "Status": float("nan"),
+                "Points": float("nan"),
             },
         ]
     )

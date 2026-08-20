@@ -241,7 +241,10 @@ same fields for the subset M2 exposes:
   `sprint_qualifying`, `sprint`, `race`), redefined locally per the anti-corruption boundary.
 - **`Session`** — `session_id`, `season`, `event_name`, `round_number`, `location`, `country`,
   `session_type`, `session_date`.
-- **`Driver`** — `driver_id`, `driver_number`, `full_name`, `team_name`.
+- **`Driver`** — `driver_id`, `driver_number`, `full_name`, `team_name`, and four additive M34
+  fields — `classified_position`, `grid_position`, `status`, `points` (source: `ff1_session.results`,
+  already loaded for every session; `None` for session types FastF1 doesn't populate them for, e.g.
+  Practice, and for any session ingested before M34 — no historical backfill, `docs/m34-design-review.md` §6).
 - **`Lap`** — `driver_id`, `lap_number`, `lap_time_seconds`, `sector_1_seconds`, `sector_2_seconds`,
   `sector_3_seconds`, `is_personal_best`, `is_accurate`.
 - **`TelemetrySample`** — `distance_m`, `time_seconds`, `speed_kph`, `throttle_pct`, `brake_active`,

@@ -103,6 +103,56 @@ def test_list_drivers_unknown_session_returns_empty_list(tmp_path: Path) -> None
     assert repo.list_drivers("2023_monza_race") == []
 
 
+def test_list_drivers_maps_classification_fields_when_present(tmp_path: Path) -> None:
+    """M34 (docs/m34-design-review.md §5/§9): a drivers.parquet written with
+    the four new classification columns deserializes them correctly --
+    the positive-case complement to `session_cache_dir`'s shared fixture
+    (deliberately left without these columns, §5's backward-compatibility
+    proof for pre-M34 rows, exercised by test_list_drivers_returns_all_drivers
+    above)."""
+    session_dir = tmp_path / "2023" / "monza" / "race"
+    session_dir.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2023_monza_race",
+                "driver_id": "VER",
+                "driver_number": 1,
+                "full_name": "Max Verstappen",
+                "team_name": "Red Bull Racing",
+                "classified_position": "1",
+                "grid_position": 1,
+                "status": "Finished",
+                "points": 25.0,
+            }
+        ]
+    ).to_parquet(session_dir / "drivers.parquet", index=False)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2023_monza_race",
+                "season": 2023,
+                "event_name": "Italian Grand Prix",
+                "round_number": 16,
+                "location": "Monza",
+                "country": "Italy",
+                "session_type": "race",
+                "session_date": "2023-09-03T13:00:00+00:00",
+            }
+        ]
+    ).to_parquet(session_dir / "session.parquet", index=False)
+    repo = ParquetRepository(tmp_path)
+
+    drivers = repo.list_drivers("2023_monza_race")
+
+    assert len(drivers) == 1
+    ver = drivers[0]
+    assert ver.classified_position == "1"
+    assert ver.grid_position == 1
+    assert ver.status == "Finished"
+    assert ver.points == 25.0
+
+
 def test_list_laps_filters_by_driver(session_cache_dir: Path) -> None:
     repo = ParquetRepository(session_cache_dir)
 

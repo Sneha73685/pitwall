@@ -28,7 +28,22 @@ import styles from "./DriverSelectPage.module.css";
  * link to /drivers/:driverId/seasons/:season/tyre-trend
  * (docs/m21-design-review.md §7) -- reusing the same already-fetched
  * `season` value, no new API call.
+ *
+ * M34 adds classification info per driver card -- classified position,
+ * grid position, status, and points, straight from the already-fetched
+ * `listDrivers` response (docs/m34-design-review.md §8; no new API call).
+ * All four are `null` for session types FastF1 doesn't populate them for
+ * (e.g. Practice) and for any session ingested before M34 -- both cases
+ * simply omit the classification row entirely, falling back to exactly
+ * this page's pre-M34 rendering. The list is already in classification
+ * order once populated (the backend preserves FastF1's own
+ * finishing-position-sorted row order end to end), so no client-side sort
+ * is added here.
  */
+function formatClassifiedPosition(value: string): string {
+  return /^\d+$/.test(value) ? `P${value}` : value;
+}
+
 export function DriverSelectPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const setSession = useSelectionStore((state) => state.setSession);
@@ -91,6 +106,25 @@ export function DriverSelectPage() {
                   <span className={styles.driverName}>
                     {driver.full_name} ({driver.team_name})
                   </span>
+                  {(driver.classified_position ||
+                    driver.grid_position != null ||
+                    driver.status ||
+                    (driver.points ?? 0) > 0) && (
+                    <span className={styles.classificationRow}>
+                      {driver.classified_position && (
+                        <span className={styles.positionBadge}>
+                          {formatClassifiedPosition(driver.classified_position)}
+                        </span>
+                      )}
+                      {driver.grid_position != null && (
+                        <span className={styles.gridPosition}>Started P{driver.grid_position}</span>
+                      )}
+                      {driver.status && <span className={styles.status}>{driver.status}</span>}
+                      {driver.points != null && driver.points > 0 && (
+                        <span className={styles.points}>{driver.points} pts</span>
+                      )}
+                    </span>
+                  )}
                 </Link>
                 {season !== null && (
                   <Link

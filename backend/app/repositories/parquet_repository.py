@@ -65,6 +65,10 @@ def _optional_float(value: Any) -> float | None:
     return None if pd.isna(value) else float(value)
 
 
+def _optional_int(value: Any) -> int | None:
+    return None if pd.isna(value) else int(value)
+
+
 def _session_from_row(row: Mapping[Hashable, Any], *, has_telemetry: bool) -> Session:
     season = int(row["season"])
     event_name = str(row["event_name"])
@@ -98,6 +102,13 @@ def _driver_from_row(row: Mapping[Hashable, Any]) -> Driver:
         driver_number=int(row["driver_number"]),
         full_name=str(row["full_name"]),
         team_name=str(row["team_name"]),
+        # .get(), not row[...]: a pre-M34 drivers.parquet has none of these
+        # four columns at all, and must deserialize to None, not raise
+        # (docs/m34-design-review.md §5 -- same pattern as Lap's `compound`).
+        classified_position=_optional_str(row.get("classified_position")),
+        grid_position=_optional_int(row.get("grid_position")),
+        status=_optional_str(row.get("status")),
+        points=_optional_float(row.get("points")),
     )
 
 

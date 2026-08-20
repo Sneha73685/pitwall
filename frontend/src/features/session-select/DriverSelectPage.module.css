@@ -93,6 +93,31 @@
   font-size: var(--pw-text-sm);
 }
 
+.classificationRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--pw-space-2);
+  margin-top: var(--pw-space-1);
+}
+
+.positionBadge {
+  font-family: var(--pw-font-mono);
+  font-size: var(--pw-text-xs);
+  font-weight: 700;
+  padding: 0 var(--pw-space-2);
+  border-radius: var(--pw-radius-sm);
+  background: var(--pw-accent-muted);
+  color: var(--pw-accent);
+}
+
+.gridPosition,
+.status,
+.points {
+  font-size: var(--pw-text-xs);
+  color: var(--pw-text-disabled);
+}
+
 @media (max-width: 640px) {
   .grid {
     grid-template-columns: 1fr;

@@ -62,6 +62,15 @@ class Driver(ApiModel):
     driver_number: int
     full_name: str
     team_name: str
+    # M34 additions: session-result/classification fields (source:
+    # ff1_session.results, docs/m34-design-review.md §2/§7). None for
+    # session types FastF1 doesn't populate these for (e.g. Practice), and
+    # for any session ingested before M34 (Option B -- no historical
+    # backfill, docs/m34-design-review.md §6).
+    classified_position: str | None = None
+    grid_position: int | None = None
+    status: str | None = None
+    points: float | None = None
 
 
 class Lap(ApiModel):

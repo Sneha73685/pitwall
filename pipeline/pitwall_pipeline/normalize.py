@@ -57,6 +57,13 @@ def _optional_int(value: Any) -> int | None:
     return int(value)
 
 
+def _optional_float(value: Any) -> float | None:
+    """Convert a (possibly missing) FastF1 numeric field to a float, or None."""
+    if value is None or pd.isna(value):
+        return None
+    return float(value)
+
+
 def normalize_session(
     *,
     season: int,
@@ -357,6 +364,18 @@ def normalize_drivers(results: pd.DataFrame, *, session_id: str) -> list[Driver]
 
     Expected columns: DriverNumber, Abbreviation, FullName, FirstName,
     LastName, TeamName (see fastf1.core.SessionResults._COLUMNS).
+
+    M34 (docs/m34-design-review.md §2/§4) additionally reads
+    ClassifiedPosition/GridPosition/Status/Points from the same DataFrame --
+    no new FastF1 call, since `results` is already loaded for every session.
+    These four columns are only populated by FastF1 for Race/Sprint/
+    Qualifying-family sessions; for Practice (and any other session type
+    FastF1 doesn't populate them for) they're present but NaN, which
+    normalizes to None like any other missing value here -- never an error.
+    `.get()`, not bracket access, so a results frame that lacks these
+    columns entirely (e.g. a hand-built test fixture) also normalizes to
+    None rather than raising, matching this file's own `Compound` precedent
+    (docs/m10-implementation-plan.md).
     """
     drivers = []
     for _, row in results.iterrows():
@@ -370,6 +389,10 @@ def normalize_drivers(results: pd.DataFrame, *, session_id: str) -> list[Driver]
                 driver_number=int(row["DriverNumber"]),
                 full_name=full_name,
                 team_name=str(row["TeamName"]),
+                classified_position=_optional_str(row.get("ClassifiedPosition")),
+                grid_position=_optional_int(row.get("GridPosition")),
+                status=_optional_str(row.get("Status")),
+                points=_optional_float(row.get("Points")),
             )
         )
     return drivers

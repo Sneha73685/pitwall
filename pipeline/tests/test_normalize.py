@@ -7,7 +7,12 @@ from pitwall_pipeline.normalize import (
     normalize_session,
     normalize_telemetry,
 )
-from tests.fixtures import build_laps_df, build_results_df, build_telemetry_df
+from tests.fixtures import (
+    build_laps_df,
+    build_practice_results_df,
+    build_results_df,
+    build_telemetry_df,
+)
 
 
 def test_normalize_session_builds_stable_session_id() -> None:
@@ -45,6 +50,34 @@ def test_normalize_drivers_falls_back_to_first_last_name() -> None:
     drivers = normalize_drivers(results, session_id="2023_monza_race")
 
     assert drivers[0].full_name == "Max Verstappen"
+
+
+def test_normalize_drivers_maps_classification_fields() -> None:
+    """M34 (docs/m34-design-review.md §2/§4/§9)."""
+    drivers = normalize_drivers(build_results_df(), session_id="2023_monza_race")
+
+    ver, ham = drivers
+    assert ver.classified_position == "1"
+    assert ver.grid_position == 1
+    assert ver.status == "Finished"
+    assert ver.points == 25.0
+    assert ham.classified_position == "2"
+    assert ham.grid_position == 3
+    assert ham.points == 18.0
+
+
+def test_normalize_drivers_handles_non_applicable_classification_fields() -> None:
+    """Practice sessions: FastF1 still returns the classification columns,
+    but NaN, not absent (docs/m34-design-review.md §4) -- must normalize to
+    None, not raise or default to a misleading value.
+    """
+    drivers = normalize_drivers(build_practice_results_df(), session_id="2023_monza_practice_1")
+
+    ver = drivers[0]
+    assert ver.classified_position is None
+    assert ver.grid_position is None
+    assert ver.status is None
+    assert ver.points is None
 
 
 def test_normalize_laps_maps_times_and_flags() -> None:

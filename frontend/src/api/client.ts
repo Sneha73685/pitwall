@@ -73,6 +73,19 @@ export interface Driver {
   driver_number: number;
   full_name: string;
   team_name: string;
+  /**
+   * M34 additions (docs/m34-design-review.md §8/§9). Optional here (not
+   * `string | null`), mirroring `Lap.compound`'s own established reasoning:
+   * the backend always sends the key, but making these required would force
+   * every existing test fixture across the app that builds a `Driver`
+   * literal to add them just to keep compiling. `null` for session types
+   * FastF1 doesn't populate these for (e.g. Practice) and for any session
+   * ingested before M34 (no historical backfill).
+   */
+  classified_position?: string | null;
+  grid_position?: number | null;
+  status?: string | null;
+  points?: number | null;
 }
 
 export interface Lap {
