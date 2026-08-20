@@ -6,7 +6,7 @@ import { SeasonListPage } from "./SeasonListPage";
 
 function renderPage() {
   return render(
-    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter>
       <SeasonListPage />
     </MemoryRouter>,
   );

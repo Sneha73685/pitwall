@@ -8,7 +8,7 @@ const DEFAULTS = { season: null, eventId: null, sessionId: null, driverId: null,
 
 function renderSidebar() {
   return render(
-    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter>
       <Sidebar />
     </MemoryRouter>,
   );

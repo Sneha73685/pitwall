@@ -16,10 +16,7 @@ vi.mock("echarts/core", async (importOriginal) => {
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/drivers/pace-trend/compare" element={<DriverPaceTrendComparisonPage />} />
       </Routes>
@@ -45,10 +42,7 @@ function LocationProbe() {
 
 function renderWithProbe(path: string) {
   return render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <LocationProbe />
       <Routes>
         <Route path="/drivers/pace-trend/compare" element={<DriverPaceTrendComparisonPage />} />

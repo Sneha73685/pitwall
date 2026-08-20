@@ -6,10 +6,7 @@ import { DriverTyreTrendComparisonPage } from "./DriverTyreTrendComparisonPage";
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/drivers/tyre-trend/compare" element={<DriverTyreTrendComparisonPage />} />
       </Routes>
@@ -34,10 +31,7 @@ function LocationProbe() {
 
 function renderWithProbe(path: string) {
   return render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <LocationProbe />
       <Routes>
         <Route path="/drivers/tyre-trend/compare" element={<DriverTyreTrendComparisonPage />} />

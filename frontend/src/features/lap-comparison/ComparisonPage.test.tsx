@@ -73,10 +73,7 @@ vi.mock("./components/TrackMapDelta", () => ({
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/laps/compare" element={<ComparisonPage />} />
       </Routes>
@@ -117,10 +114,7 @@ function BackButton() {
 function renderWithProbe(initialEntries: string | string[]) {
   const entries = Array.isArray(initialEntries) ? initialEntries : [initialEntries];
   return render(
-    <MemoryRouter
-      initialEntries={entries}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={entries}>
       <LocationProbe />
       <BackButton />
       <Routes>

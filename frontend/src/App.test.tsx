@@ -20,10 +20,7 @@ vi.mock("echarts/core", async (importOriginal) => {
 
 function renderAppAt(path: string) {
   return render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <App />
     </MemoryRouter>,
   );
@@ -40,7 +37,7 @@ describe("App", () => {
     vi.spyOn(client, "getHealth").mockResolvedValue({ status: "ok", service: "pitwall-backend" });
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <App />
       </MemoryRouter>,
     );
@@ -53,7 +50,7 @@ describe("App", () => {
     vi.spyOn(client, "getHealth").mockResolvedValue({ status: "ok", service: "pitwall-backend" });
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <App />
       </MemoryRouter>,
     );
@@ -65,7 +62,7 @@ describe("App", () => {
     vi.spyOn(client, "getHealth").mockRejectedValue(new Error("network error"));
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <App />
       </MemoryRouter>,
     );
@@ -77,7 +74,7 @@ describe("App", () => {
     vi.spyOn(client, "getHealth").mockResolvedValue({ status: "ok", service: "pitwall-backend" });
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter>
         <App />
       </MemoryRouter>,
     );

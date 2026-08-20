@@ -15,10 +15,7 @@ vi.mock("./components/DriverStintPaceChart", () => ({
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route
           path="/sessions/:sessionId/drivers/:driverId/stint-pace"

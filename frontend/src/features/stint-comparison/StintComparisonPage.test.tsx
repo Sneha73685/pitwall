@@ -13,10 +13,7 @@ import { StintComparisonPage } from "./StintComparisonPage";
 
 function renderAt(path: string) {
   return render(
-    <MemoryRouter
-      initialEntries={[path]}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/stints/compare" element={<StintComparisonPage />} />
       </Routes>
@@ -51,10 +48,7 @@ function BackButton() {
 function renderWithProbe(initialEntries: string | string[]) {
   const entries = Array.isArray(initialEntries) ? initialEntries : [initialEntries];
   return render(
-    <MemoryRouter
-      initialEntries={entries}
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <MemoryRouter initialEntries={entries}>
       <LocationProbe />
       <BackButton />
       <Routes>
