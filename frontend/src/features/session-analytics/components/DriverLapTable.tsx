@@ -39,7 +39,7 @@ export function DriverLapTable({ laps }: DriverLapTableProps) {
             <tr key={lap.lap_number} data-testid={`lap-row-${lap.lap_number}`}>
               <td className={styles.mono}>
                 {lap.lap_number}
-                {!lap.is_valid && (
+                {(!lap.is_valid || lap.exclusion_reason !== null) && (
                   <span
                     data-testid={`lap-excluded-${lap.lap_number}`}
                     className={styles.excludedTag}
