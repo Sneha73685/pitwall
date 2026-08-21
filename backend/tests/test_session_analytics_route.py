@@ -13,12 +13,12 @@ for the same reason.
 Covers the Phase 2 exit criteria (plan's Phase 2 section): a full roster
 including a 0-valid-lap driver (B1) and a 1-valid-lap driver (null
 consistency, `warnings` populated). The third exit-criteria case -- a
-yellow-flag-affected lap showing `exclusion_reason: "yellow_flag"` -- is
-not covered: Q3 confirmed no track-status data exists anywhere in the
-schema (plan §0.2), so there is no real data to build such a fixture from,
-and it is skipped rather than fabricated, matching M6's own
-documented-follow-up precedent for the same gap
-(docs/releases/m6-summary.md's "Known limitations").
+yellow-flag-affected lap showing `exclusion_reason: "yellow_flag"` -- was
+not covered from M8 through M35 (no track-status data existed anywhere in
+the schema, plan §0.2); M36 (docs/m36-design-review.md §8) closes it via
+`test_get_driver_lap_metrics_flags_yellow_flag_excluded_laps` below, using
+its own dedicated fixture rather than extending the shared one above, for
+the same reason already stated.
 """
 
 from collections.abc import Iterator
@@ -338,6 +338,98 @@ def test_get_driver_lap_metrics_lists_every_lap_valid_or_not(
     assert invalid_lap["delta_to_theoretical_best_ms"] == pytest.approx(6500.0)
     assert invalid_lap["delta_to_own_median_ms"] == pytest.approx(5250.0)
     assert body["warnings"] == []
+
+
+def test_get_driver_lap_metrics_flags_yellow_flag_excluded_laps(tmp_path: Path) -> None:
+    """M36 (docs/m36-design-review.md §8): proves the full stack -- pipeline
+    field through to a real HTTP response -- not just the filtering.py unit
+    tests. Own dedicated fixture, not `analytics_client`'s shared one,
+    matching this module's own established reasoning (docstring above) for
+    not extending a shared fixture other tests' assertions depend on."""
+    session_id = "2024_flagtest_race"
+    session_dir = tmp_path / "2024" / "flagtest" / "race"
+    session_dir.mkdir(parents=True)
+
+    pd.DataFrame(
+        [
+            {
+                "session_id": session_id,
+                "season": 2024,
+                "event_name": "Flag Test",
+                "round_number": 1,
+                "location": "Testville",
+                "country": "Testland",
+                "session_type": "race",
+                "session_date": None,
+            }
+        ]
+    ).to_parquet(session_dir / "session.parquet", index=False)
+
+    pd.DataFrame([{"session_id": session_id, "driver_id": "VER", "driver_number": 1}]).to_parquet(
+        session_dir / "drivers.parquet", index=False
+    )
+
+    pd.DataFrame(
+        [
+            {
+                "session_id": session_id,
+                "driver_id": "VER",
+                "lap_number": 1,
+                "lap_time_seconds": 90.0,
+                "sector_1_seconds": 30.0,
+                "sector_2_seconds": 30.0,
+                "sector_3_seconds": 30.0,
+                "is_personal_best": True,
+                "is_accurate": True,
+                "track_status": "1",
+            },
+            {
+                "session_id": session_id,
+                "driver_id": "VER",
+                "lap_number": 2,
+                "lap_time_seconds": 110.0,
+                "sector_1_seconds": 40.0,
+                "sector_2_seconds": 40.0,
+                "sector_3_seconds": 30.0,
+                "is_personal_best": False,
+                "is_accurate": True,
+                "track_status": "4",
+            },
+        ]
+    ).to_parquet(session_dir / "laps.parquet", index=False)
+
+    pd.DataFrame(
+        columns=[
+            "session_id",
+            "driver_id",
+            "lap_number",
+            "distance_m",
+            "time_seconds",
+            "speed_kph",
+            "throttle_pct",
+            "brake_active",
+            "rpm",
+            "gear",
+            "drs_active",
+            "x",
+            "y",
+            "z",
+        ]
+    ).to_parquet(session_dir / "telemetry.parquet", index=False)
+
+    app.dependency_overrides[get_telemetry_repository] = lambda: ParquetRepository(tmp_path)
+    try:
+        client = TestClient(app)
+        response = client.get(f"/sessions/{session_id}/analytics/drivers/VER/laps")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    laps = response.json()["laps"]
+    assert laps[0]["exclusion_reason"] is None
+    assert laps[0]["is_valid"] is True
+    assert laps[1]["exclusion_reason"] == "yellow_flag"
+    assert laps[1]["is_valid"] is True
 
 
 def test_get_driver_lap_metrics_populates_warnings_for_the_one_valid_lap_driver(

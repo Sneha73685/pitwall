@@ -246,10 +246,14 @@ same fields for the subset M2 exposes:
   already loaded for every session; `None` for session types FastF1 doesn't populate them for, e.g.
   Practice, and for any session ingested before M34 — no historical backfill, `docs/m34-design-review.md` §6).
 - **`Lap`** — `driver_id`, `lap_number`, `lap_time_seconds`, `sector_1_seconds`, `sector_2_seconds`,
-  `sector_3_seconds`, `is_personal_best`, `is_accurate`, and an additive M35 field —
-  `position` (source: `ff1_session.laps`, already loaded for every session; `None` for session
-  types FastF1 doesn't rank, e.g. Qualifying/Practice, and for any session ingested before M35 —
-  no historical backfill, `docs/m35-design-review.md` §7).
+  `sector_3_seconds`, `is_personal_best`, `is_accurate`, and two additive fields — `position` (M35;
+  source: `ff1_session.laps`, already loaded for every session; `None` for session types FastF1
+  doesn't rank, e.g. Qualifying/Practice, and for any session ingested before M35 — no historical
+  backfill, `docs/m35-design-review.md` §7) and `track_status` (M36; source: `ff1_session.laps`'
+  `TrackStatus` column, a concatenated string of every status code active during the lap; not
+  session-type-restricted; `None` for any session ingested before M36 — no historical backfill,
+  `docs/m36-design-review.md` §7). Consumed by the session-analytics yellow-flag exclusion path
+  (`app/services/session_analytics/filtering.py`), which sets `DriverLapMetrics.exclusion_reason`.
 - **`TelemetrySample`** — `distance_m`, `time_seconds`, `speed_kph`, `throttle_pct`, `brake_active`,
   `rpm`, `gear`, `drs_active`, `x`, `y`, `z`.
 - **`TrackPoint`** (M4) — `distance_m`, `x`, `y`.

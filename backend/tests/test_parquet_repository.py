@@ -170,11 +170,12 @@ def test_list_laps_without_filter_returns_every_driver(session_cache_dir: Path) 
     assert len(laps) == 3
 
 
-def test_list_laps_maps_position_when_present(tmp_path: Path) -> None:
-    """M35 (docs/m35-design-review.md §5/§10): a laps.parquet written with
-    the new position column deserializes it correctly -- the positive-case
-    complement to `session_cache_dir`'s shared fixture (deliberately left
-    without this column, the backward-compatibility proof for pre-M35 rows,
+def test_list_laps_maps_position_and_track_status_when_present(tmp_path: Path) -> None:
+    """M35/M36 (docs/m35-design-review.md §5/§10, docs/m36-design-review.md
+    §8): a laps.parquet written with the position and track_status columns
+    deserializes both correctly -- the positive-case complement to
+    `session_cache_dir`'s shared fixture (deliberately left without either
+    column, the backward-compatibility proof for pre-M35/pre-M36 rows,
     exercised by test_list_laps_without_filter_returns_every_driver above)."""
     session_dir = tmp_path / "2023" / "monza" / "race"
     session_dir.mkdir(parents=True)
@@ -191,6 +192,7 @@ def test_list_laps_maps_position_when_present(tmp_path: Path) -> None:
                 "is_personal_best": True,
                 "is_accurate": True,
                 "position": 1,
+                "track_status": "24",
             }
         ]
     ).to_parquet(session_dir / "laps.parquet", index=False)
@@ -214,6 +216,7 @@ def test_list_laps_maps_position_when_present(tmp_path: Path) -> None:
 
     assert len(laps) == 1
     assert laps[0].position == 1
+    assert laps[0].track_status == "24"
 
 
 def test_list_laps_handles_missing_lap_time(session_cache_dir: Path) -> None:

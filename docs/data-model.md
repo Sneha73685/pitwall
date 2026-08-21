@@ -49,7 +49,11 @@ already a transitive dependency of `fastf1` and is now a direct one).
   telemetry rather than silently trusting noisy data), plus an additive M35 field,
   `position: int | None`, sourced from `ff1_session.laps`' `Position` column that FastF1 already
   loads — `None` for session types FastF1 doesn't rank (Qualifying/Practice) and for any session
-  ingested before M35 (no historical backfill, see `docs/m35-design-review.md` §7).
+  ingested before M35 (no historical backfill, see `docs/m35-design-review.md` §7) — and an
+  additive M36 field, `track_status: str | None`, sourced from `ff1_session.laps`' `TrackStatus`
+  column (a concatenated string of every status code active during the lap, e.g. `"1"`, `"241"`;
+  not session-type-restricted) — `None` for any session ingested before M36 (no historical
+  backfill, see `docs/m36-design-review.md` §7).
 - **`TelemetrySample`** — one row of channel data for one driver/lap, keyed by `session_id`,
   `driver_id`, `lap_number` plus: `distance_m` (the common alignment axis PRD §4 calls for),
   `time_seconds` (lap-relative), `speed_kph`, `throttle_pct`, `brake_active`, `rpm`, `gear`,

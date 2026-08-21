@@ -412,6 +412,14 @@ def normalize_laps(laps: pd.DataFrame, *, session_id: str) -> list[Lap]:
     Qualifying sessions (FastF1's own `_RACE_LIKE_SESSIONS`, resolved
     entirely internally); NaN for Qualifying/Practice, which normalizes to
     None like any other missing value here -- never fabricated.
+
+    M36 (docs/m36-design-review.md §2/§4) additionally reads TrackStatus --
+    also no new FastF1 call. Unlike Position, TrackStatus is not
+    session-type-restricted (`_add_track_status_to_laps` runs unconditionally
+    for every session); it is a concatenated string of every status code
+    active during the lap (e.g. "1", "2", "241"), read verbatim -- the
+    excluded-code interpretation lives entirely in
+    app/services/session_analytics/filtering.py, not here.
     """
     result = []
     for _, row in laps.iterrows():
@@ -428,6 +436,7 @@ def normalize_laps(laps: pd.DataFrame, *, session_id: str) -> list[Lap]:
                 is_accurate=bool(row.get("IsAccurate", False)),
                 compound=_optional_str(row.get("Compound")),
                 position=_optional_int(row.get("Position")),
+                track_status=_optional_str(row.get("TrackStatus")),
             )
         )
     return result

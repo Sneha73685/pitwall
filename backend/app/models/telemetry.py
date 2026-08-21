@@ -93,6 +93,16 @@ class Lap(ApiModel):
     # Practice), and for any session ingested before M35 (Option B -- no
     # historical backfill, docs/m35-design-review.md §7).
     position: int | None = None
+    # M36 addition: FastF1's per-lap track-status code(s) (source:
+    # ff1_session.laps' TrackStatus column, docs/m36-design-review.md §2).
+    # A concatenated string of every status code active during the lap
+    # (e.g. "1", "2", "241") -- not session-type-restricted, unlike
+    # `position`. None for any session ingested before M36 (Option B -- no
+    # historical backfill, docs/m36-design-review.md §7). Consumed by
+    # app/services/session_analytics/filtering.py's yellow-flag exclusion;
+    # exposed on this shared model rather than hidden since there is only
+    # one `Lap` model in this backend (docs/m36-design-review.md §4).
+    track_status: str | None = None
 
 
 class TelemetrySample(ApiModel):

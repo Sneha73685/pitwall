@@ -120,6 +120,32 @@ def test_normalize_laps_handles_non_applicable_position() -> None:
     assert laps[0].position is None
 
 
+def test_normalize_laps_maps_track_status() -> None:
+    """M36 (docs/m36-design-review.md §2/§4). Includes a combined-code
+    value (a lap spanning yellow then Safety Car) -- TrackStatus is a
+    concatenated string, not a single code, per FastF1's own
+    `_add_track_status_to_laps` algorithm."""
+    laps_df = build_laps_df()
+    laps_df.loc[1, "TrackStatus"] = "24"
+
+    laps = normalize_laps(laps_df, session_id="2023_monza_race")
+
+    assert laps[0].track_status == "1"
+    assert laps[1].track_status == "24"
+
+
+def test_normalize_laps_handles_missing_track_status_column() -> None:
+    """Unlike Position, TrackStatus is never session-type-gated (§2) -- the
+    only genuine "missing" case is a DataFrame that lacks the column
+    entirely (e.g. an older hand-built fixture), which must normalize to
+    None, not raise."""
+    laps_df = build_laps_df().drop(columns=["TrackStatus"])
+
+    laps = normalize_laps(laps_df, session_id="2023_monza_race")
+
+    assert laps[0].track_status is None
+
+
 def test_normalize_telemetry_converts_units_and_drs() -> None:
     samples = normalize_telemetry(
         build_telemetry_df(num_samples=2, drs_active=True),

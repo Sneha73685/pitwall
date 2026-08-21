@@ -117,6 +117,15 @@ export interface Lap {
    * before M35 (no historical backfill, docs/m35-design-review.md §7).
    */
   position?: number | null;
+  /**
+   * M36 addition. Optional+nullable for the same reason as `compound`/
+   * `position` above. Not session-type-restricted, unlike `position` --
+   * `null` only for any session ingested before M36 (no historical
+   * backfill, docs/m36-design-review.md §7). No page reads this field
+   * directly; `exclusion_reason` on the analytics lap-metrics types is the
+   * derived signal consumers actually use (docs/m36-design-review.md §5).
+   */
+  track_status?: string | null;
 }
 
 export interface TelemetrySample {

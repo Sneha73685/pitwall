@@ -128,6 +128,8 @@ def _lap_from_row(row: Mapping[Hashable, Any]) -> Lap:
         # Same reasoning for M35's position: a pre-M35 laps.parquet has no
         # position column at all (docs/m35-design-review.md §5).
         position=_optional_int(row.get("position")),
+        # Same reasoning for M36's track_status (docs/m36-design-review.md §4).
+        track_status=_optional_str(row.get("track_status")),
     )
 
 
