@@ -433,6 +433,8 @@ def _write_second_session(
     location: str,
     country: str,
     time_offset_seconds: float = 0.0,
+    track_status: str | None = None,
+    deleted: bool | None = None,
 ) -> None:
     """A second, well-formed session (own season/event/session_id) for M13
     cross-session comparison tests -- distinct from
@@ -485,6 +487,8 @@ def _write_second_session(
                 "sector_3_seconds": 30.0 + time_offset_seconds,
                 "is_personal_best": True,
                 "is_accurate": True,
+                "track_status": track_status,
+                "deleted": deleted,
             }
         ]
     ).to_parquet(session_dir / "laps.parquet", index=False)
@@ -603,3 +607,45 @@ def test_compare_laps_different_circuit_emits_warning_and_allows_comparison(
     # Comparison output is still fully populated, not blocked.
     assert len(body["delta_ms"]) == 2
     assert len(body["sectors"]) > 0
+
+
+def test_compare_laps_yellow_flag_lap_emits_warning_end_to_end(tmp_path: Path) -> None:
+    """M43 (docs/m43-design-review.md): a lap whose `track_status` marks it
+    yellow-flag-affected surfaces `YELLOW_FLAG_LAP_B` all the way through
+    the real endpoint -- proving the new WarningCode values serialize
+    correctly, not just that `collect_warnings()` returns them in
+    isolation (already covered by test_lap_comparison_validation.py).
+    """
+
+    write_session_cache(tmp_path)
+    _write_second_session(
+        tmp_path,
+        session_id="2024_monza_race",
+        season=2024,
+        event_slug="monza",
+        location="Monza",
+        country="Italy",
+        track_status="2",
+    )
+    app.dependency_overrides[get_telemetry_repository] = lambda: ParquetRepository(tmp_path)
+    try:
+        local_client = TestClient(app)
+        response = local_client.get(
+            "/laps/compare",
+            params={
+                "session_id_a": "2023_monza_race",
+                "driver_a": "VER",
+                "lap_a": 1,
+                "session_id_b": "2024_monza_race",
+                "driver_b": "VER",
+                "lap_b": 1,
+                "resolution": 2,
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    warning_codes = [w["code"] for w in body["warnings"]]
+    assert warning_codes == ["yellow_flag_lap_b"]

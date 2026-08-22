@@ -182,7 +182,19 @@ export interface SectorDelta {
   faster: "a" | "b";
 }
 
-export type WarningCode = "invalid_lap_a" | "invalid_lap_b" | "different_circuit";
+export type WarningCode =
+  | "invalid_lap_a"
+  | "invalid_lap_b"
+  | "different_circuit"
+  // M43 additions (docs/m43-design-review.md): surfaces the same
+  // yellow-flag/track-limits exclusion signal M36/M40 already compute for
+  // session analytics and tyre-performance aggregates, side-specific like
+  // the invalid_lap_* codes above. Not rendered in the UI yet -- no
+  // consumer currently reads any code besides different_circuit.
+  | "yellow_flag_lap_a"
+  | "yellow_flag_lap_b"
+  | "track_limits_lap_a"
+  | "track_limits_lap_b";
 
 export interface ComparisonWarning {
   code: WarningCode;

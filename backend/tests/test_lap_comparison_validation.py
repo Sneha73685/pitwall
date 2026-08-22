@@ -81,3 +81,78 @@ def test_collect_warnings_flags_each_inaccurate_lap_independently() -> None:
         WarningCode.INVALID_LAP_B,
     ]
     assert all(w.detail for w in both_inaccurate)
+
+
+# --- M43 exclusion-reason warnings (docs/m43-design-review.md) -------------
+
+
+def test_collect_warnings_emits_no_exclusion_warning_for_a_clear_lap() -> None:
+    warnings = collect_warnings(lap(), lap())
+    assert warnings == []
+
+
+def test_collect_warnings_flags_yellow_flag_lap_a() -> None:
+    warnings = collect_warnings(lap(track_status="2"), lap())
+    assert [w.code for w in warnings] == [WarningCode.YELLOW_FLAG_LAP_A]
+
+
+def test_collect_warnings_flags_yellow_flag_lap_b() -> None:
+    warnings = collect_warnings(lap(), lap(track_status="2"))
+    assert [w.code for w in warnings] == [WarningCode.YELLOW_FLAG_LAP_B]
+
+
+def test_collect_warnings_flags_track_limits_lap_a() -> None:
+    warnings = collect_warnings(lap(deleted=True), lap())
+    assert [w.code for w in warnings] == [WarningCode.TRACK_LIMITS_LAP_A]
+
+
+def test_collect_warnings_flags_track_limits_lap_b() -> None:
+    warnings = collect_warnings(lap(), lap(deleted=True))
+    assert [w.code for w in warnings] == [WarningCode.TRACK_LIMITS_LAP_B]
+
+
+def test_collect_warnings_flags_both_sides_independently_when_both_excluded() -> None:
+    """Lap A yellow-flagged, lap B track-limits-deleted -- two different
+    exclusion reasons on two different sides, both surfaced independently.
+    """
+    warnings = collect_warnings(lap(track_status="2"), lap(deleted=True))
+    assert [w.code for w in warnings] == [
+        WarningCode.YELLOW_FLAG_LAP_A,
+        WarningCode.TRACK_LIMITS_LAP_B,
+    ]
+
+
+def test_collect_warnings_resolves_track_limits_precedence_for_a_lap_with_both() -> None:
+    """A lap that is both yellow-flag-affected and track-limits-deleted
+    only ever emits the track-limits warning -- classify_lap() already
+    resolves this precedence (docs/m40-design-review.md §21) before
+    collect_warnings() ever sees the lap, so no `yellow_flag` warning is
+    ever produced alongside it.
+    """
+    warnings = collect_warnings(lap(track_status="2", deleted=True), lap())
+    assert [w.code for w in warnings] == [WarningCode.TRACK_LIMITS_LAP_A]
+
+
+def test_collect_warnings_keeps_accuracy_and_exclusion_warnings_independent() -> None:
+    """is_accurate and exclusion_reason are independent signals (per
+    classify_lap()'s own docstring: a track-limits ruling is not a
+    telemetry-quality signal) -- an inaccurate, yellow-flagged lap must
+    produce both warnings, neither suppressing the other.
+    """
+    warnings = collect_warnings(lap(is_accurate=False, track_status="2"), lap())
+    assert [w.code for w in warnings] == [
+        WarningCode.INVALID_LAP_A,
+        WarningCode.YELLOW_FLAG_LAP_A,
+    ]
+
+
+def test_collect_warnings_emits_no_exclusion_warning_for_old_style_laps() -> None:
+    """Every currently-stored real lap has track_status=None and
+    deleted=None/deleted_reason=None (pre-M36/M40 ingestion, or a session
+    type FastF1 doesn't populate them for) -- backward-compatibility proof
+    that such laps produce no new warning, identical to this function's
+    pre-M43 behavior.
+    """
+    old_style = lap(track_status=None, deleted=None, deleted_reason=None)
+    warnings = collect_warnings(old_style, old_style)
+    assert warnings == []

@@ -61,6 +61,18 @@ class WarningCode(str, Enum):
 
     INVALID_LAP_A = "invalid_lap_a"
     INVALID_LAP_B = "invalid_lap_b"
+    # M43: the lap's `exclusion_reason` (app/services/session_analytics/
+    # filtering.py's `classify_lap`, already computed for M36/M40's own
+    # consumers) is "yellow_flag"/"track_limits" respectively. Side-specific,
+    # matching INVALID_LAP_A/B's convention, not a bare reuse of
+    # ExclusionReason's raw values -- a single lap can never trigger both
+    # (classify_lap already resolves track_limits-over-yellow_flag
+    # precedence, docs/m40-design-review.md §21), but lap A and lap B are
+    # independent (docs/m43-design-review.md).
+    YELLOW_FLAG_LAP_A = "yellow_flag_lap_a"
+    YELLOW_FLAG_LAP_B = "yellow_flag_lap_b"
+    TRACK_LIMITS_LAP_A = "track_limits_lap_a"
+    TRACK_LIMITS_LAP_B = "track_limits_lap_b"
     # M13: session A and session B have different Session.location values.
     # Computed at the API layer (app/api/laps_compare.py), not here or in
     # app/services/lap_comparison/ -- circuit identity is a session-level

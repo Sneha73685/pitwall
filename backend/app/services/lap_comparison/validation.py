@@ -16,6 +16,7 @@ so there is nothing for this endpoint to violate, structurally.
 
 from app.models.lap_comparison import ComparisonWarning, WarningCode
 from app.models.telemetry import Lap, TelemetrySample
+from app.services.session_analytics.filtering import classify_lap
 
 
 class LapComparisonError(Exception):
@@ -73,15 +74,32 @@ def validate_monotonic(samples: list[TelemetrySample], *, lap_label: str) -> Non
         previous = sample
 
 
+_EXCLUSION_WARNING_CODES: dict[str, tuple[WarningCode, WarningCode]] = {
+    "yellow_flag": (WarningCode.YELLOW_FLAG_LAP_A, WarningCode.YELLOW_FLAG_LAP_B),
+    "track_limits": (WarningCode.TRACK_LIMITS_LAP_A, WarningCode.TRACK_LIMITS_LAP_B),
+}
+
+
 def collect_warnings(lap_a: Lap, lap_b: Lap) -> list[ComparisonWarning]:
     """Structured, non-blocking warnings about this comparison.
 
-    Only `is_accurate` is checked -- it is the only lap-quality signal
-    that exists anywhere in the current schema (Phase 0 finding: no
-    yellow-flag or pit-lane/track-status data exists in the Parquet cache
-    or the Lap model). WarningCode defines codes for those conditions for
-    forward-compatibility, but this function never emits them -- they are
-    not fabricated from data that doesn't exist.
+    `is_accurate` (FastF1's telemetry-integrity heuristic) and
+    `classify_lap(lap).exclusion_reason` (M36/M40's yellow-flag/
+    track-limits classification, app/services/session_analytics/
+    filtering.py) are checked independently, per that module's own
+    documented rule that a track-limits deletion is an official-validity
+    ruling, not a telemetry-quality signal -- so an exclusion warning
+    never suppresses an accuracy warning for the same lap, or vice versa
+    (docs/m43-design-review.md). `classify_lap` is imported, not
+    reimplemented, following the same cross-service precedent M41 already
+    established (app/services/tyre_performance/stint_eligibility.py).
+
+    `exclusion_reason` is `None` for every lap ingested before M36/M40, or
+    otherwise unaffected -- those laps emit no exclusion warning, matching
+    this function's pre-M43 behavior exactly (docs/m43-design-review.md
+    §7). A lap can never be both `"yellow_flag"` and `"track_limits"`:
+    `classify_lap` already resolves that precedence (track_limits wins,
+    docs/m40-design-review.md §21) before this function ever sees it.
     """
     warnings: list[ComparisonWarning] = []
     if not lap_a.is_accurate:
@@ -96,4 +114,19 @@ def collect_warnings(lap_a: Lap, lap_b: Lap) -> list[ComparisonWarning]:
                 code=WarningCode.INVALID_LAP_B, detail="Lap B is not marked accurate."
             )
         )
+
+    exclusion_reason_a = classify_lap(lap_a).exclusion_reason
+    if exclusion_reason_a is not None:
+        code_a, _ = _EXCLUSION_WARNING_CODES[exclusion_reason_a]
+        warnings.append(
+            ComparisonWarning(code=code_a, detail=f"Lap A is affected by {exclusion_reason_a}.")
+        )
+
+    exclusion_reason_b = classify_lap(lap_b).exclusion_reason
+    if exclusion_reason_b is not None:
+        _, code_b = _EXCLUSION_WARNING_CODES[exclusion_reason_b]
+        warnings.append(
+            ComparisonWarning(code=code_b, detail=f"Lap B is affected by {exclusion_reason_b}.")
+        )
+
     return warnings
