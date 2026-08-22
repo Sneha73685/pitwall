@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M32 — Shared session-type filter constant — complete.**
+**Current milestone: M38 — Backfill historical classification analytics — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -66,8 +66,14 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M30 | Frontend dependency & security remediation | ✅ Done |
 | M31 | React Router 6→7 migration | ✅ Done |
 | M32 | Shared session-type filter constant (frontend) | ✅ Done |
+| M33 | Documentation & roadmap reconciliation (M28–M32) | ✅ Done |
+| M34 | Session race classification (finishing position, grid, status, points) | ✅ Done |
+| M35 | Lap-by-lap running-order/position chart (session analytics) | ✅ Done |
+| M36 | Yellow-flag / Safety Car / VSC / red-flag lap exclusion | ✅ Done |
+| M37 | Fix: yellow-flag exclusion tags render in driver lap table | ✅ Done |
+| M38 | Historical backfill of M34–M36 fields (332/334 sessions) | ✅ Done |
 
-M8–M32 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M32
+M8–M38 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M38
 without implying they were part of the original V1–V5 schedule); each has its own design review
 under `docs/` (`m8-design-review.md` onward). See `docs/releases/` for per-milestone summaries
 (currently covering M1–M5; later milestones' records are their own design-review/implementation-plan

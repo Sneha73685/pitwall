@@ -39,21 +39,24 @@ already a transitive dependency of `fastf1` and is now a direct one).
 - **`Driver`** — `driver_id` (FastF1 3-letter `Abbreviation`, e.g. `VER`), `driver_number`,
   `full_name`, `team_name`, plus four additive M34 fields sourced from the same
   `ff1_session.results` FastF1 already loads: `classified_position`, `grid_position`, `status`,
-  `points` (all `None` for session types FastF1 doesn't populate them for, e.g. Practice, and for
-  any session ingested before M34 — no historical backfill was performed, see
-  `docs/m34-design-review.md` §6).
+  `points` (populated by FastF1 for Race/Sprint sessions only — Qualifying and Sprint Qualifying
+  return empty/`None` values in every era, confirmed empirically during M38's execution; `None` for
+  every other session type. `None` for any session ingested before M34 that M38 did not backfill —
+  M38 backfilled 332 of the 334 applicable historical sessions; 2 are a permanent, genuine external
+  Ergast-data-source gap, see `docs/m38-design-review.md` §14.1/§14.4).
 - **`Lap`** — `session_id`, `driver_id`, `lap_number`, `lap_time_seconds` (`None` for an
   incomplete/invalid lap), `sector_1_seconds`, `sector_2_seconds`, `sector_3_seconds` (each
   `None`-able for the same reason), `is_personal_best`, `is_accurate` (FastF1's own
   telemetry-integrity flag — surfaced so a future consumer can choose to distrust a lap's
   telemetry rather than silently trusting noisy data), plus an additive M35 field,
   `position: int | None`, sourced from `ff1_session.laps`' `Position` column that FastF1 already
-  loads — `None` for session types FastF1 doesn't rank (Qualifying/Practice) and for any session
-  ingested before M35 (no historical backfill, see `docs/m35-design-review.md` §7) — and an
-  additive M36 field, `track_status: str | None`, sourced from `ff1_session.laps`' `TrackStatus`
-  column (a concatenated string of every status code active during the lap, e.g. `"1"`, `"241"`;
-  not session-type-restricted) — `None` for any session ingested before M36 (no historical
-  backfill, see `docs/m36-design-review.md` §7).
+  loads — populated for Race/Sprint sessions only (Qualifying, Sprint Qualifying, and Practice all
+  return `None`, confirmed empirically during M38); `None` for any session ingested before M35 that
+  M38 did not backfill (332 of 334 applicable sessions backfilled, 2 permanently excluded — see
+  `docs/m38-design-review.md` §14.1/§14.4) — and an additive M36 field, `track_status: str | None`,
+  sourced from `ff1_session.laps`' `TrackStatus` column (a concatenated string of every status code
+  active during the lap, e.g. `"1"`, `"241"`; not session-type-restricted). `None` for any session
+  ingested before M36 that M38 did not backfill (same 332/334 population).
 - **`TelemetrySample`** — one row of channel data for one driver/lap, keyed by `session_id`,
   `driver_id`, `lap_number` plus: `distance_m` (the common alignment axis PRD §4 calls for),
   `time_seconds` (lap-relative), `speed_kph`, `throttle_pct`, `brake_active`, `rpm`, `gear`,

@@ -243,16 +243,20 @@ same fields for the subset M2 exposes:
   `session_type`, `session_date`.
 - **`Driver`** — `driver_id`, `driver_number`, `full_name`, `team_name`, and four additive M34
   fields — `classified_position`, `grid_position`, `status`, `points` (source: `ff1_session.results`,
-  already loaded for every session; `None` for session types FastF1 doesn't populate them for, e.g.
-  Practice, and for any session ingested before M34 — no historical backfill, `docs/m34-design-review.md` §6).
+  already loaded for every session; populated by FastF1 for Race/Sprint sessions only — Qualifying
+  and Sprint Qualifying return empty/`None` values in every era, confirmed empirically during M38's
+  execution; `None` for every other session type. `None` for any session ingested before M34 that
+  M38 did not backfill — M38 backfilled 332 of the 334 applicable historical sessions; 2 are a
+  permanent, genuine external Ergast-data-source gap, see `docs/m38-design-review.md` §14.1/§14.4).
 - **`Lap`** — `driver_id`, `lap_number`, `lap_time_seconds`, `sector_1_seconds`, `sector_2_seconds`,
   `sector_3_seconds`, `is_personal_best`, `is_accurate`, and two additive fields — `position` (M35;
-  source: `ff1_session.laps`, already loaded for every session; `None` for session types FastF1
-  doesn't rank, e.g. Qualifying/Practice, and for any session ingested before M35 — no historical
-  backfill, `docs/m35-design-review.md` §7) and `track_status` (M36; source: `ff1_session.laps`'
+  source: `ff1_session.laps`, already loaded for every session; populated for Race/Sprint sessions
+  only — Qualifying, Sprint Qualifying, and Practice all return `None`, confirmed empirically during
+  M38; `None` for any session ingested before M35 that M38 did not backfill, see
+  `docs/m38-design-review.md` §14.1/§14.4) and `track_status` (M36; source: `ff1_session.laps`'
   `TrackStatus` column, a concatenated string of every status code active during the lap; not
-  session-type-restricted; `None` for any session ingested before M36 — no historical backfill,
-  `docs/m36-design-review.md` §7). Consumed by the session-analytics yellow-flag exclusion path
+  session-type-restricted; `None` for any session ingested before M36 that M38 did not backfill,
+  same 332/334 population). Consumed by the session-analytics yellow-flag exclusion path
   (`app/services/session_analytics/filtering.py`), which sets `DriverLapMetrics.exclusion_reason`.
 - **`TelemetrySample`** — `distance_m`, `time_seconds`, `speed_kph`, `throttle_pct`, `brake_active`,
   `rpm`, `gear`, `drs_active`, `x`, `y`, `z`.

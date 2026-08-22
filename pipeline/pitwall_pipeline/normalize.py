@@ -368,10 +368,13 @@ def normalize_drivers(results: pd.DataFrame, *, session_id: str) -> list[Driver]
     M34 (docs/m34-design-review.md §2/§4) additionally reads
     ClassifiedPosition/GridPosition/Status/Points from the same DataFrame --
     no new FastF1 call, since `results` is already loaded for every session.
-    These four columns are only populated by FastF1 for Race/Sprint/
-    Qualifying-family sessions; for Practice (and any other session type
-    FastF1 doesn't populate them for) they're present but NaN, which
-    normalizes to None like any other missing value here -- never an error.
+    These four columns are only populated by FastF1 for Race/Sprint
+    sessions (confirmed empirically against real cached data during M38's
+    execution, correcting this docstring's earlier, untested "Race/Sprint/
+    Qualifying-family" claim -- Qualifying and Sprint Qualifying return
+    empty strings/NaN in every era); for every other session type they're
+    present but NaN, which normalizes to None like any other missing value
+    here -- never an error.
     `.get()`, not bracket access, so a results frame that lacks these
     columns entirely (e.g. a hand-built test fixture) also normalizes to
     None rather than raising, matching this file's own `Compound` precedent

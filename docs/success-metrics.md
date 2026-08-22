@@ -44,8 +44,10 @@ Explicitly not required for V2: tire strategy, stints, pit stops, weather, or an
 
 ## V3 — Race Analysis
 
-**Status (M16 reconciliation, `docs/m16-design-review.md`): partially shipped.** The stint/pit-stop
-half shipped (M10/M11/M15); weather and position/gap have no code anywhere.
+**Status (M16 reconciliation, `docs/m16-design-review.md`; position-history status corrected M39,
+`docs/m39-design-review.md`): partially shipped.** The stint/pit-stop half shipped (M10/M11/M15);
+position/classification shipped (M34/M35/M38); weather and gaps (time behind leader/car ahead)
+remain unbuilt.
 
 Success looks like:
 - Stint and pit-stop data is visualized across a full race, sourced from relational race data
@@ -54,8 +56,16 @@ Success looks like:
 - **Cross-session stint/tyre-strategy comparison** (not specified in this criterion as originally
   written): **shipped in M15** — `GET /stints/compare` generalizes M13's cross-session pattern to
   stints/pit-stops; juxtaposition only, no computed strategy deltas or verdicts.
-- Weather and position/gap history are viewable alongside lap data. **Not yet built** — no ingestion,
-  provider method, or schema exists for either.
+- Position history is viewable alongside lap data. **Shipped — M34/M35/M38**: session classification
+  (`classified_position`, `grid_position`, `status`, `points`) and lap-by-lap running-order
+  (`Lap.position`) are both sourced from FastF1's own already-loaded session data (not Jolpica-f1 as
+  originally anticipated here), for Race/Sprint sessions. M38 backfilled both fields across 332 of
+  the 334 applicable historical sessions (2 permanently excluded — a genuine external
+  Ergast-data-source gap in the cached snapshot). Related: M36/M37 add yellow-flag/Safety Car/VSC/
+  red-flag lap exclusion (`Lap.track_status`), also backfilled by M38.
+- Gaps (time behind leader/car ahead) and weather are **not yet built** — `results.Time` (gaps) is
+  available from the same already-loaded FastF1 data M34 uses but is not currently extracted;
+  weather has no ingestion, provider method, or schema.
 - A second, independent repository (`RaceContextRepository`, not an extension of
   `TelemetryRepository` — see ADR-0011) absorbs this without altering the public contract shape of
   existing V1/V2 endpoints. **Shipped in M10**, via that separate-repository design rather than the

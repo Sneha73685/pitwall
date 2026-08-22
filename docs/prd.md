@@ -85,7 +85,7 @@ Sequencing note: M1 and M2 can't be meaningfully parallelized (API needs real ca
 
 ---
 
-## 3a. Milestone History Beyond V1 (M8–M32)
+## 3a. Milestone History Beyond V1 (M8–M38)
 
 The table above (§3) is the original, dated V1 schedule and is not edited by later milestones.
 Everything from M8 onward was added after V1 shipped, each with its own design review under `docs/`
@@ -120,10 +120,16 @@ relates to the themes §5 already named, not as a retroactive edit to §3:
 | M30 | Frontend dependency/security remediation (Vite, Vitest, `@vitejs/plugin-react`, ECharts) | Not itself named in the original roadmap; security/maintainability debt, no capability change |
 | M31 | React Router 6→7 migration | Not itself named in the original roadmap; closes the security debt M30 left open, no capability change |
 | M32 | Shared `FILTERABLE_SESSION_TYPES` frontend constant | Not itself named in the original roadmap; maintainability-only, no capability change |
+| M33 | Documentation & roadmap reconciliation (M28–M32) | Documentation-only reconciliation pass; not itself V-scoped |
+| M34 | Session race classification (`classified_position`, `grid_position`, `status`, `points`) | Not itself named in the original roadmap; a new session-classification capability that M35's position-history criterion builds on |
+| M35 | Lap-by-lap running-order/position chart (`Lap.position`) | Delivers V3's "position history" criterion (§5) for the Race/Sprint session population — via FastF1's own already-loaded session data, not the Jolpica-f1/Ergast source originally anticipated for this criterion |
+| M36 | Yellow-flag/Safety Car/VSC/red-flag lap exclusion (`Lap.track_status`, session-analytics filtering) | Not itself named in the original roadmap; a new session-analytics correctness capability, not a V-criterion |
+| M37 | Fix: yellow-flag exclusion tags render in driver lap table | Bug fix, not itself V-scoped |
+| M38 | Historical backfill of M34–M36 fields across 332 of 334 applicable historical sessions (2 permanently excluded — genuine external data-gap) | Historical-data completion, not itself V-scoped; extends M34–M36's coverage across the 2020–2026 corpus M12 ingested |
 
 See `docs/m16-design-review.md`, `docs/m20-design-review.md`, `docs/m23-design-review.md`,
-`docs/m28-design-review.md`, and `docs/m33-design-review.md` for the reconciliation passes this
-table is part of.
+`docs/m28-design-review.md`, `docs/m33-design-review.md`, and `docs/m39-design-review.md` for the
+reconciliation passes this table is part of.
 
 ---
 
@@ -157,7 +163,9 @@ originally written, describing the reasoning at V1 design time.
 | Corner highlighting (via `markArea`) | V2 | Same as above | **Shipped — M22**, via a geometry-derived, client-side curvature detector (`frontend/src/features/track-map/detectCorners.ts`) over existing track-point data — no new backend route, repository method, or persisted field. Covers the same two synchronized surfaces as M14's cursor-sync (single-lap track map, M13 cross-session lap comparison); does not extend coverage to session-analytics or tyre-performance charts, matching M14's own coverage boundary. Distinct from, and not to be confused with, fitted degradation curves or strategy recommendations — neither was ever part of this criterion's scope and both remain unbuilt (see the engineering-insight-generation and AI/NL-query rows below). |
 | Tire strategy, stints, pit stops (single-session) | V3 | Needs relational data (a real reason to introduce Postgres) | **Shipped — M10/M11**, sourced from FastF1 session data via a second, independent repository (`RaceContextRepository`, ADR-0011). |
 | Cross-session stint/tyre-strategy comparison | V3 | Not specified in the original V1 text | **Shipped — M15**, generalizing M13's cross-session comparison pattern to stints/pit-stops. |
-| Weather, position history, gaps | V3 | Needs different source data (Ergast/Jolpica, weather feeds) | Not yet built — no ingestion, provider method, or schema exists for any of these. |
+| Position history (classification, running-order) | V3 | Needs different source data (Ergast/Jolpica) | **Shipped — M34/M35/M38**, via FastF1's own already-loaded session data (`ff1_session.results`/`.laps`), not Jolpica-f1/Ergast as originally anticipated. `Driver.classified_position/grid_position/status/points` (M34) and `Lap.position` (M35) — both populated for Race/Sprint sessions only, matching real FastF1 semantics. M38 backfilled both across 332 of the 334 applicable historical sessions (2 permanently excluded — a genuine external Ergast-data-source gap in the cached snapshot, not a PitWall defect). Related: M36/M37 add yellow-flag/Safety Car/VSC/red-flag lap exclusion (`Lap.track_status`), also backfilled by M38. |
+| Gaps (time behind leader/car ahead) | V3 | Needs different source data | Not yet built — `results.Time` is available from the same already-loaded FastF1 data M34 uses, but is not currently extracted, normalized, or exposed anywhere. |
+| Weather | V3 | Needs different source data (weather feeds) | Not yet built — no ingestion, provider method, or schema exists. |
 | Engineering-insight generation (the "gains 0.12s because..." analysis) | V4 | Needs V2's synchronized data model and V3's race context to attribute *why*, not just *what* | Not yet built. |
 | Natural-language / AI querying | V5 | Depends on all prior layers existing as clean, queryable data — an LLM layer on top of a shaky foundation would just produce confident-sounding nonsense | Not yet built. |
 | Live/real-time session data | Post-V1, opportunistic | FastF1 is archive-based; real-time needs OpenF1's paid tier or a different sourcing strategy — not worth solving before the archive-based product even exists | Not yet built. |
@@ -175,3 +183,4 @@ originally written, describing the reasoning at V1 design time.
 - v5 (M23, `docs/m23-design-review.md`): extended §3a through M22 (M20 docs reconciliation, M21 cross-season tyre-strategy trends, M22 corner highlighting). Corrected §5's corner-highlighting row, false since M22 shipped. No scope or architecture change — documentation reconciliation only.
 - v6 (M28, `docs/m28-design-review.md`): extended §3a through M27 (M23 docs reconciliation, M24 comparison URL persistence, M25 two-driver pace-trend comparison, M26 two-driver tyre-trend comparison, M27 comparison-surface consistency pass). Corrected §3a's own heading range (M8–M19 → M8–M27, stale since before M23). §5 re-verified against current source with no edit needed. No scope or architecture change — documentation reconciliation only.
 - v7 (M33, `docs/m33-design-review.md`): extended §3a through M32 (M28 docs reconciliation, M29 shared strategy-mapper extraction, M30 dependency/security remediation, M31 React Router 7 migration, M32 shared session-type filter constant). §5 re-verified against current source with no edit needed. No scope or architecture change — documentation reconciliation only.
+- v8 (M39, `docs/m39-design-review.md`): extended §3a through M38 (M33 docs reconciliation — its own retroactive entry, previously missing — M34 session classification, M35 position chart, M36 yellow-flag exclusion, M37 exclusion-rendering fix, M38 historical backfill). Corrected §5's "Weather, position history, gaps" row, false since M35/M38 shipped position history — split into three accurate rows (position history: shipped; gaps: not built; weather: not built). No scope or architecture change — documentation reconciliation only.

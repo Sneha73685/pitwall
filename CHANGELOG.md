@@ -8,8 +8,98 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing in progress — M32 is the most recently completed milestone (see `README.md`'s Project
+Nothing in progress — M38 is the most recently completed milestone (see `README.md`'s Project
 status).
+
+## M38 — Backfill Historical Classification Analytics — 2026-08-22
+
+See `docs/m38-design-review.md` for the full design record.
+
+### Added
+
+- `pipeline/pitwall_pipeline/backfill_m38.py` — a targeted historical backfill tool for the M34–M36
+  fields, deliberately separate from `ingest_session()`/`ingest_event()`/`execute_ingestion_plan()`
+  (all three unconditionally attempt a PostgreSQL write, which this milestone forbids). Calls
+  `FastF1Provider.load_session()` + `write_session_cache()` directly, against the offline FastF1
+  cache only (`fastf1.Cache.offline_mode(True)` — a cache miss fails loudly rather than fetching),
+  with a session-directory staging → pre-swap verification → atomic-swap mechanism closing
+  `cache_writer.py`'s pre-existing (unaddressed) atomicity gap, and an append-only per-run state log
+  for resume-by-skip idempotency.
+
+### Changed
+
+- 332 of the approved 334-session population (142 Race + 142 Qualifying + 28 Sprint + 22 Sprint
+  Qualifying, 2020–2026) now carry `classified_position`/`grid_position`/`status`/`points`
+  (Race/Sprint sessions only — confirmed empirically that FastF1 never populates these for
+  Qualifying/Sprint Qualifying, in any era) and `track_status` (all 334, unconditional). 2 sessions
+  (`2023_s_o_paulo_grand_prix_sprint`, `2026_british_grand_prix_sprint`) are a documented, permanent
+  exception — FastF1's Ergast data source lacks classification for these two in the cached snapshot,
+  not a PitWall defect; left untouched, not retried. All 370 Practice sessions are untouched by
+  design (M34/M35 never apply to Practice). No PostgreSQL writes.
+
+## M37 — Render Yellow-Flag Lap Exclusions — 2026-08-21
+
+See `docs/m37-design-review.md` for the full design record.
+
+### Fixed
+
+- `DriverLapTable.tsx` now renders the exclusion tag when `exclusion_reason !== null`, independent
+  of `is_valid` — M36's `track_status`/`exclusion_reason` data was computed correctly but never
+  shown for a lap that was otherwise valid (e.g. a yellow-flag lap that wasn't also a personal-best
+  or accuracy exclusion).
+
+## M36 — Activate Yellow-Flag/Track-Status Lap Exclusion — 2026-08-21
+
+See `docs/m36-design-review.md` for the full design record.
+
+### Added
+
+- `Lap.track_status` — an additive field sourced from `ff1_session.laps`' `TrackStatus` column
+  (already loaded for every session; a concatenated string of every status code active during the
+  lap, e.g. `"1"`, `"241"`; not session-type-restricted).
+- `app/services/session_analytics/filtering.py` extended to compute `DriverLapMetrics
+  .exclusion_reason` (yellow flag / Safety Car / VSC / red flag) from `track_status`.
+
+### Changed
+
+- None to any existing endpoint contract beyond the additive `Lap.track_status` field and
+  `DriverLapMetrics.exclusion_reason`.
+
+## M35 — Add Lap-by-Lap Position Chart to Session Analytics — 2026-08-20
+
+See `docs/m35-design-review.md` for the full design record.
+
+### Added
+
+- `Lap.position` — an additive field sourced from `ff1_session.laps`' `Position` column (already
+  loaded for every session).
+- `PositionTrendChart` on `SessionAnalyticsPage` — a lap-by-lap running-order visualization.
+
+### Changed
+
+- None to any existing endpoint contract beyond the additive `Lap.position` field.
+
+## M34 — Add Session Race Classification — 2026-08-20
+
+See `docs/m34-design-review.md` for the full design record.
+
+### Added
+
+- `Driver.classified_position`/`grid_position`/`status`/`points` — four additive fields sourced from
+  `ff1_session.results` (already loaded for every session, no new FastF1 call).
+- `DriverSelectPage` now surfaces finishing position, grid, status, and points per driver.
+
+### Changed
+
+- None to any existing endpoint contract beyond the four additive `Driver` fields.
+
+## M33 — Documentation & Roadmap Reconciliation (M28–M32) — 2026-08-20
+
+See `docs/m33-design-review.md` for the full design record.
+
+### Changed
+
+- Reconciled `README.md`, `CHANGELOG.md`, and `docs/prd.md` through M32.
 
 ## M32 — Shared Session-Type Filter Constant — 2026-08-20
 
