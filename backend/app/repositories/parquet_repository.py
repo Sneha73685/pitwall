@@ -113,6 +113,10 @@ def _driver_from_row(row: Mapping[Hashable, Any]) -> Driver:
         grid_position=_optional_int(row.get("grid_position")),
         status=_optional_str(row.get("status")),
         points=_optional_float(row.get("points")),
+        # Same reasoning for M42's qualifying segment times (docs/m42-design-review.md §18).
+        q1_seconds=_optional_float(row.get("q1_seconds")),
+        q2_seconds=_optional_float(row.get("q2_seconds")),
+        q3_seconds=_optional_float(row.get("q3_seconds")),
     )
 
 

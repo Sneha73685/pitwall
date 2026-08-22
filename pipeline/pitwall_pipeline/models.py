@@ -128,6 +128,15 @@ class Driver(DomainModel):
     grid_position: int | None = None
     status: str | None = None
     points: float | None = None
+    # M42 additions: qualifying segment times (source: ff1_session.results'
+    # Q1/Q2/Q3 columns, docs/m42-design-review.md). None for session types
+    # FastF1 doesn't populate these for (Race/Sprint/Practice) and for a
+    # driver eliminated before a given segment (e.g. Q2/Q3 for a
+    # Q1-eliminated driver), and for any session ingested before M42
+    # (Option A, docs/m42-design-review.md §21 -- no historical backfill).
+    q1_seconds: float | None = None
+    q2_seconds: float | None = None
+    q3_seconds: float | None = None
 
 
 class Lap(DomainModel):

@@ -386,6 +386,15 @@ def normalize_drivers(results: pd.DataFrame, *, session_id: str) -> list[Driver]
     columns entirely (e.g. a hand-built test fixture) also normalizes to
     None rather than raising, matching this file's own `Compound` precedent
     (docs/m10-implementation-plan.md).
+
+    M42 (docs/m42-design-review.md) additionally reads Q1/Q2/Q3 from the
+    same DataFrame -- also no new FastF1 call. Each is a `Timedelta`,
+    converted via `_timedelta_to_seconds` (the same helper `normalize_laps`
+    already uses for lap/sector times); FastF1 supplies `NaT` for a
+    session type that doesn't populate a segment (Race/Sprint/Practice) or
+    for a driver eliminated before reaching it (e.g. Q2/Q3 for a
+    Q1-eliminated driver) -- no session-type gating is added here, the
+    same data-driven-null approach the M34 fields above already use.
     """
     drivers = []
     for _, row in results.iterrows():
@@ -403,6 +412,9 @@ def normalize_drivers(results: pd.DataFrame, *, session_id: str) -> list[Driver]
                 grid_position=_optional_int(row.get("GridPosition")),
                 status=_optional_str(row.get("Status")),
                 points=_optional_float(row.get("Points")),
+                q1_seconds=_timedelta_to_seconds(row.get("Q1")),
+                q2_seconds=_timedelta_to_seconds(row.get("Q2")),
+                q3_seconds=_timedelta_to_seconds(row.get("Q3")),
             )
         )
     return drivers

@@ -86,6 +86,17 @@ export interface Driver {
   grid_position?: number | null;
   status?: string | null;
   points?: number | null;
+  /**
+   * M42 additions (docs/m42-design-review.md). Optional for the same
+   * reason as the M34 fields above. `null` for session types FastF1
+   * doesn't populate these for (Race/Sprint/Practice), for a driver
+   * eliminated before reaching a given segment (e.g. Q2/Q3 for a
+   * Q1-eliminated driver), and for any session ingested before M42 (no
+   * historical backfill).
+   */
+  q1_seconds?: number | null;
+  q2_seconds?: number | null;
+  q3_seconds?: number | null;
 }
 
 export interface Lap {

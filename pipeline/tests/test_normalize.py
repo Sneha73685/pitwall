@@ -11,6 +11,7 @@ from tests.fixtures import (
     build_laps_df,
     build_practice_laps_df,
     build_practice_results_df,
+    build_qualifying_results_df,
     build_results_df,
     build_telemetry_df,
 )
@@ -79,6 +80,55 @@ def test_normalize_drivers_handles_non_applicable_classification_fields() -> Non
     assert ver.grid_position is None
     assert ver.status is None
     assert ver.points is None
+
+
+def test_normalize_drivers_maps_qualifying_segment_times() -> None:
+    """M42 (docs/m42-design-review.md). VER advances through all three
+    segments -- exact seconds conversion proves `_timedelta_to_seconds`
+    reuse is correct."""
+    drivers = normalize_drivers(build_qualifying_results_df(), session_id="2023_monza_qualifying")
+
+    ver = drivers[0]
+    assert ver.q1_seconds == 78.241
+    assert ver.q2_seconds == 77.593
+    assert ver.q3_seconds == 76.982
+
+
+def test_normalize_drivers_handles_partial_qualifying_segment_times() -> None:
+    """M42: a driver eliminated after Q1 has Q2/Q3 as `NaT` -- must
+    normalize to None independently per segment, not raise, and must not
+    be conflated with Q1 also being absent."""
+    drivers = normalize_drivers(build_qualifying_results_df(), session_id="2023_monza_qualifying")
+
+    ham = drivers[1]
+    assert ham.q1_seconds == 79.104
+    assert ham.q2_seconds is None
+    assert ham.q3_seconds is None
+
+
+def test_normalize_drivers_handles_non_applicable_qualifying_segment_times() -> None:
+    """Practice sessions: FastF1 still returns the Q1/Q2/Q3 columns, but
+    NaT, not absent (M42, mirroring M34's own non-applicable-fields case
+    above) -- must normalize to None, not raise or fabricate a value."""
+    drivers = normalize_drivers(build_practice_results_df(), session_id="2023_monza_practice_1")
+
+    ver = drivers[0]
+    assert ver.q1_seconds is None
+    assert ver.q2_seconds is None
+    assert ver.q3_seconds is None
+
+
+def test_normalize_drivers_handles_missing_qualifying_columns() -> None:
+    """A results frame that lacks Q1/Q2/Q3 entirely (e.g. a pre-M42
+    hand-built fixture, or -- for real data -- any session ingested before
+    M42) must normalize to None, not raise (`.get()`, not bracket access,
+    mirroring every other additive Driver field's own precedent)."""
+    drivers = normalize_drivers(build_results_df(), session_id="2023_monza_race")
+
+    ver = drivers[0]
+    assert ver.q1_seconds is None
+    assert ver.q2_seconds is None
+    assert ver.q3_seconds is None
 
 
 def test_normalize_laps_maps_times_and_flags() -> None:

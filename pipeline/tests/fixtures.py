@@ -48,10 +48,11 @@ def build_results_df() -> pd.DataFrame:
 
 def build_practice_results_df() -> pd.DataFrame:
     """Practice-shaped: FastF1 populates ClassifiedPosition/GridPosition/
-    Status/Points columns for every session type (SessionResults' own
-    "all dataframe columns will always exist" guarantee), but leaves them
-    NaN for session types it doesn't compute a classification for -- e.g.
-    Practice (M34, docs/m34-design-review.md §4).
+    Status/Points/Q1/Q2/Q3 columns for every session type (SessionResults'
+    own "all dataframe columns will always exist" guarantee), but leaves
+    them NaN/NaT for session types it doesn't compute them for -- e.g.
+    Practice (M34, docs/m34-design-review.md §4; M42's Q1/Q2/Q3,
+    docs/m42-design-review.md, follow the identical shape).
     """
     return pd.DataFrame(
         [
@@ -66,6 +67,54 @@ def build_practice_results_df() -> pd.DataFrame:
                 "GridPosition": float("nan"),
                 "Status": float("nan"),
                 "Points": float("nan"),
+                "Q1": pd.NaT,
+                "Q2": pd.NaT,
+                "Q3": pd.NaT,
+            },
+        ]
+    )
+
+
+def build_qualifying_results_df() -> pd.DataFrame:
+    """Qualifying-shaped: ClassifiedPosition/GridPosition/Status/Points are
+    NaN (Qualifying never populates these -- M34/M38's own empirically
+    confirmed finding), while Q1/Q2/Q3 (M42, docs/m42-design-review.md) are
+    populated per FastF1's own elimination structure. VER advances through
+    all three segments; HAM is eliminated after Q1 (Q2/Q3 both NaT), the
+    real shape a Q1-only-eliminated driver's row has (M42's "partial
+    nullability" case).
+    """
+    return pd.DataFrame(
+        [
+            {
+                "DriverNumber": "1",
+                "Abbreviation": "VER",
+                "FullName": "Max Verstappen",
+                "FirstName": "Max",
+                "LastName": "Verstappen",
+                "TeamName": "Red Bull Racing",
+                "ClassifiedPosition": float("nan"),
+                "GridPosition": float("nan"),
+                "Status": float("nan"),
+                "Points": float("nan"),
+                "Q1": pd.Timedelta(seconds=78.241),
+                "Q2": pd.Timedelta(seconds=77.593),
+                "Q3": pd.Timedelta(seconds=76.982),
+            },
+            {
+                "DriverNumber": "44",
+                "Abbreviation": "HAM",
+                "FullName": "Lewis Hamilton",
+                "FirstName": "Lewis",
+                "LastName": "Hamilton",
+                "TeamName": "Mercedes",
+                "ClassifiedPosition": float("nan"),
+                "GridPosition": float("nan"),
+                "Status": float("nan"),
+                "Points": float("nan"),
+                "Q1": pd.Timedelta(seconds=79.104),
+                "Q2": pd.NaT,
+                "Q3": pd.NaT,
             },
         ]
     )

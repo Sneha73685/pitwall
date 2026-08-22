@@ -153,6 +153,69 @@ def test_list_drivers_maps_classification_fields_when_present(tmp_path: Path) ->
     assert ver.points == 25.0
 
 
+def test_list_drivers_maps_qualifying_segment_times_when_present(tmp_path: Path) -> None:
+    """M42 (docs/m42-design-review.md §18): a drivers.parquet written with
+    the three new q1_seconds/q2_seconds/q3_seconds columns deserializes
+    them correctly -- the positive-case complement to the missing-columns
+    test below."""
+    session_dir = tmp_path / "2023" / "monza" / "qualifying"
+    session_dir.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2023_monza_qualifying",
+                "driver_id": "VER",
+                "driver_number": 1,
+                "full_name": "Max Verstappen",
+                "team_name": "Red Bull Racing",
+                "q1_seconds": 78.241,
+                "q2_seconds": 77.593,
+                "q3_seconds": 76.982,
+            }
+        ]
+    ).to_parquet(session_dir / "drivers.parquet", index=False)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2023_monza_qualifying",
+                "season": 2023,
+                "event_name": "Italian Grand Prix",
+                "round_number": 16,
+                "location": "Monza",
+                "country": "Italy",
+                "session_type": "qualifying",
+                "session_date": "2023-09-02T14:00:00+00:00",
+            }
+        ]
+    ).to_parquet(session_dir / "session.parquet", index=False)
+    repo = ParquetRepository(tmp_path)
+
+    drivers = repo.list_drivers("2023_monza_qualifying")
+
+    assert len(drivers) == 1
+    ver = drivers[0]
+    assert ver.q1_seconds == 78.241
+    assert ver.q2_seconds == 77.593
+    assert ver.q3_seconds == 76.982
+
+
+def test_list_drivers_missing_qualifying_segment_columns_deserializes_to_none(
+    session_cache_dir: Path,
+) -> None:
+    """A pre-M42 drivers.parquet (the shared `session_cache_dir` fixture,
+    same as every other pre-existing session) has no
+    q1_seconds/q2_seconds/q3_seconds columns at all -- must deserialize to
+    None, not raise a KeyError."""
+    repo = ParquetRepository(session_cache_dir)
+
+    drivers = repo.list_drivers("2023_monza_race")
+
+    for driver in drivers:
+        assert driver.q1_seconds is None
+        assert driver.q2_seconds is None
+        assert driver.q3_seconds is None
+
+
 def test_list_laps_filters_by_driver(session_cache_dir: Path) -> None:
     repo = ParquetRepository(session_cache_dir)
 

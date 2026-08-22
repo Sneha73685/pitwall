@@ -241,13 +241,18 @@ same fields for the subset M2 exposes:
   `sprint_qualifying`, `sprint`, `race`), redefined locally per the anti-corruption boundary.
 - **`Session`** — `session_id`, `season`, `event_name`, `round_number`, `location`, `country`,
   `session_type`, `session_date`.
-- **`Driver`** — `driver_id`, `driver_number`, `full_name`, `team_name`, and four additive M34
+- **`Driver`** — `driver_id`, `driver_number`, `full_name`, `team_name`, four additive M34
   fields — `classified_position`, `grid_position`, `status`, `points` (source: `ff1_session.results`,
   already loaded for every session; populated by FastF1 for Race/Sprint sessions only — Qualifying
   and Sprint Qualifying return empty/`None` values in every era, confirmed empirically during M38's
   execution; `None` for every other session type. `None` for any session ingested before M34 that
   M38 did not backfill — M38 backfilled 332 of the 334 applicable historical sessions; 2 are a
-  permanent, genuine external Ergast-data-source gap, see `docs/m38-design-review.md` §14.1/§14.4).
+  permanent, genuine external Ergast-data-source gap, see `docs/m38-design-review.md` §14.1/§14.4) —
+  and three additive M42 fields, `q1_seconds`/`q2_seconds`/`q3_seconds` (source: same
+  `ff1_session.results`, `Q1`/`Q2`/`Q3` columns; populated only for Qualifying/Sprint Qualifying
+  sessions, `None` for Race/Sprint/Practice, and independently `None` per segment for a driver
+  eliminated before reaching it; `None` for any session ingested before M42 — no historical backfill,
+  `docs/m42-design-review.md` §21).
 - **`Lap`** — `driver_id`, `lap_number`, `lap_time_seconds`, `sector_1_seconds`, `sector_2_seconds`,
   `sector_3_seconds`, `is_personal_best`, `is_accurate`, and four additive fields — `position` (M35;
   source: `ff1_session.laps`, already loaded for every session; populated for Race/Sprint sessions

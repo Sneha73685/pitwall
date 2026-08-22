@@ -43,7 +43,14 @@ already a transitive dependency of `fastf1` and is now a direct one).
   return empty/`None` values in every era, confirmed empirically during M38's execution; `None` for
   every other session type. `None` for any session ingested before M34 that M38 did not backfill —
   M38 backfilled 332 of the 334 applicable historical sessions; 2 are a permanent, genuine external
-  Ergast-data-source gap, see `docs/m38-design-review.md` §14.1/§14.4).
+  Ergast-data-source gap, see `docs/m38-design-review.md` §14.1/§14.4) — and three additive M42
+  fields, `q1_seconds`/`q2_seconds`/`q3_seconds: float | None`, sourced from the same
+  `ff1_session.results`' `Q1`/`Q2`/`Q3` columns (`Timedelta`, converted via the same
+  `_timedelta_to_seconds` helper `normalize_laps` already uses). Populated only for Qualifying/Sprint
+  Qualifying sessions — `None` for Race/Sprint/Practice — and independently `None` per segment for a
+  driver eliminated before reaching it (e.g. `q2_seconds`/`q3_seconds` for a Q1-eliminated driver).
+  `None` for any session ingested before M42 (no historical backfill, `docs/m42-design-review.md`
+  §21).
 - **`Lap`** — `session_id`, `driver_id`, `lap_number`, `lap_time_seconds` (`None` for an
   incomplete/invalid lap), `sector_1_seconds`, `sector_2_seconds`, `sector_3_seconds` (each
   `None`-able for the same reason), `is_personal_best`, `is_accurate` (FastF1's own

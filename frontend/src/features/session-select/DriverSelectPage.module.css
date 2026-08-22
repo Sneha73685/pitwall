@@ -113,7 +113,8 @@
 
 .gridPosition,
 .status,
-.points {
+.points,
+.qualifyingTime {
   font-size: var(--pw-text-xs);
   color: var(--pw-text-disabled);
 }

@@ -96,6 +96,66 @@ describe("DriverSelectPage", () => {
     expect(screen.queryByText(/started p/i)).not.toBeInTheDocument();
   });
 
+  // --- M42 qualifying segment times (docs/m42-design-review.md) ----------
+
+  it("shows all three qualifying segment times when present", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue([
+      {
+        driver_id: "VER",
+        driver_number: 1,
+        full_name: "Max Verstappen",
+        team_name: "Red Bull Racing",
+        q1_seconds: 78.241,
+        q2_seconds: 77.593,
+        q3_seconds: 76.982,
+      },
+    ]);
+
+    renderAt("/sessions/2023_monza_qualifying");
+
+    await waitFor(() => expect(screen.getByText(/max verstappen/i)).toBeInTheDocument());
+    expect(screen.getByText("Q1 78241ms")).toBeInTheDocument();
+    expect(screen.getByText("Q2 77593ms")).toBeInTheDocument();
+    expect(screen.getByText("Q3 76982ms")).toBeInTheDocument();
+  });
+
+  it("shows only the qualifying segments a driver reached, with no placeholder for the rest", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue([
+      {
+        driver_id: "HAM",
+        driver_number: 44,
+        full_name: "Lewis Hamilton",
+        team_name: "Mercedes",
+        q1_seconds: 79.104,
+      },
+    ]);
+
+    renderAt("/sessions/2023_monza_qualifying");
+
+    await waitFor(() => expect(screen.getByText(/lewis hamilton/i)).toBeInTheDocument());
+    expect(screen.getByText("Q1 79104ms")).toBeInTheDocument();
+    expect(screen.queryByText(/^Q2/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Q3/)).not.toBeInTheDocument();
+  });
+
+  it("omits qualifying segment times when absent (Race/Practice sessions, pre-M42 data)", async () => {
+    vi.spyOn(client, "listDrivers").mockResolvedValue([
+      {
+        driver_id: "VER",
+        driver_number: 1,
+        full_name: "Max Verstappen",
+        team_name: "Red Bull Racing",
+      },
+    ]);
+
+    renderAt("/sessions/2023_monza_race");
+
+    await waitFor(() => expect(screen.getByText(/max verstappen/i)).toBeInTheDocument());
+    expect(screen.queryByText(/^Q1/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Q2/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Q3/)).not.toBeInTheDocument();
+  });
+
   it("shows an error message when the request fails", async () => {
     vi.spyOn(client, "listDrivers").mockRejectedValue(new Error("network error"));
 

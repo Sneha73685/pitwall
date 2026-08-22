@@ -39,9 +39,28 @@ import styles from "./DriverSelectPage.module.css";
  * order once populated (the backend preserves FastF1's own
  * finishing-position-sorted row order end to end), so no client-side sort
  * is added here.
+ *
+ * M42 adds qualifying segment times (Q1/Q2/Q3) to the same row, straight
+ * from the already-fetched `listDrivers` response (docs/m42-design-review.md;
+ * no new API call). Each segment is independently `null` -- for Race/
+ * Sprint/Practice sessions (Q1/Q2/Q3 never apply there), for a driver
+ * eliminated before reaching a given segment (e.g. Q2/Q3 for a
+ * Q1-eliminated driver), and for any session ingested before M42 -- and
+ * is omitted independently: a missing segment never renders a placeholder,
+ * and never hides a segment that IS present.
  */
 function formatClassifiedPosition(value: string): string {
   return /^\d+$/.test(value) ? `P${value}` : value;
+}
+
+function formatSegmentTime(seconds: number): string {
+  // Mirrors the existing raw-milliseconds display convention already used
+  // for lap times elsewhere in this app (DriverLapTable.tsx,
+  // DriverSummaryTable.tsx both format as `${ms.toFixed(0)}ms`) -- no
+  // mm:ss.sss clock-style formatter exists anywhere in this codebase to
+  // reuse, so this follows the same established shape rather than
+  // inventing a new one (docs/m42-design-review.md §19).
+  return `${(seconds * 1000).toFixed(0)}ms`;
 }
 
 export function DriverSelectPage() {
@@ -109,7 +128,8 @@ export function DriverSelectPage() {
                   {(driver.classified_position ||
                     driver.grid_position != null ||
                     driver.status ||
-                    (driver.points ?? 0) > 0) && (
+                    (driver.points ?? 0) > 0 ||
+                    driver.q1_seconds != null) && (
                     <span className={styles.classificationRow}>
                       {driver.classified_position && (
                         <span className={styles.positionBadge}>
@@ -122,6 +142,21 @@ export function DriverSelectPage() {
                       {driver.status && <span className={styles.status}>{driver.status}</span>}
                       {driver.points != null && driver.points > 0 && (
                         <span className={styles.points}>{driver.points} pts</span>
+                      )}
+                      {driver.q1_seconds != null && (
+                        <span className={styles.qualifyingTime}>
+                          Q1 {formatSegmentTime(driver.q1_seconds)}
+                        </span>
+                      )}
+                      {driver.q2_seconds != null && (
+                        <span className={styles.qualifyingTime}>
+                          Q2 {formatSegmentTime(driver.q2_seconds)}
+                        </span>
+                      )}
+                      {driver.q3_seconds != null && (
+                        <span className={styles.qualifyingTime}>
+                          Q3 {formatSegmentTime(driver.q3_seconds)}
+                        </span>
                       )}
                     </span>
                   )}
