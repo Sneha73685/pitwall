@@ -58,6 +58,12 @@
   gap: var(--pw-space-4);
 }
 
+.warnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pw-space-2);
+}
+
 .mapAndDelta {
   display: grid;
   grid-template-columns: 1fr 1fr;

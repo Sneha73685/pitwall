@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getTrackPoints, type TrackPoint } from "../../api/client";
+import { getTrackPoints, type TrackPoint, type WarningCode } from "../../api/client";
 import { ErrorState } from "../../components/ErrorState";
+import { StatusChip } from "../../components/StatusChip";
 import { getParam, setOrDelete } from "../../components/urlSearchParams";
 import { detectCorners } from "../track-map/detectCorners";
 import { useLapComparison } from "./hooks/useLapComparison";
@@ -15,6 +16,20 @@ import { TrackMapDelta } from "./components/TrackMapDelta";
 import { useComparisonStore } from "./comparisonStore";
 import type { DriverLapSelection } from "./components/DriverLapPicker";
 import styles from "./ComparisonPage.module.css";
+
+// M45 (docs/m45-design-review.md): frontend-owned copy per WarningCode,
+// not backend `detail` prose -- matching WarningCode's own docstring intent
+// (app/models/lap_comparison.py) and mirroring StintComparisonPage.tsx's
+// identical WARNING_LABELS pattern for its own comparison-warning surface.
+const WARNING_LABELS: Record<WarningCode, string> = {
+  invalid_lap_a: "Lap A: telemetry not marked accurate",
+  invalid_lap_b: "Lap B: telemetry not marked accurate",
+  yellow_flag_lap_a: "Lap A: affected by yellow flag",
+  yellow_flag_lap_b: "Lap B: affected by yellow flag",
+  track_limits_lap_a: "Lap A: time deleted for track limits",
+  track_limits_lap_b: "Lap B: time deleted for track limits",
+  different_circuit: "Sessions are at different circuits",
+};
 
 /**
  * Cross-session two-lap comparison shell (M6, generalized in M13 --
@@ -224,6 +239,15 @@ export function ComparisonPage() {
       {error && <ErrorState>{error}</ErrorState>}
       {comparison && (
         <div className={styles.workspace}>
+          {comparison.warnings.length > 0 && (
+            <div className={styles.warnings} data-testid="lap-comparison-warnings">
+              {comparison.warnings.map((warning) => (
+                <StatusChip key={warning.code} tone="warning">
+                  {WARNING_LABELS[warning.code]}
+                </StatusChip>
+              ))}
+            </div>
+          )}
           <ComparisonHeader comparison={comparison} onSwap={handleSwap} />
           <div className={styles.mapAndDelta}>
             <TrackMapDelta

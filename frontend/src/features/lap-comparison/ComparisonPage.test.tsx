@@ -388,6 +388,78 @@ describe("ComparisonPage", () => {
 
     await waitFor(() => expect(screen.getByTestId("track-map-delta-stub")).toBeInTheDocument());
     expect(getTrackPointsSpy).not.toHaveBeenCalled();
+    // M45 (docs/m45-design-review.md): DIFFERENT_CIRCUIT's existing
+    // track-map-skipping behavior (asserted above) is preserved unchanged;
+    // it also now gets a visible label alongside every other warning.
+    const warnings = screen.getByTestId("lap-comparison-warnings");
+    expect(within(warnings).getByText("Sessions are at different circuits")).toBeInTheDocument();
+  });
+
+  // --- M45 lap-comparison warning rendering (docs/m45-design-review.md) ---
+
+  describe("comparison warnings", () => {
+    it("shows no warnings container when the warnings list is empty", async () => {
+      vi.spyOn(client, "compareLaps").mockResolvedValue(sampleComparison);
+      renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+      await waitFor(() =>
+        expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+      );
+
+      await selectDriverAndLap(0, "VER");
+      await selectDriverAndLap(1, "LEC");
+
+      await waitFor(() => expect(screen.getByTestId("track-map-delta-stub")).toBeInTheDocument());
+      expect(screen.queryByTestId("lap-comparison-warnings")).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ["invalid_lap_a", "Lap A: telemetry not marked accurate"],
+      ["invalid_lap_b", "Lap B: telemetry not marked accurate"],
+      ["yellow_flag_lap_a", "Lap A: affected by yellow flag"],
+      ["yellow_flag_lap_b", "Lap B: affected by yellow flag"],
+      ["track_limits_lap_a", "Lap A: time deleted for track limits"],
+      ["track_limits_lap_b", "Lap B: time deleted for track limits"],
+    ] as const)("renders %s as %j", async (code, label) => {
+      vi.spyOn(client, "compareLaps").mockResolvedValue({
+        ...sampleComparison,
+        warnings: [{ code, detail: null }],
+      });
+      renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+      await waitFor(() =>
+        expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+      );
+
+      await selectDriverAndLap(0, "VER");
+      await selectDriverAndLap(1, "LEC");
+
+      const warnings = await screen.findByTestId("lap-comparison-warnings");
+      expect(within(warnings).getByText(label)).toBeInTheDocument();
+    });
+
+    it("renders multiple simultaneous warnings, mixed across lap A and lap B", async () => {
+      vi.spyOn(client, "compareLaps").mockResolvedValue({
+        ...sampleComparison,
+        warnings: [
+          { code: "invalid_lap_a", detail: null },
+          { code: "track_limits_lap_b", detail: null },
+        ],
+      });
+      renderAt("/laps/compare?sessionA=2023_monza_race&sessionB=2023_monza_race");
+      await waitFor(() =>
+        expect(screen.getAllByRole("option", { name: /max verstappen/i })).toHaveLength(2),
+      );
+
+      await selectDriverAndLap(0, "VER");
+      await selectDriverAndLap(1, "LEC");
+
+      const warnings = await screen.findByTestId("lap-comparison-warnings");
+      expect(
+        within(warnings).getByText("Lap A: telemetry not marked accurate"),
+      ).toBeInTheDocument();
+      expect(
+        within(warnings).getByText("Lap B: time deleted for track limits"),
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows an error message when the comparison fetch fails", async () => {
