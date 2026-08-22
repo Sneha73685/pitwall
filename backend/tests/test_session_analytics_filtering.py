@@ -120,3 +120,73 @@ def test_classify_lap_exclusion_reason_is_independent_of_is_accurate() -> None:
 
     assert validity.is_valid is False
     assert validity.exclusion_reason == "yellow_flag"
+
+
+# --- M40: track-limits exclusion (docs/m40-design-review.md) ---
+
+
+def test_classify_lap_flags_deleted_lap_as_track_limits() -> None:
+    """Any `deleted=True` lap classifies as "track_limits" unconditionally
+    -- real evidence (docs/m40-design-review.md §17) found every FastF1
+    deletion reason to be a track-limits infringement, so this is not
+    gated on `deleted_reason`'s text.
+    """
+    assert classify_lap(lap(deleted=True)).exclusion_reason == "track_limits"
+    assert (
+        classify_lap(lap(deleted=True, deleted_reason="TRACK LIMITS AT TURN 9")).exclusion_reason
+        == "track_limits"
+    )
+
+
+def test_classify_lap_does_not_flag_non_deleted_lap() -> None:
+    """`deleted=False` (FastF1 recorded this lap, did not delete it) and
+    `deleted=None` (no deletion data -- any session ingested before M40)
+    both resolve to no track-limits exclusion.
+    """
+    assert classify_lap(lap(deleted=False)).exclusion_reason is None
+    assert classify_lap(lap(deleted=None)).exclusion_reason is None
+
+
+def test_classify_lap_track_limits_takes_precedence_over_yellow_flag() -> None:
+    """The precedence decision (docs/m40-design-review.md §21): a lap that
+    is both track-limits-deleted and yellow-flag-affected displays
+    "track_limits", not "yellow_flag" -- a display-only choice, since both
+    reasons already exclude the lap from aggregate stats identically.
+    """
+    assert classify_lap(lap(deleted=True, track_status="4")).exclusion_reason == "track_limits"
+
+
+def test_classify_lap_yellow_flag_without_deletion_is_unchanged() -> None:
+    """A yellow-flag-affected lap that was not deleted still classifies as
+    "yellow_flag" -- M40 must not alter M36's existing behavior."""
+    assert classify_lap(lap(deleted=False, track_status="4")).exclusion_reason == "yellow_flag"
+    assert classify_lap(lap(deleted=None, track_status="4")).exclusion_reason == "yellow_flag"
+
+
+def test_classify_lap_track_limits_exclusion_reason_is_independent_of_is_accurate() -> None:
+    """`is_valid` remains derived solely from `is_accurate` -- a
+    track-limits-deleted lap with clean telemetry (the real, confirmed
+    case, docs/m40-design-review.md §17) is `is_valid=True` and
+    `exclusion_reason="track_limits"` at the same time; a track-limits
+    deletion must never be conflated with a telemetry-accuracy problem.
+    """
+    validity = classify_lap(lap(is_accurate=True, deleted=True))
+
+    assert validity.is_valid is True
+    assert validity.exclusion_reason == "track_limits"
+
+
+def test_filter_for_aggregate_stats_excludes_track_limits_but_filter_valid_laps_does_not() -> None:
+    """Mirrors the existing yellow-flag precedence test: a track-limits lap
+    is still "valid" (filter_valid_laps keeps it) but excluded from the
+    stricter aggregate-stats population (filter_for_aggregate_stats drops
+    it) -- the same aggregate-vs-valid distinction M36 established, now
+    proven for M40's own exclusion source.
+    """
+    laps = [
+        lap(lap_number=1, is_accurate=True, deleted=False),
+        lap(lap_number=2, is_accurate=True, deleted=True),
+    ]
+
+    assert [lap_.lap_number for lap_ in filter_valid_laps(laps)] == [1, 2]
+    assert [lap_.lap_number for lap_ in filter_for_aggregate_stats(laps)] == [1]

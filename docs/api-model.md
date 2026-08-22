@@ -249,15 +249,23 @@ same fields for the subset M2 exposes:
   M38 did not backfill — M38 backfilled 332 of the 334 applicable historical sessions; 2 are a
   permanent, genuine external Ergast-data-source gap, see `docs/m38-design-review.md` §14.1/§14.4).
 - **`Lap`** — `driver_id`, `lap_number`, `lap_time_seconds`, `sector_1_seconds`, `sector_2_seconds`,
-  `sector_3_seconds`, `is_personal_best`, `is_accurate`, and two additive fields — `position` (M35;
+  `sector_3_seconds`, `is_personal_best`, `is_accurate`, and four additive fields — `position` (M35;
   source: `ff1_session.laps`, already loaded for every session; populated for Race/Sprint sessions
   only — Qualifying, Sprint Qualifying, and Practice all return `None`, confirmed empirically during
   M38; `None` for any session ingested before M35 that M38 did not backfill, see
-  `docs/m38-design-review.md` §14.1/§14.4) and `track_status` (M36; source: `ff1_session.laps`'
+  `docs/m38-design-review.md` §14.1/§14.4), `track_status` (M36; source: `ff1_session.laps`'
   `TrackStatus` column, a concatenated string of every status code active during the lap; not
   session-type-restricted; `None` for any session ingested before M36 that M38 did not backfill,
-  same 332/334 population). Consumed by the session-analytics yellow-flag exclusion path
-  (`app/services/session_analytics/filtering.py`), which sets `DriverLapMetrics.exclusion_reason`.
+  same 332/334 population), and `deleted`/`deleted_reason` (M40; source: `ff1_session.laps`'
+  `Deleted`/`DeletedReason` columns, FastF1's official lap-time-deletion ruling populated from race
+  control messages; not session-type-restricted, same as `track_status`; `deleted_reason` is the raw
+  stewards' message, empty-string normalized to `None`; `None` for any session ingested before
+  M40 — no historical backfill in M40 itself, `docs/m40-design-review.md` §24). Consumed by the
+  session-analytics exclusion path (`app/services/session_analytics/filtering.py`), which sets
+  `DriverLapMetrics.exclusion_reason` to `"yellow_flag"` (M36, from `track_status`) or `"track_limits"`
+  (M40, from `deleted` — takes precedence over `"yellow_flag"` when both apply, a display-only
+  choice, `docs/m40-design-review.md` §21); `is_valid` remains derived solely from `is_accurate`,
+  independent of both exclusion sources.
 - **`TelemetrySample`** — `distance_m`, `time_seconds`, `speed_kph`, `throttle_pct`, `brake_active`,
   `rpm`, `gear`, `drs_active`, `x`, `y`, `z`.
 - **`TrackPoint`** (M4) — `distance_m`, `x`, `y`.

@@ -12,9 +12,24 @@ the schema, plan §0.2 Q3); M36 (docs/m36-design-review.md) activates it
 using `Lap.track_status`, FastF1's own per-lap track-status code(s)
 (source: `ff1_session.laps`' `TrackStatus` column, already loaded for
 every session). There is also no distinct out-lap/in-lap signal to check,
-so `ExclusionReason` only ever resolves to `"yellow_flag"` or `None`,
-never `"out_lap"`/`"in_lap"` (plan §0.1 B4 correction) -- those two values
-are not representable from any data this codebase has today.
+so `ExclusionReason` only ever resolves to `"yellow_flag"`, `"track_limits"`
+(M40), or `None`, never `"out_lap"`/`"in_lap"` (plan §0.1 B4 correction) --
+those two values are not representable from any data this codebase has
+today.
+
+M40 (docs/m40-design-review.md) adds a second, independent exclusion
+source: `Lap.deleted`, FastF1's own official lap-time-deletion ruling
+(source: `ff1_session.laps`' `Deleted` column, populated from race control
+messages, already loaded for every session -- not session-type-restricted,
+same as `track_status`). Real evidence (17 real sessions, every session
+type, docs/m40-design-review.md §17) found every FastF1 deletion reason to
+be a track-limits infringement, so any `Deleted=True` lap is classified
+`"track_limits"` unconditionally, without parsing the free-text
+`DeletedReason` message. If a lap is both yellow-flag-affected and
+track-limits-deleted, `"track_limits"` wins for the single displayed
+reason (docs/m40-design-review.md §21) -- a display-precedence decision
+only, since both `filter_valid_laps`/`filter_for_aggregate_stats` already
+exclude on "any reason present," not on which one.
 """
 
 from dataclasses import dataclass
@@ -22,7 +37,7 @@ from typing import Literal
 
 from app.models.telemetry import Lap
 
-ExclusionReason = Literal["yellow_flag"]
+ExclusionReason = Literal["yellow_flag", "track_limits"]
 
 # FastF1 status codes (fastf1.api.track_status_data): '1' clear, '2'
 # yellow, '3' undocumented/never observed by FastF1 itself, '4' Safety
@@ -62,12 +77,30 @@ def _yellow_flag_reason(lap: Lap) -> ExclusionReason | None:
     return None
 
 
-def classify_lap(lap: Lap) -> LapValidity:
-    """Classify one lap: `is_valid` from `lap.is_accurate`, plus
-    `exclusion_reason` from `lap.track_status` (M36 -- see
-    `_yellow_flag_reason`; `None` for any session ingested before M36).
+def _track_limits_reason(lap: Lap) -> ExclusionReason | None:
+    """M40 (docs/m40-design-review.md §19/§21): any `lap.deleted is True`
+    is FastF1's own official ruling that this lap's time was deleted --
+    real evidence found every observed deletion to be a track-limits
+    infringement, so this classifies unconditionally on `deleted` alone,
+    never by parsing `deleted_reason`'s free text. `None`/`False` (no
+    deletion data, or a lap FastF1 did not delete) both correctly resolve
+    to "not excluded" here.
     """
-    return LapValidity(is_valid=lap.is_accurate, exclusion_reason=_yellow_flag_reason(lap))
+    return "track_limits" if lap.deleted else None
+
+
+def classify_lap(lap: Lap) -> LapValidity:
+    """Classify one lap: `is_valid` from `lap.is_accurate` alone (unchanged
+    by M40 -- a track-limits deletion is an official-validity ruling, not a
+    telemetry-quality signal, so it must not affect `is_valid`), plus
+    `exclusion_reason` from `lap.deleted` (M40) or `lap.track_status` (M36),
+    in that precedence order: a lap that is both track-limits-deleted and
+    yellow-flag-affected displays `"track_limits"` (docs/m40-design-review.md
+    §21) -- a display-only choice, since both filters below already treat
+    "any reason present" identically regardless of which one it is.
+    """
+    exclusion_reason = _track_limits_reason(lap) or _yellow_flag_reason(lap)
+    return LapValidity(is_valid=lap.is_accurate, exclusion_reason=exclusion_reason)
 
 
 def filter_valid_laps(laps: list[Lap]) -> list[Lap]:

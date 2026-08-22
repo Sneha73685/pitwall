@@ -103,6 +103,16 @@ class Lap(ApiModel):
     # exposed on this shared model rather than hidden since there is only
     # one `Lap` model in this backend (docs/m36-design-review.md §4).
     track_status: str | None = None
+    # M40 addition: FastF1's official lap-time-deletion ruling (source:
+    # ff1_session.laps' Deleted/DeletedReason columns, populated from race
+    # control messages, docs/m40-design-review.md). `deleted_reason` is the
+    # raw stewards' message; not session-type-restricted. None for any
+    # session ingested before M40 (Option B -- no historical backfill,
+    # docs/m40-design-review.md §24). Consumed by
+    # app/services/session_analytics/filtering.py's track-limits exclusion;
+    # exposed on this shared model, same as `track_status`.
+    deleted: bool | None = None
+    deleted_reason: str | None = None
 
 
 class TelemetrySample(ApiModel):

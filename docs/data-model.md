@@ -53,10 +53,20 @@ already a transitive dependency of `fastf1` and is now a direct one).
   loads — populated for Race/Sprint sessions only (Qualifying, Sprint Qualifying, and Practice all
   return `None`, confirmed empirically during M38); `None` for any session ingested before M35 that
   M38 did not backfill (332 of 334 applicable sessions backfilled, 2 permanently excluded — see
-  `docs/m38-design-review.md` §14.1/§14.4) — and an additive M36 field, `track_status: str | None`,
+  `docs/m38-design-review.md` §14.1/§14.4) — an additive M36 field, `track_status: str | None`,
   sourced from `ff1_session.laps`' `TrackStatus` column (a concatenated string of every status code
   active during the lap, e.g. `"1"`, `"241"`; not session-type-restricted). `None` for any session
-  ingested before M36 that M38 did not backfill (same 332/334 population).
+  ingested before M36 that M38 did not backfill (same 332/334 population) — and two additive M40
+  fields, `deleted: bool | None` and `deleted_reason: str | None`, sourced from `ff1_session.laps`'
+  `Deleted`/`DeletedReason` columns (FastF1's official lap-time-deletion ruling, populated from race
+  control messages; not session-type-restricted, same as `track_status`). `deleted_reason` is the
+  raw stewards' message (e.g. `"TRACK LIMITS AT TURN 10 (NEXT LAP)"`), empty-string normalized to
+  `None`. `deleted`/`deleted_reason` are independent of `is_accurate` — a track-limits-deleted lap
+  can have perfectly clean telemetry (confirmed empirically, `docs/m40-design-review.md` §17) — and
+  feed only into `app/services/session_analytics/filtering.py`'s `exclusion_reason` (`"track_limits"`,
+  taking precedence over `"yellow_flag"` when both apply for the single displayed reason,
+  `docs/m40-design-review.md` §21), never `is_valid`. `None` for any session ingested before M40 —
+  no historical backfill in M40 itself (`docs/m40-design-review.md` §24).
 - **`TelemetrySample`** — one row of channel data for one driver/lap, keyed by `session_id`,
   `driver_id`, `lap_number` plus: `distance_m` (the common alignment axis PRD §4 calls for),
   `time_seconds` (lap-relative), `speed_kph`, `throttle_pct`, `brake_active`, `rpm`, `gear`,

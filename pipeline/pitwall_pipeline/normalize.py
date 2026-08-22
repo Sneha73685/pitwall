@@ -64,6 +64,13 @@ def _optional_float(value: Any) -> float | None:
     return float(value)
 
 
+def _optional_bool(value: Any) -> bool | None:
+    """Convert a (possibly missing) FastF1 boolean field to a bool, or None."""
+    if value is None or pd.isna(value):
+        return None
+    return bool(value)
+
+
 def normalize_session(
     *,
     season: int,
@@ -423,6 +430,16 @@ def normalize_laps(laps: pd.DataFrame, *, session_id: str) -> list[Lap]:
     active during the lap (e.g. "1", "2", "241"), read verbatim -- the
     excluded-code interpretation lives entirely in
     app/services/session_analytics/filtering.py, not here.
+
+    M40 (docs/m40-design-review.md) additionally reads Deleted/DeletedReason
+    -- also no new FastF1 call; both are populated by FastF1 parsing race
+    control messages (fastf1.core._set_laps_deleted_from_rcm), not
+    session-type-restricted. DeletedReason is FastF1's raw free-text
+    stewards' message (e.g. "TRACK LIMITS AT TURN 10 (NEXT LAP)"), read
+    verbatim and normalized to None when empty (FastF1 uses "", not NaN,
+    for a non-deleted lap) -- the track-limits exclusion interpretation
+    lives entirely in app/services/session_analytics/filtering.py, not
+    here, matching TrackStatus's own precedent.
     """
     result = []
     for _, row in laps.iterrows():
@@ -440,6 +457,8 @@ def normalize_laps(laps: pd.DataFrame, *, session_id: str) -> list[Lap]:
                 compound=_optional_str(row.get("Compound")),
                 position=_optional_int(row.get("Position")),
                 track_status=_optional_str(row.get("TrackStatus")),
+                deleted=_optional_bool(row.get("Deleted")),
+                deleted_reason=_optional_str(row.get("DeletedReason")) or None,
             )
         )
     return result

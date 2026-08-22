@@ -126,6 +126,16 @@ export interface Lap {
    * derived signal consumers actually use (docs/m36-design-review.md §5).
    */
   track_status?: string | null;
+  /**
+   * M40 addition. Optional+nullable for the same reason as `compound`/
+   * `position`/`track_status` above. Not session-type-restricted. `null`
+   * for any session ingested before M40 (no historical backfill,
+   * docs/m40-design-review.md §24). No page reads this field directly;
+   * `exclusion_reason` on the analytics lap-metrics types is the derived
+   * signal consumers actually use (docs/m40-design-review.md §21).
+   */
+  deleted?: boolean | null;
+  deleted_reason?: string | null;
 }
 
 export interface TelemetrySample {
@@ -247,7 +257,7 @@ export interface SessionAnalyticsResponse {
   warnings: SessionAnalyticsWarning[];
 }
 
-export type ExclusionReason = "yellow_flag";
+export type ExclusionReason = "yellow_flag" | "track_limits";
 
 export interface DriverLapMetrics {
   lap_number: number;

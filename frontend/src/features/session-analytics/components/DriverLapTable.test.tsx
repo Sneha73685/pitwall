@@ -28,6 +28,19 @@ describe("DriverLapTable", () => {
     expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(yellow_flag)");
   });
 
+  it("renders the exclusion tag for a valid lap with a track-limits exclusion reason", () => {
+    // M40 (docs/m40-design-review.md §22): the backend already resolves
+    // track_limits/yellow_flag precedence before this component ever sees
+    // exclusion_reason, so a single rendering case covers both the
+    // deleted-alone and deleted-plus-yellow-flag scenarios identically.
+    const laps = [lap({ is_valid: true, exclusion_reason: "track_limits" })];
+
+    render(<DriverLapTable laps={laps} />);
+
+    const row = screen.getByTestId("lap-row-1");
+    expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(track_limits)");
+  });
+
   it("renders the exclusion tag for an invalid lap with no exclusion reason", () => {
     const laps = [lap({ is_valid: false, exclusion_reason: null })];
 

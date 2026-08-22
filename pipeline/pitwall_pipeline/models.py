@@ -158,6 +158,15 @@ class Lap(DomainModel):
     # `position`. None for any session ingested before M36 (Option B -- no
     # historical backfill, docs/m36-design-review.md §7).
     track_status: str | None = None
+    # M40 addition: FastF1's official lap-time-deletion ruling (source:
+    # ff1_session.laps' Deleted/DeletedReason columns, populated from race
+    # control messages, docs/m40-design-review.md). `deleted_reason` is the
+    # raw stewards' message (e.g. "TRACK LIMITS AT TURN 10 (NEXT LAP)"),
+    # empty-string normalized to None; not session-type-restricted. None
+    # for any session ingested before M40 (Option B -- no historical
+    # backfill, docs/m40-design-review.md §24).
+    deleted: bool | None = None
+    deleted_reason: str | None = None
 
 
 class Stint(DomainModel):

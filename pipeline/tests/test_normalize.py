@@ -146,6 +146,36 @@ def test_normalize_laps_handles_missing_track_status_column() -> None:
     assert laps[0].track_status is None
 
 
+def test_normalize_laps_maps_deleted() -> None:
+    """M40 (docs/m40-design-review.md §17/§20). A non-deleted lap normalizes
+    `deleted` to False and `deleted_reason` to None (FastF1 uses "", not
+    NaN, for a non-deleted lap's reason -- must not leak as an empty
+    string)."""
+    laps_df = build_laps_df()
+    laps_df.loc[1, "Deleted"] = True
+    laps_df.loc[1, "DeletedReason"] = "TRACK LIMITS AT TURN 10 (NEXT LAP)"
+
+    laps = normalize_laps(laps_df, session_id="2023_monza_race")
+
+    assert laps[0].deleted is False
+    assert laps[0].deleted_reason is None
+    assert laps[1].deleted is True
+    assert laps[1].deleted_reason == "TRACK LIMITS AT TURN 10 (NEXT LAP)"
+
+
+def test_normalize_laps_handles_missing_deleted_columns() -> None:
+    """Not session-type-gated, same as TrackStatus -- the only genuine
+    "missing" case is a DataFrame that lacks the columns entirely (e.g. an
+    older hand-built fixture, or any real session ingested before M40),
+    which must normalize to None, not raise."""
+    laps_df = build_laps_df().drop(columns=["Deleted", "DeletedReason"])
+
+    laps = normalize_laps(laps_df, session_id="2023_monza_race")
+
+    assert laps[0].deleted is None
+    assert laps[0].deleted_reason is None
+
+
 def test_normalize_telemetry_converts_units_and_drs() -> None:
     samples = normalize_telemetry(
         build_telemetry_df(num_samples=2, drs_active=True),

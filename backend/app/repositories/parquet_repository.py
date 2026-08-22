@@ -69,6 +69,10 @@ def _optional_int(value: Any) -> int | None:
     return None if pd.isna(value) else int(value)
 
 
+def _optional_bool(value: Any) -> bool | None:
+    return None if pd.isna(value) else bool(value)
+
+
 def _session_from_row(row: Mapping[Hashable, Any], *, has_telemetry: bool) -> Session:
     season = int(row["season"])
     event_name = str(row["event_name"])
@@ -130,6 +134,9 @@ def _lap_from_row(row: Mapping[Hashable, Any]) -> Lap:
         position=_optional_int(row.get("position")),
         # Same reasoning for M36's track_status (docs/m36-design-review.md §4).
         track_status=_optional_str(row.get("track_status")),
+        # Same reasoning for M40's deleted/deleted_reason (docs/m40-design-review.md §20).
+        deleted=_optional_bool(row.get("deleted")),
+        deleted_reason=_optional_str(row.get("deleted_reason")),
     )
 
 

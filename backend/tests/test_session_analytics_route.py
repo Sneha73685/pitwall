@@ -432,6 +432,98 @@ def test_get_driver_lap_metrics_flags_yellow_flag_excluded_laps(tmp_path: Path) 
     assert laps[1]["is_valid"] is True
 
 
+def test_get_driver_lap_metrics_flags_track_limits_excluded_laps(tmp_path: Path) -> None:
+    """M40 (docs/m40-design-review.md): proves the full stack -- pipeline
+    field through to a real HTTP response -- mirroring the yellow-flag
+    test above exactly. Own dedicated fixture, same reasoning."""
+    session_id = "2024_deletiontest_race"
+    session_dir = tmp_path / "2024" / "deletiontest" / "race"
+    session_dir.mkdir(parents=True)
+
+    pd.DataFrame(
+        [
+            {
+                "session_id": session_id,
+                "season": 2024,
+                "event_name": "Deletion Test",
+                "round_number": 1,
+                "location": "Testville",
+                "country": "Testland",
+                "session_type": "race",
+                "session_date": None,
+            }
+        ]
+    ).to_parquet(session_dir / "session.parquet", index=False)
+
+    pd.DataFrame([{"session_id": session_id, "driver_id": "VER", "driver_number": 1}]).to_parquet(
+        session_dir / "drivers.parquet", index=False
+    )
+
+    pd.DataFrame(
+        [
+            {
+                "session_id": session_id,
+                "driver_id": "VER",
+                "lap_number": 1,
+                "lap_time_seconds": 90.0,
+                "sector_1_seconds": 30.0,
+                "sector_2_seconds": 30.0,
+                "sector_3_seconds": 30.0,
+                "is_personal_best": True,
+                "is_accurate": True,
+                "deleted": False,
+                "deleted_reason": None,
+            },
+            {
+                "session_id": session_id,
+                "driver_id": "VER",
+                "lap_number": 2,
+                "lap_time_seconds": 88.0,
+                "sector_1_seconds": 29.0,
+                "sector_2_seconds": 29.0,
+                "sector_3_seconds": 30.0,
+                "is_personal_best": False,
+                "is_accurate": True,
+                "deleted": True,
+                "deleted_reason": "TRACK LIMITS AT TURN 10 (NEXT LAP)",
+            },
+        ]
+    ).to_parquet(session_dir / "laps.parquet", index=False)
+
+    pd.DataFrame(
+        columns=[
+            "session_id",
+            "driver_id",
+            "lap_number",
+            "distance_m",
+            "time_seconds",
+            "speed_kph",
+            "throttle_pct",
+            "brake_active",
+            "rpm",
+            "gear",
+            "drs_active",
+            "x",
+            "y",
+            "z",
+        ]
+    ).to_parquet(session_dir / "telemetry.parquet", index=False)
+
+    app.dependency_overrides[get_telemetry_repository] = lambda: ParquetRepository(tmp_path)
+    try:
+        client = TestClient(app)
+        response = client.get(f"/sessions/{session_id}/analytics/drivers/VER/laps")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    laps = response.json()["laps"]
+    assert laps[0]["exclusion_reason"] is None
+    assert laps[0]["is_valid"] is True
+    assert laps[1]["exclusion_reason"] == "track_limits"
+    assert laps[1]["is_valid"] is True
+
+
 def test_get_driver_lap_metrics_populates_warnings_for_the_one_valid_lap_driver(
     analytics_client: TestClient,
 ) -> None:

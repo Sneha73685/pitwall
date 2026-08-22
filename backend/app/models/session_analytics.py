@@ -15,13 +15,16 @@ from typing import Literal
 
 from app.models.telemetry import ApiModel
 
-ExclusionReason = Literal["yellow_flag"]
-"""Only `"yellow_flag"` (and `None`) can ever actually be populated today:
-`"out_lap"`/`"in_lap"` have no backing data anywhere in the schema (plan
-§0.1 B4 correction). The wider `"out_lap" | "in_lap" | "yellow_flag"`
-literal from the design doc's example is deliberately not modeled here --
-declaring two values this API can never emit would be a schema that lies,
-not forward-compatibility.
+ExclusionReason = Literal["yellow_flag", "track_limits"]
+"""Only `"yellow_flag"`, `"track_limits"` (M40, docs/m40-design-review.md),
+and `None` can ever actually be populated today: `"out_lap"`/`"in_lap"`
+have no backing data anywhere in the schema (plan §0.1 B4 correction). The
+wider `"out_lap" | "in_lap" | "yellow_flag"` literal from the design doc's
+example is deliberately not modeled here -- declaring a value this API can
+never emit would be a schema that lies, not forward-compatibility. Kept in
+sync with `app/services/session_analytics/filtering.py`'s own
+`ExclusionReason` by hand, not by import, per this module's own
+anti-corruption-boundary rule above.
 """
 
 

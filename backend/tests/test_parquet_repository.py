@@ -219,6 +219,64 @@ def test_list_laps_maps_position_and_track_status_when_present(tmp_path: Path) -
     assert laps[0].track_status == "24"
 
 
+def test_list_laps_maps_deleted_when_present(tmp_path: Path) -> None:
+    """M40 (docs/m40-design-review.md §20): a laps.parquet written with the
+    deleted/deleted_reason columns deserializes both correctly -- the
+    positive-case complement to the missing-columns test below."""
+    session_dir = tmp_path / "2023" / "monza" / "race"
+    session_dir.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2023_monza_race",
+                "driver_id": "VER",
+                "lap_number": 1,
+                "lap_time_seconds": 91.0,
+                "sector_1_seconds": 30.0,
+                "sector_2_seconds": 30.0,
+                "sector_3_seconds": 31.0,
+                "is_personal_best": True,
+                "is_accurate": True,
+                "deleted": True,
+                "deleted_reason": "TRACK LIMITS AT TURN 10 (NEXT LAP)",
+            }
+        ]
+    ).to_parquet(session_dir / "laps.parquet", index=False)
+    pd.DataFrame(
+        [
+            {
+                "session_id": "2023_monza_race",
+                "season": 2023,
+                "event_name": "Italian Grand Prix",
+                "round_number": 16,
+                "location": "Monza",
+                "country": "Italy",
+                "session_type": "race",
+                "session_date": "2023-09-03T13:00:00+00:00",
+            }
+        ]
+    ).to_parquet(session_dir / "session.parquet", index=False)
+    repo = ParquetRepository(tmp_path)
+
+    laps = repo.list_laps("2023_monza_race")
+
+    assert len(laps) == 1
+    assert laps[0].deleted is True
+    assert laps[0].deleted_reason == "TRACK LIMITS AT TURN 10 (NEXT LAP)"
+
+
+def test_list_laps_missing_deleted_columns_deserializes_to_none(session_cache_dir: Path) -> None:
+    """A pre-M40 laps.parquet (the shared `session_cache_dir` fixture, same
+    as every other pre-existing session) has no `deleted`/`deleted_reason`
+    columns at all -- must deserialize to None, not raise a KeyError."""
+    repo = ParquetRepository(session_cache_dir)
+
+    laps = repo.list_laps("2023_monza_race", driver_id="VER")
+
+    assert laps[0].deleted is None
+    assert laps[0].deleted_reason is None
+
+
 def test_list_laps_handles_missing_lap_time(session_cache_dir: Path) -> None:
     repo = ParquetRepository(session_cache_dir)
 

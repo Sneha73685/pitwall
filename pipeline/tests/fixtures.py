@@ -98,6 +98,8 @@ def build_laps_df() -> pd.DataFrame:
                 "PitOutTime": pd.NaT,
                 "Position": 1.0,
                 "TrackStatus": "1",
+                "Deleted": False,
+                "DeletedReason": "",
             },
             {
                 "Driver": "HAM",
@@ -115,6 +117,8 @@ def build_laps_df() -> pd.DataFrame:
                 "PitOutTime": pd.NaT,
                 "Position": 2.0,
                 "TrackStatus": "1",
+                "Deleted": False,
+                "DeletedReason": "",
             },
         ]
     )
