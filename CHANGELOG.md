@@ -8,8 +8,88 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing in progress — M38 is the most recently completed milestone (see `README.md`'s Project
+Nothing in progress — M43 is the most recently completed milestone (see `README.md`'s Project
 status).
+
+## M43 — Surface Yellow-Flag/Track-Limits Exclusion in Lap Comparison — 2026-08-22
+
+See `docs/m43-design-review.md` for the full design record.
+
+### Added
+
+- `WarningCode.YELLOW_FLAG_LAP_A`/`_B`, `TRACK_LIMITS_LAP_A`/`_B` — `collect_warnings()`
+  (`app/services/lap_comparison/validation.py`) now imports and calls `classify_lap()` (M36/M40's
+  `app/services/session_analytics/filtering.py`, the same cross-service precedent M41 established),
+  surfacing the same yellow-flag/track-limits exclusion signal for each compared lap independently.
+  `is_accurate`-based warnings are unchanged and coexist with the new ones.
+
+### Changed
+
+- None to any existing endpoint contract beyond the four additive `WarningCode` members —
+  `ComparisonWarning`/`LapComparisonResponse`'s shape, and every other route, are unaffected.
+
+## M42 — Add Qualifying Segment Results — 2026-08-22
+
+See `docs/m42-design-review.md` for the full design record.
+
+### Added
+
+- `Driver.q1_seconds`/`q2_seconds`/`q3_seconds` — three additive fields sourced from
+  `ff1_session.results`' `Q1`/`Q2`/`Q3` columns (already loaded for every session). `None` for
+  session types FastF1 doesn't populate them for (Race/Sprint/Practice), for a driver eliminated
+  before reaching a given segment, and for any session ingested before M42 (no historical backfill).
+- `DriverSelectPage` now surfaces each qualifying segment time a driver reached, independently.
+
+### Changed
+
+- None to any existing endpoint contract beyond the three additive `Driver` fields.
+
+## M41 — Exclude Flagged Laps from Tyre Aggregates — 2026-08-22
+
+See `docs/m41-design-review.md` for the full design record.
+
+### Fixed
+
+- `trend_eligible_positions()` (`app/services/tyre_performance/stint_eligibility.py`) now also
+  excludes laps with a non-null `exclusion_reason` (yellow-flag or track-limits), not just inaccurate
+  laps — `TyrePerformancePage`/`StintPacePage` aggregate stats were silently corrupted by flagged laps
+  before this fix. `valid_positions()` is unchanged (still the pure `is_accurate` signal, feeding
+  `AnnotatedLap.is_valid` directly, a deliberately different population).
+
+## M40 — Add Track-Limits Lap Exclusion — 2026-08-22
+
+See `docs/m40-design-review.md` for the full design record.
+
+### Added
+
+- `Lap.deleted`/`Lap.deleted_reason` — additive fields sourced from `ff1_session.laps`'
+  `Deleted`/`DeletedReason` columns (already loaded for every session, populated from race-control-
+  message parsing; not session-type-restricted).
+- `"track_limits"` `ExclusionReason` — `classify_lap()` now resolves `exclusion_reason` from
+  `lap.deleted` (M40) or `lap.track_status` (M36), in that precedence order: a lap that is both
+  track-limits-deleted and yellow-flag-affected displays `"track_limits"`.
+
+### Changed
+
+- None to any existing endpoint contract beyond the two additive `Lap` fields and the widened
+  `ExclusionReason` values. No historical backfill in M40 itself.
+
+## M39 — Documentation & Roadmap Reconciliation (M34–M38) — 2026-08-22
+
+See `docs/m39-design-review.md` for the full design record.
+
+### Changed
+
+- Reconciled `README.md`, `CHANGELOG.md`, `docs/prd.md`, and `docs/success-metrics.md` through M38 —
+  including a retroactive M33 entry (below) that M33 itself never added.
+- Corrected an active false statement: `docs/prd.md` §5 and `docs/success-metrics.md` both still said
+  position history was "not yet built" after M34/M35 had already shipped it and M38 had backfilled
+  it.
+- Corrected `docs/data-model.md`/`docs/api-model.md`'s stale "no historical backfill was performed"
+  statements, now false since M38, and their M34/M35 applicability claims to the
+  empirically-confirmed Race/Sprint-only scope.
+- `pipeline/pitwall_pipeline/normalize.py` — comment-only docstring correction matching the above (no
+  executable change).
 
 ## M38 — Backfill Historical Classification Analytics — 2026-08-22
 

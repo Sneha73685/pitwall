@@ -29,7 +29,7 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 
 ## Project status
 
-**Current milestone: M38 — Backfill historical classification analytics — complete.**
+**Current milestone: M43 — Surface yellow-flag/track-limits exclusion in lap comparison — complete.**
 
 | # | Milestone | Status |
 |---|---|---|
@@ -72,8 +72,13 @@ and a clean frontend, with the architecture kept honest by ADRs at every real de
 | M36 | Yellow-flag / Safety Car / VSC / red-flag lap exclusion | ✅ Done |
 | M37 | Fix: yellow-flag exclusion tags render in driver lap table | ✅ Done |
 | M38 | Historical backfill of M34–M36 fields (332/334 sessions) | ✅ Done |
+| M39 | Documentation & roadmap reconciliation (M34–M38) | ✅ Done |
+| M40 | Track-limits lap exclusion (`Lap.deleted`/`deleted_reason`) | ✅ Done |
+| M41 | Fix: tyre/stint aggregate stats exclude yellow-flag/track-limits laps | ✅ Done |
+| M42 | Qualifying Q1/Q2/Q3 segment results | ✅ Done |
+| M43 | Fix: lap-comparison warnings surface yellow-flag/track-limits exclusion | ✅ Done |
 
-M8–M38 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M38
+M8–M43 extend beyond the original V1 roadmap (`docs/prd.md` §3 covers M0–M7; §3a records M8–M43
 without implying they were part of the original V1–V5 schedule); each has its own design review
 under `docs/` (`m8-design-review.md` onward). See `docs/releases/` for per-milestone summaries
 (currently covering M1–M5; later milestones' records are their own design-review/implementation-plan
@@ -191,10 +196,10 @@ Beyond V1 (M0–M7 above), PitWall is planned to grow through further versions:
 | V5 | Natural-language querying over the above |
 
 Full rationale for what's deferred and why lives in `docs/prd.md` §5, which also records current
-shipped/unshipped status per feature (updated through M15 — e.g. V2's synchronized cursor shipped in
-M14, corner highlighting is still deferred; V3's stint/pit-stop comparison shipped in M10/M11/M15,
-weather and position/gap history are still unbuilt). `docs/success-metrics.md` mirrors the same
-per-version status.
+shipped/unshipped status per feature (updated through M43 — e.g. V2's synchronized cursor and corner
+highlighting have both shipped, in M14 and M22 respectively; V3's stint/pit-stop comparison shipped
+in M10/M11/M15 and position history shipped in M34/M35/M38, while weather and gaps — time behind
+leader/car ahead — are still unbuilt). `docs/success-metrics.md` mirrors the same per-version status.
 
 ## Architecture
 

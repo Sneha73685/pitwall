@@ -62,7 +62,9 @@ Success looks like:
   originally anticipated here), for Race/Sprint sessions. M38 backfilled both fields across 332 of
   the 334 applicable historical sessions (2 permanently excluded — a genuine external
   Ergast-data-source gap in the cached snapshot). Related: M36/M37 add yellow-flag/Safety Car/VSC/
-  red-flag lap exclusion (`Lap.track_status`), also backfilled by M38.
+  red-flag lap exclusion (`Lap.track_status`), also backfilled by M38. M40 adds a second, independent
+  exclusion source, track-limits lap-time deletion (`Lap.deleted`/`deleted_reason`), taking precedence
+  over yellow-flag when both apply — not backfilled.
 - Gaps (time behind leader/car ahead) and weather are **not yet built** — `results.Time` (gaps) is
   available from the same already-loaded FastF1 data M34 uses but is not currently extracted;
   weather has no ingestion, provider method, or schema.
