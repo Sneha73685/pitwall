@@ -8,7 +8,18 @@ population is simply whatever laps remain after applying, in order:
    `session_analytics.filtering.classify_lap` -- reused unmodified, no new
    validity signal is introduced here);
 2. membership in a known stint (`LapStintPosition.in_known_stint`);
-3. in-lap/out-lap exclusion (`boundary_laps.StintBoundaryLaps`).
+3. in-lap/out-lap exclusion (`boundary_laps.StintBoundaryLaps`);
+4. M41 (docs/m41-design-review.md): not analytically excluded -- the same
+   `classify_lap(...).exclusion_reason is None` check
+   `session_analytics.filtering.filter_for_aggregate_stats` already applies
+   (yellow-flag, M36; track-limits, M40), reused unmodified here too. Applied
+   only in `trend_eligible_positions` below, never in `valid_positions` --
+   `valid_positions` remains the pure `is_accurate` signal, since
+   `orchestration.build_driver_stint_pace` uses it directly for
+   `AnnotatedLap.is_valid`, a telemetry-accuracy flag that must stay
+   independent of analytical exclusion (the same independence
+   `session_analytics` itself preserves between `is_valid` and
+   `exclusion_reason`).
 
 This mirrors M8's `filter_valid_laps` vs. `filter_for_aggregate_stats`
 two-population pattern: nothing is ever deleted from the raw
@@ -40,8 +51,10 @@ def valid_positions(positions: Sequence[LapStintPosition]) -> list[LapStintPosit
 def trend_eligible_positions(
     positions: Sequence[LapStintPosition], boundary: StintBoundaryLaps
 ) -> list[LapStintPosition]:
-    """Valid positions that belong to a known stint and are not an in-lap
-    or out-lap -- the population trend/consistency computations should use.
+    """Valid positions that belong to a known stint, are not an in-lap or
+    out-lap, and are not analytically excluded (M41: yellow-flag or
+    track-limits, via `classify_lap(...).exclusion_reason`) -- the
+    population trend/consistency computations should use.
 
     A stint whose every lap is excluded by this filter (e.g. a one-lap
     stint that is itself the pit-in lap, as with the real `HUL` case in
@@ -51,7 +64,9 @@ def trend_eligible_positions(
     return [
         position
         for position in valid_positions(positions)
-        if position.in_known_stint and not boundary.is_boundary_lap(position.lap.lap_number)
+        if position.in_known_stint
+        and not boundary.is_boundary_lap(position.lap.lap_number)
+        and classify_lap(position.lap).exclusion_reason is None
     ]
 
 

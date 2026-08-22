@@ -24,6 +24,84 @@ def test_valid_positions_reuses_is_accurate_and_excludes_inaccurate_laps() -> No
     assert [position.lap.lap_number for position in valid] == [1]
 
 
+def test_valid_positions_is_independent_of_exclusion_reason() -> None:
+    """M41 (docs/m41-design-review.md): `valid_positions` must remain the
+    pure `is_accurate` signal, untouched by this milestone -- an accurate
+    lap that is analytically excluded (yellow-flag or track-limits) is
+    still "valid" here, exactly as `session_analytics`'s `is_valid` stays
+    independent of `exclusion_reason`. `orchestration.py`'s
+    `AnnotatedLap.is_valid` depends on this guarantee.
+    """
+    laps = [
+        lap(lap_number=1, is_accurate=True, track_status="4"),
+        lap(lap_number=2, is_accurate=True, deleted=True),
+    ]
+    positions = join_laps_to_stints(laps, stints=[stint(start_lap=1, end_lap=2)])
+
+    valid = valid_positions(positions)
+
+    assert [position.lap.lap_number for position in valid] == [1, 2]
+
+
+def test_trend_eligible_positions_includes_a_clear_lap_with_no_exclusion_reason() -> None:
+    """M41 baseline: an accurate lap with no track_status/deleted signal
+    (or an explicitly clear one) has `exclusion_reason=None` and remains
+    trend-eligible -- the regression this milestone must not break."""
+    laps = [lap(lap_number=1, is_accurate=True, track_status="1", deleted=False)]
+    stints = [stint(start_lap=1, end_lap=1)]
+    positions = join_laps_to_stints(laps, stints)
+    boundary = identify_boundary_laps(stints, pit_stops=[])
+
+    eligible = trend_eligible_positions(positions, boundary)
+
+    assert [position.lap.lap_number for position in eligible] == [1]
+
+
+def test_trend_eligible_positions_excludes_yellow_flag_lap() -> None:
+    """M41: a yellow-flag-affected lap (`exclusion_reason="yellow_flag"`)
+    is accurate but must not be trend-eligible -- it would otherwise
+    corrupt pace/consistency stats, matching `session_analytics`'s own
+    `filter_for_aggregate_stats` standard."""
+    laps = [lap(lap_number=1, is_accurate=True, track_status="4")]
+    stints = [stint(start_lap=1, end_lap=1)]
+    positions = join_laps_to_stints(laps, stints)
+    boundary = identify_boundary_laps(stints, pit_stops=[])
+
+    eligible = trend_eligible_positions(positions, boundary)
+
+    assert eligible == []
+
+
+def test_trend_eligible_positions_excludes_track_limits_lap() -> None:
+    """M41: a track-limits-deleted lap (`exclusion_reason="track_limits"`)
+    is accurate but must not be trend-eligible, mirroring the yellow-flag
+    case above."""
+    laps = [lap(lap_number=1, is_accurate=True, deleted=True)]
+    stints = [stint(start_lap=1, end_lap=1)]
+    positions = join_laps_to_stints(laps, stints)
+    boundary = identify_boundary_laps(stints, pit_stops=[])
+
+    eligible = trend_eligible_positions(positions, boundary)
+
+    assert eligible == []
+
+
+def test_trend_eligible_positions_excludes_inaccurate_lap_with_exclusion_reason() -> None:
+    """A lap that is both inaccurate and analytically excluded is excluded
+    for either reason alone -- no precedence ambiguity to resolve here
+    (unlike `filtering.py`'s own display-precedence concern between
+    "yellow_flag"/"track_limits", which is irrelevant to this boolean
+    gate)."""
+    laps = [lap(lap_number=1, is_accurate=False, deleted=True)]
+    stints = [stint(start_lap=1, end_lap=1)]
+    positions = join_laps_to_stints(laps, stints)
+    boundary = identify_boundary_laps(stints, pit_stops=[])
+
+    eligible = trend_eligible_positions(positions, boundary)
+
+    assert eligible == []
+
+
 def test_trend_eligible_excludes_laps_outside_any_known_stint() -> None:
     laps = [lap(lap_number=1), lap(lap_number=99)]
     stints = [stint(stint_number=1, start_lap=1, end_lap=1)]
