@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { DriverLapMetrics } from "../../../api/client";
+import type { DriverLapMetrics, ExclusionReason } from "../../../api/client";
 import { DriverLapTable } from "./DriverLapTable";
 
 function lap(overrides: Partial<DriverLapMetrics> = {}): DriverLapMetrics {
@@ -25,7 +25,9 @@ describe("DriverLapTable", () => {
     render(<DriverLapTable laps={laps} />);
 
     const row = screen.getByTestId("lap-row-1");
-    expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(yellow_flag)");
+    // M46 (docs/m46-design-review.md): humanized label, not the raw
+    // machine value -- the underlying `exclusion_reason` field is unchanged.
+    expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(Yellow Flag)");
   });
 
   it("renders the exclusion tag for a valid lap with a track-limits exclusion reason", () => {
@@ -38,7 +40,7 @@ describe("DriverLapTable", () => {
     render(<DriverLapTable laps={laps} />);
 
     const row = screen.getByTestId("lap-row-1");
-    expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(track_limits)");
+    expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(Track Limits)");
   });
 
   it("renders the exclusion tag for an invalid lap with no exclusion reason", () => {
@@ -56,7 +58,7 @@ describe("DriverLapTable", () => {
     render(<DriverLapTable laps={laps} />);
 
     const row = screen.getByTestId("lap-row-1");
-    expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(yellow_flag)");
+    expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(Yellow Flag)");
   });
 
   it("does not render the exclusion tag for a valid lap with no exclusion reason", () => {
@@ -66,5 +68,18 @@ describe("DriverLapTable", () => {
 
     const row = screen.getByTestId("lap-row-1");
     expect(within(row).queryByTestId("lap-excluded-1")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the raw value for an exclusion reason this frontend doesn't have a label for yet", () => {
+    // M46 (docs/m46-design-review.md §5): simulates a hypothetical
+    // frontend/backend version skew -- a value the current ExclusionReason
+    // union doesn't know about -- proving the component degrades to
+    // displaying the raw value rather than disappearing or crashing.
+    const laps = [lap({ is_valid: true, exclusion_reason: "safety_car" as ExclusionReason })];
+
+    render(<DriverLapTable laps={laps} />);
+
+    const row = screen.getByTestId("lap-row-1");
+    expect(within(row).getByTestId("lap-excluded-1")).toHaveTextContent("(safety_car)");
   });
 });

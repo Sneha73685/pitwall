@@ -1,10 +1,29 @@
-import type { DriverLapMetrics } from "../../../api/client";
+import type { DriverLapMetrics, ExclusionReason } from "../../../api/client";
 import { EmptyState } from "../../../components/EmptyState";
 import { StatusChip } from "../../../components/StatusChip";
 import styles from "./DriverLapTable.module.css";
 
 interface DriverLapTableProps {
   laps: DriverLapMetrics[];
+}
+
+// M46 (docs/m46-design-review.md): frontend-owned copy per ExclusionReason,
+// mirroring the now-twice-proven local-map pattern (StintComparisonPage.tsx
+// M15, ComparisonPage.tsx M45) rather than a new shared abstraction. Falls
+// back to the raw value for a reason this map doesn't know about yet (a
+// hypothetical future backend value ahead of this frontend's ExclusionReason
+// type), so an unmapped value degrades to today's pre-M46 display instead of
+// disappearing or rendering "undefined".
+const EXCLUSION_REASON_LABELS: Record<ExclusionReason, string> = {
+  yellow_flag: "Yellow Flag",
+  track_limits: "Track Limits",
+};
+
+function exclusionLabel(reason: ExclusionReason | null): string {
+  if (reason === null) {
+    return "excluded";
+  }
+  return EXCLUSION_REASON_LABELS[reason] ?? reason;
 }
 
 /**
@@ -45,7 +64,7 @@ export function DriverLapTable({ laps }: DriverLapTableProps) {
                     className={styles.excludedTag}
                   >
                     {" "}
-                    ({lap.exclusion_reason ?? "excluded"})
+                    ({exclusionLabel(lap.exclusion_reason)})
                   </span>
                 )}
               </td>
