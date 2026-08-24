@@ -138,34 +138,20 @@ PitWall is a **modular monolith**, not microservices (ADR-0001). Three independe
 files and a PostgreSQL database between pipeline and backend, and a typed REST API between backend
 and frontend. Data flows one direction only:
 
-```
-FastF1
-  │   (FastF1Provider — the only module in the whole codebase that imports fastf1 directly)
-  ▼
-Normalization                              pipeline/pitwall_pipeline/normalize.py
-  │   FastF1 DataFrames → PitWall's own Pydantic domain model (models.py)
-  ├──────────────────────────┬─────────────────────────────┐
-  ▼                          ▼                             │
-Parquet cache          PostgreSQL                           │
-sessions, drivers,     stints, pit stops only                │
-laps, telemetry, track (genuinely relational data)           │
-  │                          │                              │
-  ▼                          ▼                              │
-TelemetryRepository    RaceContextRepository                 │
-(ParquetRepository)    (PostgresRaceContextRepository)       │
-  │                          │                              │
-  └────────────┬─────────────┘                              │
-               ▼                                             │
-     Backend services (business logic / analytics) ◄─────────┘
-     session_analytics · tyre_performance · lap_comparison
-               ▼
-     API models (anti-corruption layer, ADR-0009)
-               ▼
-     FastAPI routes — 22 typed endpoints
-               ▼
-     Frontend API client (frontend/src/api/client.ts)
-               ▼
-     React feature pages · ECharts · track map (D3/SVG)
+```mermaid
+flowchart TD
+    FF1["FastF1"] --> Provider["FastF1Provider\n(only module that imports fastf1)"]
+    Provider --> Norm["Normalization\n(normalize.py → Pydantic domain model)"]
+    Norm --> Parquet[("Parquet cache\nsessions · drivers · laps · telemetry · track")]
+    Norm --> Postgres[("PostgreSQL\nstints · pit stops only")]
+    Parquet --> TelRepo["TelemetryRepository\n(ParquetRepository)"]
+    Postgres --> RCRepo["RaceContextRepository\n(PostgresRaceContextRepository)"]
+    TelRepo --> Services["Backend services\nsession_analytics · tyre_performance · lap_comparison"]
+    RCRepo --> Services
+    Services --> APIModels["API models\n(anti-corruption layer, ADR-0009)"]
+    APIModels --> FastAPI["FastAPI routes\n22 typed endpoints"]
+    FastAPI --> Client["Frontend API client\n(frontend/src/api/client.ts)"]
+    Client --> Pages["React feature pages\nECharts · track map (D3/SVG)"]
 ```
 
 **What each layer owns — and doesn't:**
@@ -200,6 +186,22 @@ layering rationale, and the caching-layer history.
 ## Data Flow
 
 The lifecycle of one ingested session, traced end to end:
+
+```mermaid
+flowchart LR
+    A["1. Source\nacquisition"] --> B["2. FastF1 loading\n/ caching"]
+    B --> C["3. Normalization"]
+    C --> D["4. Persistence"]
+    D --> E["5. Repository\naccess"]
+    E --> F["6. Analytics /\nservice processing"]
+    F --> G["7. API\nserialization"]
+    G --> H["8. Frontend\nrendering"]
+
+    NoteD["note: persisted\ntrack_status,\ndeleted / deleted_reason"]
+    NoteF["note: derived per request,\nnever persisted —\nexclusion_reason"]
+    D -.-> NoteD
+    F -.-> NoteF
+```
 
 1. **Source acquisition** — a pipeline CLI invocation names one season, event, and session type.
 2. **FastF1 loading/caching** — `FastF1Provider` enables FastF1's own on-disk cache, resolves the
@@ -302,6 +304,17 @@ the backend has no dependency on the pipeline package and only ever reads the re
 a repository. `classify_lap()` (`session_analytics/filtering.py`) is imported — never
 reimplemented — by every other service that needs exclusion awareness (`tyre_performance`,
 `lap_comparison`), keeping the classification logic in exactly one place.
+
+The backend/frontend boundary, from repository to rendered page:
+
+```mermaid
+flowchart LR
+    Repos["Repositories\nTelemetryRepository · RaceContextRepository"] --> Services["Backend services\n(pure business logic)"]
+    Services --> Models["API models\n(Pydantic, ADR-0009\nanti-corruption boundary)"]
+    Models --> FastAPI["FastAPI routes"]
+    FastAPI --> Client["client.ts\n(frontend API client)"]
+    Client --> Pages["React feature pages"]
+```
 
 ## Frontend Architecture
 
@@ -492,7 +505,7 @@ picking any of it up again should start from fresh evidence, not from this list 
 - **Minor technical debt**, tracked in [`docs/backlog.md`](docs/backlog.md): a CI workflow
   `permissions:` block, a couple of frontend test files missing empty-state coverage, the
   measured-but-unaddressed per-call cost of one telemetry repository method, a Python-version
-  mismatch between the Dockerfiles and CI, and no `CONTRIBUTING.md` yet.
+  mismatch between the Dockerfiles and CI.
 - **Longer-term roadmap** (V4/V5 in the original plan): deterministic engineering-insight generation
   and natural-language querying. Both remain conceptual — no work has started on either.
 
