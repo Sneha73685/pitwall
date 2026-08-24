@@ -462,7 +462,7 @@ against recorded fixtures, and frontend tests mock the API client.
 | [`docs/m47-design-review.md`](docs/m47-design-review.md) | The portfolio-finalization decision and its evidence |
 | Milestone design reviews (`docs/m{N}-design-review.md`) | The detailed, per-milestone historical implementation record |
 | [`CHANGELOG.md`](CHANGELOG.md) | Notable changes, grouped by milestone |
-| [`CLAUDE.md`](CLAUDE.md) | Coding standards, conventions, and process |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Coding standards, conventions, and process |
 
 ## Current Deferred Work
 
@@ -506,7 +506,7 @@ runtime issue crossing a real severity threshold; or a genuinely new product req
 ## Local Development
 
 Branching conventions, commit style, and coding standards all live in
-[`CLAUDE.md`](CLAUDE.md) — treated as the single source of truth rather than duplicated here. In
+[`CONTRIBUTING.md`](CONTRIBUTING.md) — treated as the single source of truth rather than duplicated here. In
 short: type hints and Pydantic models throughout the Python side, Ruff for formatting/linting,
 strict TypeScript with ESLint + Prettier on the frontend, and an ADR for every real architectural
 decision.

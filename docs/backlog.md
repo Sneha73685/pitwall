@@ -60,10 +60,3 @@ Items are removed once fixed, not marked done — this list should always reflec
   container UID mismatches breaking the mount — not a drop-in fix. Each Dockerfile's own header
   comment already defers "production packaging" to M7; a non-root user for any eventual production
   image belongs in that pass, not before.
-
-## Documentation / process (non-code)
-
-- No `CONTRIBUTING.md` yet. Reasonable for a solo-maintainer portfolio project at M1 (per
-  `docs/prd.md` §1.3), but worth adding once the project is public and tagged, so an external
-  contributor knows the branch/commit/ADR conventions already documented in `CLAUDE.md` without
-  having to find that file themselves.

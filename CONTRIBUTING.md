@@ -1,4 +1,4 @@
-# CLAUDE.md — PitWall Project Guidance
+# CONTRIBUTING.md — PitWall Project Guidance
 
 PitWall is an open-source, fan-made Formula 1 race engineering platform. It is not affiliated with Formula 1, FOM, or any team. No official logos, liveries, or broadcast graphics belong in this repository.
 
